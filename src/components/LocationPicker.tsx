@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -22,24 +22,26 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-function MapClickHandler({ onLocationUpdate }: { onLocationUpdate: (lat: number, lng: number) => void }) {
-  useMapEvents({
+const MapClickHandler = ({ onLocationUpdate }: { onLocationUpdate: (lat: number, lng: number) => void }) => {
+  const map = useMapEvents({
     click: (e) => {
       onLocationUpdate(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
-}
+};
 
-function MapCenterController({ center, zoom }: { center: [number, number]; zoom?: number }) {
+const MapCenterController = ({ center, zoom }: { center: [number, number]; zoom?: number }) => {
   const map = useMap();
   
   useEffect(() => {
-    map.setView(center, zoom || map.getZoom());
+    if (map) {
+      map.setView(center, zoom || map.getZoom());
+    }
   }, [center, zoom, map]);
   
   return null;
-}
+};
 
 export default function LocationPicker({ 
   onLocationSelect, 
@@ -52,7 +54,7 @@ export default function LocationPicker({
   const [address, setAddress] = useState(initialAddress || '');
   const markerRef = useRef<L.Marker>(null);
 
-  const updateLocation = async (lat: number, lng: number) => {
+  const updateLocation = useCallback(async (lat: number, lng: number) => {
     setLatitude(lat);
     setLongitude(lng);
 
@@ -75,7 +77,7 @@ export default function LocationPicker({
       setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
       onLocationSelect(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
     }
-  };
+  }, [onLocationSelect]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
