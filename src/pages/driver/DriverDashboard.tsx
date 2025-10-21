@@ -152,19 +152,19 @@ export default function DriverDashboard() {
 
   if (activeDelivery) {
     return (
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <div className="min-h-screen flex w-full">
           <DriverSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger />
-                <h1 className="font-semibold">Entrega Ativa</h1>
+            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
               </div>
               <NotificationBell />
             </header>
 
-            <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-primary/5">
+            <main className="flex-1 p-6 bg-background">
               <div className="max-w-4xl mx-auto">
                 <Card>
                   <CardHeader>
@@ -187,19 +187,19 @@ export default function DriverDashboard() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <DriverSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
-            <div className="flex items-center gap-2">
-              <SidebarTrigger />
-              <h1 className="font-semibold">Dashboard do Motorista</h1>
-            </div>
-            <NotificationBell />
-          </header>
+            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
+              </div>
+              <NotificationBell />
+            </header>
 
-          <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-primary/5 overflow-auto">
+          <main className="flex-1 p-6 bg-background overflow-auto">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Stats */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

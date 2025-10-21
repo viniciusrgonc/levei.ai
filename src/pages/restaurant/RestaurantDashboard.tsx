@@ -150,18 +150,18 @@ export default function RestaurantDashboard() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
             <div className="flex items-center gap-4">
-              <SidebarTrigger />
+              <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
               <div>
-                <h1 className="font-semibold">{restaurant.business_name}</h1>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
+                <div className="flex items-center gap-2 text-sm text-primary-foreground/80">
                   <div className="flex items-center">
-                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+                    <Star className="h-3 w-3 fill-primary-foreground text-primary-foreground mr-1" />
                     {Number(restaurant.rating || 0).toFixed(1)}
                   </div>
                   <span>•</span>
@@ -170,7 +170,11 @@ export default function RestaurantDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={() => navigate('/restaurant/new-delivery')}>
+              <Button 
+                onClick={() => navigate('/restaurant/new-delivery')}
+                variant="secondary"
+                className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Entrega
               </Button>
@@ -178,7 +182,7 @@ export default function RestaurantDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-primary/5 overflow-auto">
+          <main className="flex-1 p-6 bg-background overflow-auto">
             <div className="max-w-7xl mx-auto space-y-6">
               {/* Stats */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
