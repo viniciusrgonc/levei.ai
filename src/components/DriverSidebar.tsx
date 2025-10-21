@@ -1,4 +1,4 @@
-import { Home, Package, History, User, LogOut } from 'lucide-react';
+import { Home, Map, Wallet, History, User, Settings, LogOut } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -16,8 +16,11 @@ import { toast } from '@/hooks/use-toast';
 
 const menuItems = [
   { title: 'Dashboard', url: '/driver/dashboard', icon: Home },
+  { title: 'Mapa', url: '/driver/map', icon: Map },
+  { title: 'Financeiro', url: '/driver/wallet', icon: Wallet },
   { title: 'Histórico', url: '/driver/history', icon: History },
-  { title: 'Perfil', url: '/driver/profile', icon: User },
+  { title: 'Meus Dados', url: '/driver/profile', icon: User },
+  { title: 'Configurações', url: '/driver/settings', icon: Settings },
 ];
 
 export function DriverSidebar() {

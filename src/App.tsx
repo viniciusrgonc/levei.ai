@@ -18,8 +18,11 @@ import RestaurantWallet from "./pages/restaurant/RestaurantWallet";
 import RestaurantAccount from "./pages/restaurant/RestaurantAccount";
 import DriverSetup from "./pages/driver/DriverSetup";
 import DriverDashboard from "./pages/driver/DriverDashboard";
+import DriverMap from "./pages/driver/DriverMap";
+import DriverWallet from "./pages/driver/DriverWallet";
 import DriverHistory from "./pages/driver/DriverHistory";
 import DriverProfile from "./pages/driver/DriverProfile";
+import DriverSettings from "./pages/driver/DriverSettings";
 import ActiveDelivery from "./pages/driver/ActiveDelivery";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
@@ -133,6 +136,22 @@ const App = () => (
               }
             />
             <Route
+              path="/driver/map"
+              element={
+                <ProtectedRoute>
+                  <DriverMap />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/wallet"
+              element={
+                <ProtectedRoute>
+                  <DriverWallet />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/driver/history"
               element={
                 <ProtectedRoute>
@@ -145,6 +164,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DriverProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/settings"
+              element={
+                <ProtectedRoute>
+                  <DriverSettings />
                 </ProtectedRoute>
               }
             />
