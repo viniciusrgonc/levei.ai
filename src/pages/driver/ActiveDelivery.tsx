@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, Package, CheckCircle, Camera, ArrowLeft } from 'lucide-react';
+import { MapPin, Package, CheckCircle, Camera, ArrowLeft, Navigation } from 'lucide-react';
+import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 
 interface Delivery {
   id: string;
@@ -23,6 +24,7 @@ interface Delivery {
   created_at: string;
   accepted_at: string | null;
   picked_up_at: string | null;
+  driver_id: string;
 }
 
 export default function ActiveDelivery() {
@@ -31,6 +33,14 @@ export default function ActiveDelivery() {
   const navigate = useNavigate();
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
+  const [driverId, setDriverId] = useState<string | null>(null);
+
+  // Enable location tracking when delivery is active
+  useDriverLocationTracking({
+    driverId: driverId || '',
+    deliveryId: deliveryId || '',
+    isActive: !!driverId && !!deliveryId && delivery?.status !== 'delivered',
+  });
 
   useEffect(() => {
     if (deliveryId) {
@@ -74,6 +84,9 @@ export default function ActiveDelivery() {
       navigate('/driver/dashboard');
     } else {
       setDelivery(data);
+      if (data.driver_id) {
+        setDriverId(data.driver_id);
+      }
     }
     setLoading(false);
   };
@@ -159,6 +172,23 @@ export default function ActiveDelivery() {
         </Button>
 
         <div className="grid gap-6">
+          {/* Location Tracking Alert */}
+          {delivery.status !== 'delivered' && (
+            <Card className="bg-primary/5 border-primary/20">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Navigation className="h-5 w-5 text-primary mt-0.5 animate-pulse" />
+                  <div>
+                    <p className="font-medium text-sm">Rastreamento Ativo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Sua localização está sendo compartilhada automaticamente a cada 10 segundos
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Status Card */}
           <Card>
             <CardHeader>
