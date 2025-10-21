@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Button } from '@/components/ui/button';
@@ -22,63 +21,91 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-function MapController({ 
-  position, 
-  onLocationUpdate 
-}: { 
-  position: [number, number]; 
-  onLocationUpdate: (lat: number, lng: number) => void;
-}) {
-  const map = useMap();
-  
-  useMapEvents({
-    click: (e) => {
-      onLocationUpdate(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  
-  useEffect(() => {
-    map.setView(position, map.getZoom());
-  }, [map, position]);
-  
-  return null;
-}
-
-export default function LocationPicker({ 
-  onLocationSelect, 
-  initialLat, 
+export default function LocationPicker({
+  onLocationSelect,
+  initialLat,
   initialLng,
-  initialAddress 
+  initialAddress,
 }: LocationPickerProps) {
-  const [latitude, setLatitude] = useState(initialLat || -23.550520);
+  const [latitude, setLatitude] = useState(initialLat || -23.55052);
   const [longitude, setLongitude] = useState(initialLng || -46.633308);
   const [address, setAddress] = useState(initialAddress || '');
 
-  const updateLocation = useCallback(async (lat: number, lng: number) => {
-    setLatitude(lat);
-    setLongitude(lng);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
 
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
-      );
-      const data = await response.json();
-      
-      if (data.display_name) {
-        setAddress(data.display_name);
-        onLocationSelect(lat, lng, data.display_name);
-      } else {
+  const updateLocation = useCallback(
+    async (lat: number, lng: number) => {
+      setLatitude(lat);
+      setLongitude(lng);
+
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
+        );
+        const data = await response.json();
+
+        if (data.display_name) {
+          setAddress(data.display_name);
+          onLocationSelect(lat, lng, data.display_name);
+        } else {
+          const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          setAddress(coords);
+          onLocationSelect(lat, lng, coords);
+        }
+      } catch (error) {
+        console.error('Erro ao obter endereço:', error);
         const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
         setAddress(coords);
         onLocationSelect(lat, lng, coords);
       }
-    } catch (error) {
-      console.error('Erro ao obter endereço:', error);
-      const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-      setAddress(coords);
-      onLocationSelect(lat, lng, coords);
+    },
+    [onLocationSelect]
+  );
+
+  // Initialize Leaflet map (no react-leaflet to avoid context issues)
+  useEffect(() => {
+    if (!mapContainerRef.current || mapRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [latitude, longitude],
+      zoom: 14,
+      zoomControl: true,
+    });
+    mapRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    const marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+    markerRef.current = marker;
+
+    marker.on('dragend', (e: L.DragEndEvent) => {
+      const pos = (e.target as L.Marker).getLatLng();
+      updateLocation(pos.lat, pos.lng);
+    });
+
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      updateLocation(e.latlng.lat, e.latlng.lng);
+    });
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+  }, [latitude, longitude, updateLocation]);
+
+  // Sync marker and map when coords change
+  useEffect(() => {
+    if (mapRef.current && markerRef.current) {
+      markerRef.current.setLatLng([latitude, longitude]);
+      mapRef.current.setView([latitude, longitude], mapRef.current.getZoom());
     }
-  }, [onLocationSelect]);
+  }, [latitude, longitude]);
 
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -96,47 +123,15 @@ export default function LocationPicker({
     );
   };
 
-  const handleMarkerDrag = useCallback((e: L.DragEndEvent) => {
-    const marker = e.target as L.Marker;
-    const position = marker.getLatLng();
-    updateLocation(position.lat, position.lng);
-  }, [updateLocation]);
-
   return (
     <div className="space-y-4">
-      <Button 
-        type="button"
-        variant="outline" 
-        onClick={getCurrentLocation}
-        className="w-full"
-      >
+      <Button type="button" variant="outline" onClick={getCurrentLocation} className="w-full">
         <Navigation className="w-4 h-4 mr-2" />
         Usar Minha Localização
       </Button>
 
       <div className="w-full h-[400px] rounded-lg border shadow-lg overflow-hidden">
-        <MapContainer
-          center={[latitude, longitude]}
-          zoom={14}
-          style={{ height: '100%', width: '100%' }}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Marker
-            position={[latitude, longitude]}
-            draggable={true}
-            eventHandlers={{
-              dragend: handleMarkerDrag,
-            }}
-          />
-          <MapController 
-            position={[latitude, longitude]} 
-            onLocationUpdate={updateLocation}
-          />
-        </MapContainer>
+        <div ref={mapContainerRef} className="w-full h-full" />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
