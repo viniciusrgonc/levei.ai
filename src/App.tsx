@@ -18,6 +18,7 @@ import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverHistory from "./pages/driver/DriverHistory";
 import DriverProfile from "./pages/driver/DriverProfile";
 import ActiveDelivery from "./pages/driver/ActiveDelivery";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -125,6 +126,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ActiveDelivery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <ProtectedRoute>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />
