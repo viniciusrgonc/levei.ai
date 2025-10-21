@@ -1,5 +1,7 @@
-import { Bell, Check, Package } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,33 +10,38 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { useNotifications } from '@/hooks/useNotifications';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useNavigate } from 'react-router-dom';
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const handleNotificationClick = (notification: any) => {
     markAsRead(notification.id);
-    
-    // Navigate to delivery if it exists
+    setOpen(false);
+
     if (notification.delivery_id) {
-      // Check if user is restaurant or driver based on notification type
-      if (notification.type.includes('accepted') || notification.type.includes('picked_up') || notification.type.includes('completed')) {
-        navigate(`/restaurant/tracking/${notification.delivery_id}`);
-      }
+      // Navigate to delivery tracking
+      navigate(`/restaurant/delivery/${notification.delivery_id}`);
     }
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <Badge
@@ -46,7 +53,7 @@ export default function NotificationBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-80 bg-background border z-50">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notificações</span>
           {unreadCount > 0 && (
@@ -56,7 +63,6 @@ export default function NotificationBell() {
               onClick={markAllAsRead}
               className="h-auto p-1 text-xs"
             >
-              <Check className="h-3 w-3 mr-1" />
               Marcar todas como lidas
             </Button>
           )}
@@ -64,40 +70,31 @@ export default function NotificationBell() {
         <DropdownMenuSeparator />
         <ScrollArea className="h-[400px]">
           {notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
+            <div className="p-4 text-center text-muted-foreground text-sm">
               Nenhuma notificação
             </div>
           ) : (
             notifications.map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className={`flex flex-col items-start p-3 cursor-pointer ${
+                className={`p-4 cursor-pointer flex flex-col items-start gap-1 ${
                   !notification.is_read ? 'bg-primary/5' : ''
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
-                <div className="flex items-start gap-2 w-full">
-                  <div className="mt-1">
-                    <Package className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {notification.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(notification.created_at), {
-                        addSuffix: true,
-                        locale: ptBR,
-                      })}
-                    </p>
-                  </div>
+                <div className="flex items-start justify-between w-full">
+                  <p className="font-semibold text-sm">{notification.title}</p>
                   {!notification.is_read && (
-                    <div className="h-2 w-2 rounded-full bg-primary mt-1" />
+                    <Badge variant="default" className="ml-2 h-2 w-2 p-0 rounded-full" />
                   )}
                 </div>
+                <p className="text-xs text-muted-foreground">{notification.message}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formatDistanceToNow(new Date(notification.created_at), {
+                    addSuffix: true,
+                    locale: ptBR,
+                  })}
+                </p>
               </DropdownMenuItem>
             ))
           )}

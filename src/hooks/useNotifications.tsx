@@ -4,7 +4,6 @@ import { useAuth } from '@/lib/auth';
 
 interface Notification {
   id: string;
-  user_id: string;
   title: string;
   message: string;
   type: string;
@@ -22,14 +21,14 @@ export function useNotifications() {
   const fetchNotifications = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (data && !error) {
+    if (data) {
       setNotifications(data);
       setUnreadCount(data.filter((n) => !n.is_read).length);
     }
@@ -37,41 +36,35 @@ export function useNotifications() {
   };
 
   const markAsRead = async (notificationId: string) => {
-    const { error } = await supabase
+    await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('id', notificationId);
 
-    if (!error) {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-    }
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+    );
+    setUnreadCount((prev) => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
 
-    const { error } = await supabase
+    await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', user.id)
       .eq('is_read', false);
 
-    if (!error) {
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, is_read: true }))
-      );
-      setUnreadCount(0);
-    }
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    setUnreadCount(0);
   };
 
   useEffect(() => {
     if (user) {
       fetchNotifications();
 
-      // Subscribe to realtime notifications
+      // Subscribe to realtime updates
       const channel = supabase
         .channel('user-notifications')
         .on(
@@ -103,13 +96,6 @@ export function useNotifications() {
       };
     }
   }, [user]);
-
-  // Request browser notification permission
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
 
   return {
     notifications,
