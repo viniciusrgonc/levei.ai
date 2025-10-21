@@ -8,6 +8,17 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { MapPin, Package, CheckCircle, Camera, ArrowLeft, Navigation } from 'lucide-react';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix Leaflet default marker icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 interface Delivery {
   id: string;
@@ -34,6 +45,7 @@ export default function ActiveDelivery() {
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [loading, setLoading] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
+  const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
 
   // Enable location tracking when delivery is active
   useDriverLocationTracking({
@@ -41,6 +53,21 @@ export default function ActiveDelivery() {
     deliveryId: deliveryId || '',
     isActive: !!driverId && !!deliveryId && delivery?.status !== 'delivered',
   });
+
+  // Track current GPS position
+  useEffect(() => {
+    if (delivery?.status !== 'delivered') {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setCurrentPosition([position.coords.latitude, position.coords.longitude]);
+        },
+        (error) => console.error('Error getting location:', error),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      );
+
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
+  }, [delivery?.status]);
 
   useEffect(() => {
     if (deliveryId) {
@@ -214,6 +241,71 @@ export default function ActiveDelivery() {
                       Sua localização está sendo compartilhada automaticamente a cada 10 segundos
                     </p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Real-time Map */}
+          {delivery.status !== 'delivered' && currentPosition && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mapa em Tempo Real</CardTitle>
+                <CardDescription>Sua localização e destino</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[400px] rounded-lg overflow-hidden">
+                  <MapContainer
+                    center={currentPosition}
+                    zoom={14}
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    />
+                    
+                    {/* Current driver position */}
+                    <Marker position={currentPosition}>
+                      <Popup>📍 Você está aqui</Popup>
+                    </Marker>
+                    
+                    {/* Pickup location */}
+                    {delivery.status === 'accepted' && (
+                      <>
+                        <Marker position={[Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]}>
+                          <Popup>📦 Local de coleta</Popup>
+                        </Marker>
+                        <Polyline
+                          positions={[
+                            currentPosition,
+                            [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
+                          ]}
+                          color="blue"
+                          weight={3}
+                          dashArray="10, 10"
+                        />
+                      </>
+                    )}
+                    
+                    {/* Delivery location */}
+                    {delivery.status === 'picked_up' && (
+                      <>
+                        <Marker position={[Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]}>
+                          <Popup>🎯 Local de entrega</Popup>
+                        </Marker>
+                        <Polyline
+                          positions={[
+                            currentPosition,
+                            [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]
+                          ]}
+                          color="green"
+                          weight={3}
+                          dashArray="10, 10"
+                        />
+                      </>
+                    )}
+                  </MapContainer>
                 </div>
               </CardContent>
             </Card>
