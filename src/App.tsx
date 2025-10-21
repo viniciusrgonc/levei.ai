@@ -10,11 +10,13 @@ import Dashboard from "./pages/Dashboard";
 import RestaurantSetup from "./pages/restaurant/RestaurantSetup";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import RestaurantHistory from "./pages/restaurant/RestaurantHistory";
+import RestaurantProfile from "./pages/restaurant/RestaurantProfile";
 import NewDelivery from "./pages/restaurant/NewDelivery";
 import DeliveryTracking from "./pages/restaurant/DeliveryTracking";
 import DriverSetup from "./pages/driver/DriverSetup";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverHistory from "./pages/driver/DriverHistory";
+import DriverProfile from "./pages/driver/DriverProfile";
 import ActiveDelivery from "./pages/driver/ActiveDelivery";
 import NotFound from "./pages/NotFound";
 
@@ -63,6 +65,14 @@ const App = () => (
               }
             />
             <Route
+              path="/restaurant/profile"
+              element={
+                <ProtectedRoute>
+                  <RestaurantProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/restaurant/new-delivery"
               element={
                 <ProtectedRoute>
@@ -99,6 +109,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DriverHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/profile"
+              element={
+                <ProtectedRoute>
+                  <DriverProfile />
                 </ProtectedRoute>
               }
             />

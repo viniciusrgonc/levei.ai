@@ -1,4 +1,4 @@
-import { Home, Plus, History, Settings, LogOut } from 'lucide-react';
+import { Home, Plus, History, User, LogOut } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -19,6 +19,7 @@ const menuItems = [
   { title: 'Dashboard', url: '/restaurant/dashboard', icon: Home },
   { title: 'Nova Entrega', url: '/restaurant/new-delivery', icon: Plus },
   { title: 'Histórico', url: '/restaurant/history', icon: History },
+  { title: 'Perfil', url: '/restaurant/profile', icon: User },
 ];
 
 export function RestaurantSidebar() {
