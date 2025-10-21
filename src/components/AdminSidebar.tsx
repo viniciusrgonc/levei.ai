@@ -54,9 +54,9 @@ export function AdminSidebar() {
 
   return (
     <Sidebar className={state === 'collapsed' ? 'w-14' : 'w-60'} collapsible="icon">
-      <SidebarContent>
+      <SidebarContent className="text-foreground font-sans">
         <SidebarGroup>
-          <SidebarGroupLabel>Administração</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-foreground font-semibold">Administração</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
@@ -65,7 +65,7 @@ export function AdminSidebar() {
                     <NavLink 
                       to={item.url} 
                       end
-                      className="transition-all duration-300 hover:scale-105 active:scale-95"
+                      className="transition-all duration-300 hover:scale-105 active:scale-95 text-foreground"
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>

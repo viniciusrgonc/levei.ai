@@ -42,10 +42,10 @@ export function RestaurantSidebar() {
 
   return (
     <Sidebar className={isCollapsed ? 'w-14' : 'w-60'} collapsible="icon">
-      <SidebarContent>
+      <SidebarContent className="text-foreground font-sans">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-foreground font-semibold">Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
@@ -55,7 +55,7 @@ export function RestaurantSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        `transition-all duration-300 hover:scale-105 active:scale-95 ${
+                        `transition-all duration-300 hover:scale-105 active:scale-95 text-foreground ${
                           isActive
                             ? 'bg-primary/10 text-primary font-medium'
                             : 'hover:bg-muted/50'
@@ -74,7 +74,7 @@ export function RestaurantSidebar() {
 
         {/* Settings */}
         <SidebarGroup>
-          <SidebarGroupLabel>
+          <SidebarGroupLabel className="text-foreground font-semibold">
             <Settings className="h-4 w-4 mr-2 inline" />
             {!isCollapsed && 'Configurações'}
           </SidebarGroupLabel>
@@ -87,7 +87,7 @@ export function RestaurantSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        `transition-all duration-300 hover:scale-105 active:scale-95 ${
+                        `transition-all duration-300 hover:scale-105 active:scale-95 text-foreground ${
                           isActive
                             ? 'bg-primary/10 text-primary font-medium'
                             : 'hover:bg-muted/50'
@@ -111,7 +111,7 @@ export function RestaurantSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={handleSignOut}
-                  className="transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-destructive/10 hover:text-destructive"
+                  className="transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-destructive/10 hover:text-destructive text-foreground"
                 >
                   <LogOut className="h-4 w-4" />
                   {!isCollapsed && <span>Sair</span>}
