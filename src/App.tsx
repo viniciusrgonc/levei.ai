@@ -7,6 +7,10 @@ import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import RestaurantSetup from "./pages/restaurant/RestaurantSetup";
+import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
+import NewDelivery from "./pages/restaurant/NewDelivery";
+import DeliveryTracking from "./pages/restaurant/DeliveryTracking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +30,38 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/setup"
+              element={
+                <ProtectedRoute>
+                  <RestaurantSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/dashboard"
+              element={
+                <ProtectedRoute>
+                  <RestaurantDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/new-delivery"
+              element={
+                <ProtectedRoute>
+                  <NewDelivery />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/delivery/:deliveryId"
+              element={
+                <ProtectedRoute>
+                  <DeliveryTracking />
                 </ProtectedRoute>
               }
             />
