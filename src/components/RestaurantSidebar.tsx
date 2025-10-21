@@ -1,4 +1,4 @@
-import { Home, Plus, History, User, LogOut } from 'lucide-react';
+import { Home, Plus, History, User, LogOut, Calendar, Wallet, Settings, UserCircle } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -15,11 +15,17 @@ import {
 import { useAuth } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 
-const menuItems = [
+const mainMenuItems = [
   { title: 'Dashboard', url: '/restaurant/dashboard', icon: Home },
-  { title: 'Nova Entrega', url: '/restaurant/new-delivery', icon: Plus },
-  { title: 'Histórico', url: '/restaurant/history', icon: History },
-  { title: 'Perfil', url: '/restaurant/profile', icon: User },
+  { title: 'Solicitar Entrega', url: '/restaurant/new-delivery', icon: Plus },
+  { title: 'Agendamento', url: '/restaurant/scheduling', icon: Calendar },
+  { title: 'Histórico de Entregas', url: '/restaurant/history', icon: History },
+];
+
+const settingsMenuItems = [
+  { title: 'Carteira/Saldo', url: '/restaurant/wallet', icon: Wallet },
+  { title: 'Meus Dados', url: '/restaurant/profile', icon: User },
+  { title: 'Editar Dados Pessoais', url: '/restaurant/account', icon: UserCircle },
 ];
 
 export function RestaurantSidebar() {
@@ -37,20 +43,23 @@ export function RestaurantSidebar() {
   return (
     <Sidebar className={isCollapsed ? 'w-14' : 'w-60'} collapsible="icon">
       <SidebarContent>
+        {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        isActive
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'hover:bg-muted/50'
+                        `transition-all duration-300 hover:scale-105 active:scale-95 ${
+                          isActive
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'hover:bg-muted/50'
+                        }`
                       }
                     >
                       <item.icon className="h-4 w-4" />
@@ -63,12 +72,47 @@ export function RestaurantSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Settings */}
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <Settings className="h-4 w-4 mr-2 inline" />
+            {!isCollapsed && 'Configurações'}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {settingsMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to={item.url}
+                      end
+                      className={({ isActive }) =>
+                        `transition-all duration-300 hover:scale-105 active:scale-95 ${
+                          isActive
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'hover:bg-muted/50'
+                        }`
+                      }
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Logout */}
         <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel>Conta</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleSignOut}>
+                <SidebarMenuButton 
+                  onClick={handleSignOut}
+                  className="transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-destructive/10 hover:text-destructive"
+                >
                   <LogOut className="h-4 w-4" />
                   {!isCollapsed && <span>Sair</span>}
                 </SidebarMenuButton>

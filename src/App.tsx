@@ -13,6 +13,9 @@ import RestaurantHistory from "./pages/restaurant/RestaurantHistory";
 import RestaurantProfile from "./pages/restaurant/RestaurantProfile";
 import NewDelivery from "./pages/restaurant/NewDelivery";
 import DeliveryTracking from "./pages/restaurant/DeliveryTracking";
+import RestaurantScheduling from "./pages/restaurant/RestaurantScheduling";
+import RestaurantWallet from "./pages/restaurant/RestaurantWallet";
+import RestaurantAccount from "./pages/restaurant/RestaurantAccount";
 import DriverSetup from "./pages/driver/DriverSetup";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverHistory from "./pages/driver/DriverHistory";
@@ -86,6 +89,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DeliveryTracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/scheduling"
+              element={
+                <ProtectedRoute>
+                  <RestaurantScheduling />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/wallet"
+              element={
+                <ProtectedRoute>
+                  <RestaurantWallet />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/restaurant/account"
+              element={
+                <ProtectedRoute>
+                  <RestaurantAccount />
                 </ProtectedRoute>
               }
             />
