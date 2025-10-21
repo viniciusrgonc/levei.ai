@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth';
+import { useAuthRedirect } from '@/hooks/useUserSetup';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,13 +10,21 @@ import { toast } from '@/hooks/use-toast';
 import { Bike } from 'lucide-react';
 
 export default function Auth() {
-  const navigate = useNavigate();
   const { signIn, signUp, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const { loading: redirecting } = useAuthRedirect();
 
-  // Redirect if already logged in
+  // Show loading while checking auth state and redirecting
+  if (user && redirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // If user is logged in and not redirecting, they'll be redirected by useAuthRedirect
   if (user) {
-    navigate('/dashboard');
     return null;
   }
 
@@ -38,15 +46,14 @@ export default function Auth() {
           ? 'Email ou senha incorretos' 
           : error.message
       });
+      setLoading(false);
     } else {
       toast({
         title: 'Bem-vindo!',
         description: 'Login realizado com sucesso'
       });
-      navigate('/dashboard');
+      // useAuthRedirect will handle navigation
     }
-
-    setLoading(false);
   };
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -79,15 +86,14 @@ export default function Auth() {
           ? 'Este email já está cadastrado' 
           : error.message
       });
+      setLoading(false);
     } else {
       toast({
         title: 'Conta criada!',
-        description: 'Você já pode fazer login'
+        description: 'Escolha como você quer usar a plataforma'
       });
-      navigate('/dashboard');
+      // useAuthRedirect will handle navigation to role selection
     }
-
-    setLoading(false);
   };
 
   return (
