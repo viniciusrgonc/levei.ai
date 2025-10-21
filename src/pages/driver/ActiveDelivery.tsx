@@ -109,9 +109,10 @@ export default function ActiveDelivery() {
       });
     } else {
       toast({
-        title: 'Entrega aceita!',
-        description: 'Dirija-se ao local de coleta'
+        title: '✅ Entrega aceita!',
+        description: 'Status atualizado. Dirija-se ao local de coleta.'
       });
+      fetchDelivery(); // Refresh data
     }
   };
 
@@ -132,9 +133,10 @@ export default function ActiveDelivery() {
       });
     } else {
       toast({
-        title: 'Pedido coletado!',
-        description: 'Agora siga para o endereço de entrega'
+        title: '📦 Pedido coletado!',
+        description: 'Status atualizado. Agora siga para o endereço de entrega.'
       });
+      fetchDelivery(); // Refresh data
     }
   };
 
@@ -155,10 +157,10 @@ export default function ActiveDelivery() {
       });
     } else {
       toast({
-        title: 'Entrega concluída!',
-        description: `Você ganhou R$ ${Number(delivery?.price).toFixed(2)}`
+        title: '🎉 Entrega concluída!',
+        description: `Status atualizado. Você ganhou R$ ${Number(delivery?.price).toFixed(2)}`
       });
-      navigate('/driver/dashboard');
+      setTimeout(() => navigate('/driver/dashboard'), 1500);
     }
   };
 
