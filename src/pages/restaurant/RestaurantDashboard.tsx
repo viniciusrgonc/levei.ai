@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { LogOut, Plus, Package, Clock, DollarSign, Star, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import NotificationBell from '@/components/NotificationBell';
 
 type Restaurant = {
   id: string;
@@ -175,6 +176,7 @@ export default function RestaurantDashboard() {
               </div>
             </div>
             <div className="flex gap-2">
+              <NotificationBell />
               <Button onClick={() => navigate('/restaurant/new-delivery')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Entrega

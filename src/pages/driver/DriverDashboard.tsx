@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { MapPin, Package, Clock, LogOut, Navigation, Navigation2 } from 'lucide-react';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
+import NotificationBell from '@/components/NotificationBell';
 
 interface Driver {
   id: string;
@@ -185,10 +186,13 @@ export default function DriverDashboard() {
             <h1 className="text-3xl font-bold">Dashboard do Motorista</h1>
             <p className="text-muted-foreground">Entregas disponíveis na sua área</p>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
