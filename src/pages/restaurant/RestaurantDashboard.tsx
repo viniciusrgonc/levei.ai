@@ -5,9 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, Plus, Package, Clock, DollarSign, Star, MapPin } from 'lucide-react';
+import { Plus, Package, Clock, DollarSign, Star, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import NotificationBell from '@/components/NotificationBell';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 
 type Restaurant = {
   id: string;
@@ -26,7 +28,7 @@ type Delivery = {
 };
 
 export default function RestaurantDashboard() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -74,7 +76,6 @@ export default function RestaurantDashboard() {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // No restaurant found, redirect to setup
         navigate('/restaurant/setup');
       } else {
         toast({
@@ -105,45 +106,35 @@ export default function RestaurantDashboard() {
       .limit(10);
 
     if (error) {
-      console.error('Error fetching deliveries:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível carregar as entregas'
+      });
       return;
     }
 
     setDeliveries(data || []);
 
     // Calculate stats
-    const active = data?.filter(d => 
-      ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering'].includes(d.status)
-    ).length || 0;
-
-    const todayDeliveries = data?.filter(d => 
-      new Date(d.created_at) >= today
-    ) || [];
-
+    const active = data?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)).length || 0;
+    const todayDeliveries = data?.filter(d => new Date(d.created_at) >= today) || [];
     const todayCount = todayDeliveries.length;
-    const todaySpent = todayDeliveries.reduce((sum, d) => sum + parseFloat(d.price.toString()), 0);
+    const todaySpent = todayDeliveries.reduce((sum, d) => sum + Number(d.price), 0);
 
     setStats({ active, today: todayCount, todaySpent });
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
-
   const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-      pending: { label: 'Aguardando', variant: 'outline' },
-      accepted: { label: 'Aceito', variant: 'secondary' },
-      picking_up: { label: 'Indo Buscar', variant: 'secondary' },
-      picked_up: { label: 'Coletado', variant: 'default' },
-      delivering: { label: 'Em Entrega', variant: 'default' },
-      delivered: { label: 'Entregue', variant: 'default' },
-      cancelled: { label: 'Cancelado', variant: 'destructive' }
+    const variants = {
+      pending: { label: 'Pendente', variant: 'secondary' as const },
+      accepted: { label: 'Aceita', variant: 'default' as const },
+      picked_up: { label: 'Coletada', variant: 'default' as const },
+      delivered: { label: 'Entregue', variant: 'default' as const },
+      cancelled: { label: 'Cancelada', variant: 'destructive' as const },
     };
-
-    const statusInfo = statusMap[status] || { label: status, variant: 'outline' as const };
-    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+    const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   if (loading) {
@@ -159,138 +150,140 @@ export default function RestaurantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold">{restaurant.business_name}</h1>
-              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                  <span>{restaurant.rating.toFixed(1)}</span>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <RestaurantSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="h-14 border-b flex items-center justify-between px-4 bg-background">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger />
+              <div>
+                <h1 className="font-semibold">{restaurant.business_name}</h1>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center">
+                    <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 mr-1" />
+                    {Number(restaurant.rating || 0).toFixed(1)}
+                  </div>
+                  <span>•</span>
+                  <span>{restaurant.total_deliveries || 0} entregas</span>
                 </div>
-                <span>•</span>
-                <span>{restaurant.total_deliveries} entregas</span>
               </div>
             </div>
-            <div className="flex gap-2">
-              <NotificationBell />
+            <div className="flex items-center gap-2">
               <Button onClick={() => navigate('/restaurant/new-delivery')}>
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="h-4 w-4 mr-2" />
                 Nova Entrega
               </Button>
-              <Button variant="ghost" onClick={handleSignOut}>
-                <LogOut className="w-4 h-4" />
-              </Button>
+              <NotificationBell />
             </div>
-          </div>
-        </div>
-      </header>
+          </header>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Entregas Ativas</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Package className="w-8 h-8 text-primary" />
-                <span className="text-3xl font-bold">{stats.active}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Entregas Hoje</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Clock className="w-8 h-8 text-primary" />
-                <span className="text-3xl font-bold">{stats.today}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Gasto Hoje</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-8 h-8 text-primary" />
-                <span className="text-3xl font-bold">R$ {stats.todaySpent.toFixed(2)}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Avaliação</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Star className="w-8 h-8 text-yellow-500" />
-                <span className="text-3xl font-bold">{restaurant.rating.toFixed(1)}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Active Deliveries */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Entregas Recentes</CardTitle>
-            <CardDescription>
-              Suas últimas solicitações de entrega
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {deliveries.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Nenhuma entrega ainda
-                </p>
-                <Button onClick={() => navigate('/restaurant/new-delivery')}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Criar Primeira Entrega
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {deliveries.map((delivery) => (
-                  <div
-                    key={delivery.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
-                  >
-                    <div className="flex items-start gap-4 flex-1">
-                      <MapPin className="w-5 h-5 text-muted-foreground mt-1" />
-                      <div className="flex-1">
-                        <p className="font-medium">{delivery.delivery_address}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(delivery.created_at).toLocaleString('pt-BR')}
-                        </p>
-                      </div>
+          <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-primary/5 overflow-auto">
+            <div className="max-w-7xl mx-auto space-y-6">
+              {/* Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Entregas Ativas</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-8 w-8 text-primary" />
+                      <span className="text-3xl font-bold">{stats.active}</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="font-bold">R$ {parseFloat(delivery.price.toString()).toFixed(2)}</p>
-                        {getStatusBadge(delivery.status)}
-                      </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Entregas Hoje</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-8 w-8 text-primary" />
+                      <span className="text-3xl font-bold">{stats.today}</span>
                     </div>
-                  </div>
-                ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Gasto Hoje</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-8 w-8 text-primary" />
+                      <span className="text-3xl font-bold">R$ {stats.todaySpent.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardDescription>Avaliação</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2">
+                      <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
+                      <span className="text-3xl font-bold">{Number(restaurant.rating || 0).toFixed(1)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Recent Deliveries */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Entregas Recentes</CardTitle>
+                  <CardDescription>
+                    Suas últimas solicitações de entrega
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {deliveries.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground mb-4">
+                        Nenhuma entrega ainda
+                      </p>
+                      <Button onClick={() => navigate('/restaurant/new-delivery')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Criar Primeira Entrega
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {deliveries.map((delivery) => (
+                        <div
+                          key={delivery.id}
+                          className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                          onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
+                        >
+                          <div className="flex items-start gap-4 flex-1">
+                            <MapPin className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{delivery.delivery_address}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(delivery.created_at).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 shrink-0">
+                            <div className="text-right">
+                              <p className="font-bold">R$ {Number(delivery.price).toFixed(2)}</p>
+                              {getStatusBadge(delivery.status)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
