@@ -62,9 +62,13 @@ export function AdminSidebar() {
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end>
+                    <NavLink 
+                      to={item.url} 
+                      end
+                      className="transition-all duration-300 hover:scale-105 active:scale-95"
+                    >
                       <item.icon className="h-4 w-4" />
-                      {state !== 'collapsed' && <span>{item.title}</span>}
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

@@ -46,13 +46,15 @@ export function DriverSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        isActive
-                          ? 'bg-primary/10 text-primary font-medium'
-                          : 'hover:bg-muted/50'
+                        `transition-all duration-300 hover:scale-105 active:scale-95 ${
+                          isActive
+                            ? 'bg-primary/10 text-primary font-medium'
+                            : 'hover:bg-muted/50'
+                        }`
                       }
                     >
                       <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -66,9 +68,12 @@ export function DriverSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={handleSignOut}>
+                <SidebarMenuButton 
+                  onClick={handleSignOut}
+                  className="transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-destructive/10 hover:text-destructive"
+                >
                   <LogOut className="h-4 w-4" />
-                  {!isCollapsed && <span>Sair</span>}
+                  <span>Sair</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
