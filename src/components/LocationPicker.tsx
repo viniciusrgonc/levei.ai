@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -22,26 +22,27 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-const MapClickHandler = ({ onLocationUpdate }: { onLocationUpdate: (lat: number, lng: number) => void }) => {
-  const map = useMapEvents({
+function MapController({ 
+  position, 
+  onLocationUpdate 
+}: { 
+  position: [number, number]; 
+  onLocationUpdate: (lat: number, lng: number) => void;
+}) {
+  const map = useMap();
+  
+  useMapEvents({
     click: (e) => {
       onLocationUpdate(e.latlng.lat, e.latlng.lng);
     },
   });
-  return null;
-};
-
-const MapCenterController = ({ center, zoom }: { center: [number, number]; zoom?: number }) => {
-  const map = useMap();
   
   useEffect(() => {
-    if (map) {
-      map.setView(center, zoom || map.getZoom());
-    }
-  }, [center, zoom, map]);
+    map.setView(position, map.getZoom());
+  }, [map, position]);
   
   return null;
-};
+}
 
 export default function LocationPicker({ 
   onLocationSelect, 
@@ -52,14 +53,12 @@ export default function LocationPicker({
   const [latitude, setLatitude] = useState(initialLat || -23.550520);
   const [longitude, setLongitude] = useState(initialLng || -46.633308);
   const [address, setAddress] = useState(initialAddress || '');
-  const markerRef = useRef<L.Marker>(null);
 
   const updateLocation = useCallback(async (lat: number, lng: number) => {
     setLatitude(lat);
     setLongitude(lng);
 
     try {
-      // Use Nominatim (OpenStreetMap) for reverse geocoding
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
       );
@@ -69,13 +68,15 @@ export default function LocationPicker({
         setAddress(data.display_name);
         onLocationSelect(lat, lng, data.display_name);
       } else {
-        setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        onLocationSelect(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+        setAddress(coords);
+        onLocationSelect(lat, lng, coords);
       }
     } catch (error) {
       console.error('Erro ao obter endereço:', error);
-      setAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-      onLocationSelect(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+      const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      setAddress(coords);
+      onLocationSelect(lat, lng, coords);
     }
   }, [onLocationSelect]);
 
@@ -87,15 +88,19 @@ export default function LocationPicker({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        updateLocation(lat, lng);
+        updateLocation(position.coords.latitude, position.coords.longitude);
       },
       (error) => {
         alert('Não foi possível obter sua localização: ' + error.message);
       }
     );
   };
+
+  const handleMarkerDrag = useCallback((e: L.DragEndEvent) => {
+    const marker = e.target as L.Marker;
+    const position = marker.getLatLng();
+    updateLocation(position.lat, position.lng);
+  }, [updateLocation]);
 
   return (
     <div className="space-y-4">
@@ -117,23 +122,20 @@ export default function LocationPicker({
           scrollWheelZoom={true}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <Marker
             position={[latitude, longitude]}
             draggable={true}
             eventHandlers={{
-              dragend: (e) => {
-                const marker = e.target;
-                const position = marker.getLatLng();
-                updateLocation(position.lat, position.lng);
-              },
+              dragend: handleMarkerDrag,
             }}
-            ref={markerRef}
           />
-          <MapClickHandler onLocationUpdate={updateLocation} />
-          <MapCenterController center={[latitude, longitude]} />
+          <MapController 
+            position={[latitude, longitude]} 
+            onLocationUpdate={updateLocation}
+          />
         </MapContainer>
       </div>
 
