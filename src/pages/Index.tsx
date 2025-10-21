@@ -35,11 +35,19 @@ const Index = () => {
             Movvi
           </h2>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" onClick={() => navigate('/auth')}>
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/auth')}
+              className="transition-all duration-300 hover:scale-105 active:scale-95"
+            >
               <LogIn className="w-4 h-4" />
               Entrar
             </Button>
-            <Button variant="default" onClick={() => navigate('/auth')}>
+            <Button 
+              variant="default" 
+              onClick={() => navigate('/auth')}
+              className="transition-all duration-300 hover:scale-110 active:scale-95"
+            >
               <UserPlus className="w-4 h-4" />
               Cadastrar
             </Button>

@@ -164,9 +164,13 @@ export default function ActiveDelivery() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 animate-fade-in">
       <div className="max-w-4xl mx-auto pt-8">
-        <Button variant="outline" onClick={() => navigate('/driver/dashboard')} className="mb-4">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/driver/dashboard')} 
+          className="mb-4 transition-all duration-300 hover:scale-105 active:scale-95"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
@@ -214,14 +218,17 @@ export default function ActiveDelivery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="ml-7"
+                    className="ml-7 transition-all duration-300 hover:scale-105 active:scale-95"
                     onClick={() => openInMaps(Number(delivery.pickup_latitude), Number(delivery.pickup_longitude), delivery.pickup_address)}
                   >
                     <MapPin className="mr-2 h-4 w-4" />
                     Abrir no Maps
                   </Button>
                   {delivery.status === 'accepted' && (
-                    <Button onClick={markAsPickedUp} className="ml-7 mt-2">
+                    <Button 
+                      onClick={markAsPickedUp} 
+                      className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
+                    >
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Marcar como Coletado
                     </Button>
@@ -238,14 +245,17 @@ export default function ActiveDelivery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="ml-7"
+                    className="ml-7 transition-all duration-300 hover:scale-105 active:scale-95"
                     onClick={() => openInMaps(Number(delivery.delivery_latitude), Number(delivery.delivery_longitude), delivery.delivery_address)}
                   >
                     <MapPin className="mr-2 h-4 w-4" />
                     Abrir no Maps
                   </Button>
                   {delivery.status === 'picked_up' && (
-                    <Button onClick={markAsDelivered} className="ml-7 mt-2">
+                    <Button 
+                      onClick={markAsDelivered} 
+                      className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
+                    >
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Marcar como Entregue
                     </Button>

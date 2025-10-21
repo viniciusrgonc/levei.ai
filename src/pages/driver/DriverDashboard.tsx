@@ -259,10 +259,14 @@ export default function DriverDashboard() {
                     <div className="text-center py-8 text-muted-foreground">
                       Nenhuma entrega disponível no momento
                     </div>
-                  ) : (
+                   ) : (
                     <div className="space-y-4">
-                      {availableDeliveries.map((delivery) => (
-                        <Card key={delivery.id}>
+                      {availableDeliveries.map((delivery, index) => (
+                        <Card 
+                          key={delivery.id}
+                          className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                          style={{ animationDelay: `${index * 100}ms` }}
+                        >
                           <CardContent className="pt-6">
                             <div className="flex justify-between items-start mb-4">
                               <div className="space-y-2 flex-1">
@@ -282,7 +286,7 @@ export default function DriverDashboard() {
                                 </div>
                                 {delivery.distanceFromDriver && (
                                   <div className="flex items-center gap-2 text-sm">
-                                    <Badge variant="secondary">
+                                    <Badge variant="secondary" className="animate-scale-in">
                                       {delivery.distanceFromDriver.toFixed(1)} km de você
                                     </Badge>
                                   </div>
@@ -292,7 +296,7 @@ export default function DriverDashboard() {
                                 )}
                               </div>
                               <div className="text-right shrink-0 ml-4">
-                                <div className="text-2xl font-bold text-primary">
+                                <div className="text-2xl font-bold text-primary animate-pulse">
                                   R$ {Number(delivery.price).toFixed(2)}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
@@ -305,7 +309,10 @@ export default function DriverDashboard() {
                                 <Clock className="h-4 w-4" />
                                 {new Date(delivery.created_at).toLocaleString('pt-BR')}
                               </div>
-                              <Button onClick={() => acceptDelivery(delivery.id)}>
+                              <Button 
+                                onClick={() => acceptDelivery(delivery.id)}
+                                className="transition-all duration-300 hover:scale-110 active:scale-95"
+                              >
                                 Aceitar Entrega
                               </Button>
                             </div>
@@ -313,7 +320,7 @@ export default function DriverDashboard() {
                         </Card>
                       ))}
                     </div>
-                  )}
+                   )}
                 </CardContent>
               </Card>
             </div>

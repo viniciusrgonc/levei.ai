@@ -111,9 +111,13 @@ export default function Dashboard() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => selectRole('restaurant')}>
+            <Card 
+              className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in hover:border-primary/50"
+              onClick={() => selectRole('restaurant')}
+              style={{ animationDelay: '100ms' }}
+            >
               <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110">
                   <Store className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle>Sou Restaurante</CardTitle>
@@ -131,9 +135,13 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => selectRole('driver')}>
+            <Card 
+              className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in hover:border-primary/50"
+              onClick={() => selectRole('driver')}
+              style={{ animationDelay: '200ms' }}
+            >
               <CardHeader>
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110">
                   <Bike className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle>Sou Motoboy</CardTitle>
@@ -152,8 +160,12 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          <div className="text-center mt-8">
-            <Button variant="ghost" onClick={handleSignOut}>
+          <div className="text-center mt-8 animate-fade-in" style={{ animationDelay: '300ms' }}>
+            <Button 
+              variant="ghost" 
+              onClick={handleSignOut}
+              className="transition-all duration-300 hover:scale-105 active:scale-95"
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </Button>
