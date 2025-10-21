@@ -199,7 +199,7 @@ export type Database = {
           is_available: boolean
           last_location_update: string | null
           latitude: number | null
-          license_plate: string
+          license_plate: string | null
           longitude: number | null
           rating: number | null
           total_deliveries: number | null
@@ -215,7 +215,7 @@ export type Database = {
           is_available?: boolean
           last_location_update?: string | null
           latitude?: number | null
-          license_plate: string
+          license_plate?: string | null
           longitude?: number | null
           rating?: number | null
           total_deliveries?: number | null
@@ -231,7 +231,7 @@ export type Database = {
           is_available?: boolean
           last_location_update?: string | null
           latitude?: number | null
-          license_plate?: string
+          license_plate?: string | null
           longitude?: number | null
           rating?: number | null
           total_deliveries?: number | null

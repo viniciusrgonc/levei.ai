@@ -23,7 +23,7 @@ export default function DriverSetup() {
     setLoading(true);
     const formData = new FormData(e.currentTarget);
 
-    const licensePlate = formData.get('licensePlate') as string;
+    const licensePlate = formData.get('licensePlate') as string || null;
 
     const { error } = await supabase
       .from('drivers')
@@ -82,13 +82,12 @@ export default function DriverSetup() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="licensePlate">Placa do Veículo *</Label>
+                <Label htmlFor="licensePlate">Placa do Veículo (Opcional)</Label>
                 <Input
                   id="licensePlate"
                   name="licensePlate"
                   type="text"
-                  placeholder="ABC-1234"
-                  required
+                  placeholder="ABC-1234 (opcional)"
                   disabled={loading}
                 />
               </div>
