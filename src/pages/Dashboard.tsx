@@ -30,12 +30,24 @@ export default function Dashboard() {
         console.error('Error fetching role:', error);
       }
 
-      setRole(data?.role as UserRole || null);
-      setLoading(false);
+      const userRole = data?.role as UserRole || null;
+      setRole(userRole);
+      
+      // Redirect to specific dashboard if user has role
+      if (userRole === 'restaurant') {
+        navigate('/restaurant/dashboard');
+      } else if (userRole === 'driver') {
+        navigate('/driver/dashboard');
+      } else if (userRole === 'admin') {
+        // Admin dashboard route (to be implemented)
+        navigate('/admin/dashboard');
+      } else {
+        setLoading(false);
+      }
     };
 
     fetchUserRole();
-  }, [user]);
+  }, [user, navigate]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -151,54 +163,6 @@ export default function Dashboard() {
     );
   }
 
-  // If has role, show appropriate dashboard
-  return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Dashboard</h1>
-            <div className="flex items-center gap-2 mt-2">
-              {role === 'admin' && (
-                <Badge variant="default">
-                  <Shield className="mr-1 h-3 w-3" />
-                  Admin
-                </Badge>
-              )}
-              {role === 'restaurant' && (
-                <Badge variant="default">
-                  <Store className="mr-1 h-3 w-3" />
-                  Restaurante
-                </Badge>
-              )}
-              {role === 'driver' && (
-                <Badge variant="default">
-                  <Bike className="mr-1 h-3 w-3" />
-                  Motoboy
-                </Badge>
-              )}
-            </div>
-          </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Em Construção</CardTitle>
-            <CardDescription>
-              O dashboard específico para {role === 'restaurant' ? 'restaurantes' : role === 'driver' ? 'motoboys' : 'admins'} está sendo desenvolvido.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Em breve você terá acesso a todas as funcionalidades da plataforma.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
+  // This should never be reached as users with roles are redirected above
+  return null;
 }
