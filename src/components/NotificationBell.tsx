@@ -23,8 +23,10 @@ export default function NotificationBell() {
 
   useEffect(() => {
     // Request notification permission
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(err => {
+        console.log('Notification permission error:', err);
+      });
     }
   }, []);
 

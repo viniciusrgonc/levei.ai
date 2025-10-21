@@ -81,11 +81,15 @@ export function useNotifications() {
             setUnreadCount((prev) => prev + 1);
 
             // Show browser notification if permitted
-            if (Notification.permission === 'granted') {
-              new Notification(newNotification.title, {
-                body: newNotification.message,
-                icon: '/favicon.ico',
-              });
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              try {
+                new Notification(newNotification.title, {
+                  body: newNotification.message,
+                  icon: '/favicon.ico',
+                });
+              } catch (error) {
+                console.log('Error showing notification:', error);
+              }
             }
           }
         )
