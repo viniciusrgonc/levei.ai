@@ -5,10 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, User, Phone, Star, Package, Clock, Navigation } from 'lucide-react';
+import { ArrowLeft, MapPin, User, Phone, Star, Package, Navigation, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { RestaurantSidebar } from '@/components/RestaurantSidebar';
+import NotificationBell from '@/components/NotificationBell';
+import { Separator } from '@/components/ui/separator';
 
 type Delivery = {
   id: string;
@@ -48,6 +52,7 @@ export default function DeliveryTracking() {
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [driver, setDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   // Real-time driver location tracking
   const { currentLocation, locationHistory, isLoading: locationLoading } = 
@@ -71,6 +76,7 @@ export default function DeliveryTracking() {
         },
         (payload) => {
           setDelivery(payload.new as Delivery);
+          setLastUpdate(new Date());
           if (payload.new.driver_id && !driver) {
             fetchDriver(payload.new.driver_id);
           }
@@ -131,11 +137,9 @@ export default function DeliveryTracking() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; icon: string; color: string }> = {
-      pending: { label: 'Aguardando Motoboy', icon: '🕐', color: 'text-yellow-500' },
+      pending: { label: 'Aguardando Motorista', icon: '🕐', color: 'text-yellow-500' },
       accepted: { label: 'Aceito - Indo Buscar', icon: '✅', color: 'text-blue-500' },
-      picking_up: { label: 'A Caminho da Coleta', icon: '🏍️', color: 'text-blue-500' },
-      picked_up: { label: 'Pedido Coletado', icon: '📦', color: 'text-green-500' },
-      delivering: { label: 'Em Rota de Entrega', icon: '🚀', color: 'text-green-500' },
+      picked_up: { label: 'Pedido Coletado', icon: '📦', color: 'text-purple-500' },
       delivered: { label: 'Entregue', icon: '✨', color: 'text-green-600' },
       cancelled: { label: 'Cancelado', icon: '❌', color: 'text-red-500' }
     };
@@ -152,17 +156,17 @@ export default function DeliveryTracking() {
         completed: true
       },
       {
-        label: 'Aceito',
+        label: 'Aceito por Motorista',
         time: delivery.accepted_at,
         completed: !!delivery.accepted_at
       },
       {
-        label: 'Coletado',
+        label: 'Pedido Coletado',
         time: delivery.picked_up_at,
         completed: !!delivery.picked_up_at
       },
       {
-        label: 'Entregue',
+        label: 'Entregue ao Destinatário',
         time: delivery.delivered_at,
         completed: !!delivery.delivered_at
       }
@@ -185,193 +189,283 @@ export default function DeliveryTracking() {
 
   const statusInfo = getStatusInfo(delivery.status);
   const timeline = getTimeline();
+  const isActive = ['accepted', 'picked_up'].includes(delivery.status);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate('/restaurant/dashboard')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Real-time Map */}
-        {delivery.driver_id && currentLocation && (
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">Rastreamento em Tempo Real</CardTitle>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Navigation className="w-4 h-4 animate-pulse text-primary" />
-                  Atualização automática
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <DeliveryMap
-                pickupLat={Number(delivery.pickup_latitude)}
-                pickupLng={Number(delivery.pickup_longitude)}
-                deliveryLat={Number(delivery.delivery_latitude)}
-                deliveryLng={Number(delivery.delivery_longitude)}
-                driverLat={currentLocation ? Number(currentLocation.latitude) : undefined}
-                driverLng={currentLocation ? Number(currentLocation.longitude) : undefined}
-                locationHistory={locationHistory}
-              />
-              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                <div className="p-3 bg-green-500/10 rounded-lg">
-                  <div className="w-4 h-4 bg-green-500 rounded-full mx-auto mb-1"></div>
-                  <p className="text-xs text-muted-foreground">Coleta</p>
-                </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <div className="w-4 h-4 bg-blue-500 rounded-full mx-auto mb-1"></div>
-                  <p className="text-xs text-muted-foreground">Motoboy</p>
-                </div>
-                <div className="p-3 bg-red-500/10 rounded-lg">
-                  <div className="w-4 h-4 bg-red-500 rounded-full mx-auto mb-1"></div>
-                  <p className="text-xs text-muted-foreground">Entrega</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Status Card */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <RestaurantSidebar />
+        <div className="flex-1 flex flex-col">
+          <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-16 items-center justify-between px-6">
               <div className="flex items-center gap-4">
-                <div className="text-4xl">{statusInfo.icon}</div>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => navigate('/restaurant/dashboard')}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar
+                </Button>
                 <div>
-                  <h2 className={`text-2xl font-bold ${statusInfo.color}`}>
-                    {statusInfo.label}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Pedido #{delivery.id.slice(0, 8)}
+                  <h1 className="text-xl font-semibold">Rastreamento em Tempo Real</h1>
+                  <p className="text-xs text-muted-foreground">
+                    Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold">R$ {parseFloat(delivery.price.toString()).toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">{delivery.distance_km.toFixed(1)} km</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchDelivery}
+                >
+                  <RefreshCw className="h-3 w-3 mr-2" />
+                  Atualizar
+                </Button>
+                <NotificationBell />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </header>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Addresses */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Endereços</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium mb-1">Coleta</p>
-                <div className="flex gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <p>{delivery.pickup_address}</p>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium mb-1">Entrega</p>
-                <div className="flex gap-2 text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <p>{delivery.delivery_address}</p>
-                </div>
-              </div>
-              {delivery.description && (
-                <div>
-                  <p className="text-sm font-medium mb-1">Descrição</p>
-                  <p className="text-sm text-muted-foreground">{delivery.description}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Driver Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Motoboy</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {driver ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{driver.profiles.full_name}</p>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                        <span>{driver.rating.toFixed(1)}</span>
+          <main className="flex-1 p-6 overflow-auto bg-gradient-to-br from-background via-background to-primary/5">
+            <div className="max-w-6xl mx-auto space-y-6">
+              {/* Real-time Map */}
+              {isActive && currentLocation && (
+                <Card className="border-2 border-primary/20 overflow-hidden">
+                  <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Navigation className="w-5 h-5 animate-pulse text-primary" />
+                          Localização do Motorista
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Atualização automática a cada 10 segundos
+                        </CardDescription>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-muted-foreground">Última atualização</div>
+                        <div className="text-sm font-medium">
+                          {new Date(currentLocation.created_at).toLocaleTimeString('pt-BR')}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  {driver.profiles.phone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <span>{driver.profiles.phone}</span>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <DeliveryMap
+                      pickupLat={Number(delivery.pickup_latitude)}
+                      pickupLng={Number(delivery.pickup_longitude)}
+                      deliveryLat={Number(delivery.delivery_latitude)}
+                      deliveryLng={Number(delivery.delivery_longitude)}
+                      driverLat={currentLocation ? Number(currentLocation.latitude) : undefined}
+                      driverLng={currentLocation ? Number(currentLocation.longitude) : undefined}
+                      locationHistory={locationHistory}
+                    />
+                    <div className="p-4 grid grid-cols-3 gap-4 bg-background">
+                      <div className="p-3 bg-green-500/10 rounded-lg text-center border border-green-500/20">
+                        <div className="w-3 h-3 bg-green-500 rounded-full mx-auto mb-2"></div>
+                        <p className="text-xs font-medium">Coleta</p>
+                      </div>
+                      <div className="p-3 bg-blue-500/10 rounded-lg text-center border border-blue-500/20">
+                        <div className="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-2 animate-pulse"></div>
+                        <p className="text-xs font-medium">Motorista</p>
+                      </div>
+                      <div className="p-3 bg-red-500/10 rounded-lg text-center border border-red-500/20">
+                        <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-2"></div>
+                        <p className="text-xs font-medium">Entrega</p>
+                      </div>
                     </div>
-                  )}
-                  <div className="text-sm">
-                    <p className="text-muted-foreground">Veículo</p>
-                    <p className="font-medium capitalize">{driver.vehicle_type} - {driver.license_plate}</p>
-                  </div>
-                  {currentLocation && (
-                    <div className="text-xs text-muted-foreground pt-2 border-t">
-                      Última localização: {new Date(currentLocation.created_at).toLocaleTimeString('pt-BR')}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Package className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">
-                    Aguardando motoboy aceitar
-                  </p>
-                </div>
+                  </CardContent>
+                </Card>
               )}
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Timeline */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Linha do Tempo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {timeline.map((step, index) => (
-                <div key={index} className="flex items-start gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      step.completed ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {step.completed ? '✓' : index + 1}
+              {/* Status Card */}
+              <Card className="border-2">
+                <CardContent className="pt-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="text-5xl">{statusInfo.icon}</div>
+                      <div>
+                        <h2 className={`text-2xl font-bold ${statusInfo.color}`}>
+                          {statusInfo.label}
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Pedido #{delivery.id.slice(0, 8).toUpperCase()}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+                          <span>{delivery.distance_km.toFixed(1)} km</span>
+                          <span>•</span>
+                          <span>{new Date(delivery.created_at).toLocaleString('pt-BR')}</span>
+                        </div>
+                      </div>
                     </div>
-                    {index < timeline.length - 1 && (
-                      <div className={`w-0.5 h-8 ${step.completed ? 'bg-primary' : 'bg-muted'}`} />
-                    )}
+                    <div className="text-right">
+                      <div className="text-4xl font-bold text-primary">
+                        R$ {parseFloat(delivery.price.toString()).toFixed(2)}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Valor da entrega</p>
+                    </div>
                   </div>
-                  <div className="flex-1 pb-4">
-                    <p className="font-medium">{step.label}</p>
-                    {step.time && (
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(step.time).toLocaleString('pt-BR')}
+                </CardContent>
+              </Card>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Addresses */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      Endereços
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                      <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Coleta
                       </p>
+                      <p className="text-sm text-muted-foreground">{delivery.pickup_address}</p>
+                    </div>
+                    <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                      <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        Entrega
+                      </p>
+                      <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
+                    </div>
+                    {delivery.description && (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-sm font-medium mb-2">Observações</p>
+                          <p className="text-sm text-muted-foreground">{delivery.description}</p>
+                        </div>
+                      </>
                     )}
+                  </CardContent>
+                </Card>
+
+                {/* Driver Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Motorista
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {driver ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-primary/5 rounded-full flex items-center justify-center border-2 border-primary/20">
+                            <User className="w-8 h-8 text-primary" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-lg">{driver.profiles.full_name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-1">
+                                <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                                <span className="text-sm font-medium">{driver.rating.toFixed(1)}</span>
+                              </div>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-sm text-muted-foreground capitalize">
+                                {driver.vehicle_type}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        {driver.profiles.phone && (
+                          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                            <Phone className="w-5 h-5 text-primary" />
+                            <div>
+                              <p className="text-xs text-muted-foreground">Contato</p>
+                              <p className="font-medium">{driver.profiles.phone}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                          <Package className="w-5 h-5 text-primary" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Veículo</p>
+                            <p className="font-medium">{driver.license_plate}</p>
+                          </div>
+                        </div>
+
+                        {currentLocation && (
+                          <div className="text-xs text-center text-muted-foreground pt-3 border-t">
+                            <Navigation className="w-3 h-3 inline mr-1 animate-pulse" />
+                            Última atualização: {new Date(currentLocation.created_at).toLocaleTimeString('pt-BR')}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Package className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <p className="font-medium mb-1">Aguardando motorista</p>
+                        <p className="text-sm text-muted-foreground">
+                          Em breve um motorista aceitará sua entrega
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Timeline */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Linha do Tempo</CardTitle>
+                  <CardDescription>Acompanhe o progresso da entrega</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {timeline.map((step, index) => (
+                      <div key={index} className="flex items-start gap-4">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
+                            step.completed 
+                              ? 'bg-primary text-primary-foreground shadow-lg' 
+                              : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {step.completed ? '✓' : index + 1}
+                          </div>
+                          {index < timeline.length - 1 && (
+                            <div className={`w-1 h-12 transition-all ${
+                              step.completed ? 'bg-primary' : 'bg-muted'
+                            }`} />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-4">
+                          <p className={`font-semibold ${step.completed ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {step.label}
+                          </p>
+                          {step.time && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {new Date(step.time).toLocaleString('pt-BR', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
