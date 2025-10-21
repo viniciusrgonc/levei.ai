@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Package } from 'lucide-react';
+import { ArrowLeft, Package } from 'lucide-react';
+import LocationPicker from '@/components/LocationPicker';
 
 type Restaurant = {
   id: string;
@@ -24,6 +25,9 @@ export default function NewDelivery() {
   const [loading, setLoading] = useState(false);
   const [calculatedDistance, setCalculatedDistance] = useState<number | null>(null);
   const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
 
   useEffect(() => {
     fetchRestaurant();
@@ -63,45 +67,32 @@ export default function NewDelivery() {
     return R * c;
   };
 
-  const handleCalculate = () => {
-    if (!restaurant) return;
-
-    const deliveryLatInput = document.getElementById('deliveryLatitude') as HTMLInputElement;
-    const deliveryLonInput = document.getElementById('deliveryLongitude') as HTMLInputElement;
-
-    const deliveryLat = parseFloat(deliveryLatInput.value);
-    const deliveryLon = parseFloat(deliveryLonInput.value);
-
-    if (isNaN(deliveryLat) || isNaN(deliveryLon)) {
-      toast({
-        variant: 'destructive',
-        title: 'Coordenadas inválidas',
-        description: 'Por favor, insira coordenadas válidas'
-      });
-      return;
+  const handleLocationSelect = (lat: number, lng: number, addr: string) => {
+    setDeliveryLat(lat);
+    setDeliveryLng(lng);
+    setDeliveryAddress(addr);
+    
+    if (restaurant) {
+      const distance = calculateDistance(
+        restaurant.latitude,
+        restaurant.longitude,
+        lat,
+        lng
+      );
+      
+      setCalculatedDistance(distance);
+      const price = 5.00 + (distance * 2.00);
+      setSuggestedPrice(price);
     }
-
-    const distance = calculateDistance(
-      restaurant.latitude,
-      restaurant.longitude,
-      deliveryLat,
-      deliveryLon
-    );
-
-    setCalculatedDistance(distance);
-
-    // Simple price calculation: R$ 5.00 base + R$ 2.00 per km
-    const price = 5.00 + (distance * 2.00);
-    setSuggestedPrice(price);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user || !restaurant || !calculatedDistance || !suggestedPrice) {
+    if (!user || !restaurant || !deliveryLat || !deliveryLng) {
       toast({
         variant: 'destructive',
         title: 'Erro',
-        description: 'Por favor, calcule a distância primeiro'
+        description: 'Por favor, selecione a localização de entrega no mapa'
       });
       return;
     }
@@ -109,9 +100,7 @@ export default function NewDelivery() {
     setLoading(true);
     const formData = new FormData(e.currentTarget);
 
-    const deliveryAddress = formData.get('deliveryAddress') as string;
-    const deliveryLatitude = parseFloat(formData.get('deliveryLatitude') as string);
-    const deliveryLongitude = parseFloat(formData.get('deliveryLongitude') as string);
+    const manualAddress = formData.get('deliveryAddress') as string;
     const description = formData.get('description') as string;
     const price = parseFloat(formData.get('price') as string);
 
@@ -122,11 +111,11 @@ export default function NewDelivery() {
         pickup_address: restaurant.address,
         pickup_latitude: restaurant.latitude,
         pickup_longitude: restaurant.longitude,
-        delivery_address: deliveryAddress,
-        delivery_latitude: deliveryLatitude,
-        delivery_longitude: deliveryLongitude,
+        delivery_address: manualAddress || deliveryAddress,
+        delivery_latitude: deliveryLat,
+        delivery_longitude: deliveryLng,
         description: description || null,
-        distance_km: calculatedDistance,
+        distance_km: calculatedDistance!,
         price: price,
         status: 'pending'
       })
@@ -190,70 +179,28 @@ export default function NewDelivery() {
                 </div>
               </div>
 
-              {/* Delivery Address */}
-              <div className="space-y-2">
-                <Label htmlFor="deliveryAddress">Endereço de Entrega *</Label>
-                <Textarea
-                  id="deliveryAddress"
-                  name="deliveryAddress"
-                  placeholder="Rua Exemplo, 456 - Bairro - Cidade/UF"
-                  required
-                  disabled={loading}
-                  rows={3}
+              <div className="space-y-4">
+                <Label>Localização de Entrega *</Label>
+                <LocationPicker 
+                  onLocationSelect={handleLocationSelect}
+                  initialLat={deliveryLat || undefined}
+                  initialLng={deliveryLng || undefined}
+                  initialAddress={deliveryAddress}
                 />
               </div>
 
-              {/* Coordinates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="deliveryLatitude">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    Latitude *
-                  </Label>
-                  <Input
-                    id="deliveryLatitude"
-                    name="deliveryLatitude"
-                    type="number"
-                    step="0.000001"
-                    placeholder="-23.550520"
-                    required
-                    disabled={loading}
-                    onChange={() => {
-                      setCalculatedDistance(null);
-                      setSuggestedPrice(null);
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deliveryLongitude">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    Longitude *
-                  </Label>
-                  <Input
-                    id="deliveryLongitude"
-                    name="deliveryLongitude"
-                    type="number"
-                    step="0.000001"
-                    placeholder="-46.633308"
-                    required
-                    disabled={loading}
-                    onChange={() => {
-                      setCalculatedDistance(null);
-                      setSuggestedPrice(null);
-                    }}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="deliveryAddress">Endereço de Entrega (opcional - será preenchido automaticamente)</Label>
+                <Textarea
+                  id="deliveryAddress"
+                  name="deliveryAddress"
+                  placeholder="Ou digite manualmente se preferir..."
+                  disabled={loading}
+                  rows={3}
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                />
               </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={handleCalculate}
-                disabled={loading}
-              >
-                Calcular Distância e Preço
-              </Button>
 
               {calculatedDistance && suggestedPrice && (
                 <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">

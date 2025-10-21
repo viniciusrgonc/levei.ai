@@ -8,25 +8,40 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { Store, MapPin } from 'lucide-react';
+import { Store } from 'lucide-react';
+import LocationPicker from '@/components/LocationPicker';
 
 export default function RestaurantSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [address, setAddress] = useState('');
+
+  const handleLocationSelect = (lat: number, lng: number, addr: string) => {
+    setLatitude(lat);
+    setLongitude(lng);
+    setAddress(addr);
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !latitude || !longitude) {
+      toast({
+        variant: 'destructive',
+        title: 'Localização necessária',
+        description: 'Por favor, selecione a localização no mapa'
+      });
+      return;
+    }
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
 
     const businessName = formData.get('businessName') as string;
     const cnpj = formData.get('cnpj') as string;
-    const address = formData.get('address') as string;
-    const latitude = parseFloat(formData.get('latitude') as string);
-    const longitude = parseFloat(formData.get('longitude') as string);
+    const manualAddress = formData.get('address') as string;
 
     const { error } = await supabase
       .from('restaurants')
@@ -34,7 +49,7 @@ export default function RestaurantSetup() {
         user_id: user.id,
         business_name: businessName,
         cnpj: cnpj || null,
-        address,
+        address: manualAddress || address,
         latitude,
         longitude,
         is_approved: true // Auto-approve for MVP
@@ -95,54 +110,28 @@ export default function RestaurantSetup() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="address">Endereço Completo *</Label>
-                <Textarea
-                  id="address"
-                  name="address"
-                  placeholder="Rua Exemplo, 123 - Bairro - Cidade/UF"
-                  required
-                  disabled={loading}
-                  rows={3}
+              <div className="space-y-4">
+                <Label>Localização no Mapa *</Label>
+                <LocationPicker 
+                  onLocationSelect={handleLocationSelect}
+                  initialLat={latitude || undefined}
+                  initialLng={longitude || undefined}
+                  initialAddress={address}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    Latitude *
-                  </Label>
-                  <Input
-                    id="latitude"
-                    name="latitude"
-                    type="number"
-                    step="0.000001"
-                    placeholder="-23.550520"
-                    required
-                    disabled={loading}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    Longitude *
-                  </Label>
-                  <Input
-                    id="longitude"
-                    name="longitude"
-                    type="number"
-                    step="0.000001"
-                    placeholder="-46.633308"
-                    required
-                    disabled={loading}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço Completo (opcional - será preenchido automaticamente)</Label>
+                <Textarea
+                  id="address"
+                  name="address"
+                  placeholder="Ou digite manualmente se preferir..."
+                  disabled={loading}
+                  rows={3}
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
               </div>
-
-              <p className="text-sm text-muted-foreground">
-                💡 Dica: Use o Google Maps para obter as coordenadas exatas do seu estabelecimento
-              </p>
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Salvando...' : 'Concluir Cadastro'}
