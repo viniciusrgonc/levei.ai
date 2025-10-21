@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, Package, Clock, LogOut, Navigation } from 'lucide-react';
+import { MapPin, Package, Clock, LogOut, Navigation, Navigation2 } from 'lucide-react';
+import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 
 interface Driver {
   id: string;
@@ -27,15 +28,24 @@ interface Delivery {
   price: number;
   description: string | null;
   created_at: string;
+  distanceFromDriver?: number;
 }
 
 export default function DriverDashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [availableDeliveries, setAvailableDeliveries] = useState<Delivery[]>([]);
   const [activeDelivery, setActiveDelivery] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  const {
+    deliveries: availableDeliveries,
+    loading: deliveriesLoading,
+  } = useNearbyDeliveries({
+    driverId: driver?.id || '',
+    isAvailable: driver?.is_available || false,
+    maxDistanceKm: 20,
+  });
 
   useEffect(() => {
     if (user) {
@@ -44,31 +54,6 @@ export default function DriverDashboard() {
     }
   }, [user]);
 
-  useEffect(() => {
-    if (driver?.is_available) {
-      fetchAvailableDeliveries();
-      
-      const channel = supabase
-        .channel('pending-deliveries')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'deliveries',
-            filter: 'status=eq.pending'
-          },
-          () => {
-            fetchAvailableDeliveries();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [driver?.is_available]);
 
   const fetchDriver = async () => {
     const { data, error } = await supabase
@@ -106,16 +91,6 @@ export default function DriverDashboard() {
     }
   };
 
-  const fetchAvailableDeliveries = async () => {
-    const { data } = await supabase
-      .from('deliveries')
-      .select('*')
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(10);
-
-    setAvailableDeliveries(data || []);
-  };
 
   const toggleAvailability = async (available: boolean) => {
     if (!driver) return;
@@ -295,6 +270,14 @@ export default function DriverDashboard() {
                               <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
                             </div>
                           </div>
+                          {delivery.distanceFromDriver && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Navigation2 className="h-4 w-4 text-green-600" />
+                              <Badge variant="secondary">
+                                {delivery.distanceFromDriver.toFixed(1)} km de você
+                              </Badge>
+                            </div>
+                          )}
                           {delivery.description && (
                             <p className="text-sm text-muted-foreground">{delivery.description}</p>
                           )}
@@ -304,7 +287,7 @@ export default function DriverDashboard() {
                             R$ {Number(delivery.price).toFixed(2)}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {Number(delivery.distance_km).toFixed(1)} km
+                            {Number(delivery.distance_km).toFixed(1)} km total
                           </div>
                         </div>
                       </div>
