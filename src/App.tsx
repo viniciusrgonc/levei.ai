@@ -11,6 +11,9 @@ import RestaurantSetup from "./pages/restaurant/RestaurantSetup";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import NewDelivery from "./pages/restaurant/NewDelivery";
 import DeliveryTracking from "./pages/restaurant/DeliveryTracking";
+import DriverSetup from "./pages/driver/DriverSetup";
+import DriverDashboard from "./pages/driver/DriverDashboard";
+import ActiveDelivery from "./pages/driver/ActiveDelivery";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +65,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DeliveryTracking />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/setup"
+              element={
+                <ProtectedRoute>
+                  <DriverSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/dashboard"
+              element={
+                <ProtectedRoute>
+                  <DriverDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/delivery/:deliveryId"
+              element={
+                <ProtectedRoute>
+                  <ActiveDelivery />
                 </ProtectedRoute>
               }
             />
