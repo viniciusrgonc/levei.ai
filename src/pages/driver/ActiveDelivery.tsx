@@ -91,6 +91,30 @@ export default function ActiveDelivery() {
     setLoading(false);
   };
 
+  const acceptDelivery = async () => {
+    const { error } = await supabase
+      .from('deliveries')
+      .update({
+        status: 'accepted',
+        accepted_at: new Date().toISOString(),
+        driver_id: driverId
+      })
+      .eq('id', deliveryId);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível aceitar a entrega'
+      });
+    } else {
+      toast({
+        title: 'Entrega aceita!',
+        description: 'Dirija-se ao local de coleta'
+      });
+    }
+  };
+
   const markAsPickedUp = async () => {
     const { error } = await supabase
       .from('deliveries')
@@ -224,13 +248,22 @@ export default function ActiveDelivery() {
                     <MapPin className="mr-2 h-4 w-4" />
                     Abrir no Maps
                   </Button>
+                  {delivery.status === 'pending' && (
+                    <Button 
+                      onClick={acceptDelivery} 
+                      className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Aceitar Coleta
+                    </Button>
+                  )}
                   {delivery.status === 'accepted' && (
                     <Button 
                       onClick={markAsPickedUp} 
                       className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Marcar como Coletado
+                      Coletado
                     </Button>
                   )}
                 </div>
@@ -257,7 +290,7 @@ export default function ActiveDelivery() {
                       className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Marcar como Entregue
+                      Entregue
                     </Button>
                   )}
                 </div>
