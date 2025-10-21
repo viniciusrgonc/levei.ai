@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, Package, CheckCircle, Camera, ArrowLeft, Navigation } from 'lucide-react';
+import { MapPin, Package, CheckCircle, Camera, ArrowLeft, Navigation, Clock, Route } from 'lucide-react';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import { useMapNavigation } from '@/hooks/useMapNavigation';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -19,6 +20,43 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Custom icons for map markers
+const driverIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const pickupIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const deliveryIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// Component to auto-fit bounds
+function MapBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(bounds, { padding: [50, 50] });
+  }, [map, bounds]);
+  return null;
+}
 
 interface Delivery {
   id: string;
@@ -46,6 +84,18 @@ export default function ActiveDelivery() {
   const [loading, setLoading] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
+
+  // Determine destination based on delivery status
+  const destination: [number, number] | null = delivery
+    ? delivery.status === 'accepted'
+      ? [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
+      : delivery.status === 'picked_up'
+      ? [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]
+      : null
+    : null;
+
+  // Get navigation route
+  const { route, loading: routeLoading } = useMapNavigation(currentPosition, destination);
 
   // Enable location tracking when delivery is active
   useDriverLocationTracking({
@@ -247,66 +297,138 @@ export default function ActiveDelivery() {
           )}
 
           {/* Real-time Map */}
-          {delivery.status !== 'delivered' && currentPosition && (
+          {delivery.status !== 'delivered' && currentPosition && destination && (
             <Card>
               <CardHeader>
-                <CardTitle>Mapa em Tempo Real</CardTitle>
-                <CardDescription>Sua localização e destino</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                  <Route className="h-5 w-5" />
+                  Navegação em Tempo Real
+                </CardTitle>
+                {route && (
+                  <CardDescription className="flex flex-wrap gap-4 mt-2">
+                    <span className="flex items-center gap-1">
+                      <Route className="h-4 w-4" />
+                      {(route.distance / 1000).toFixed(1)} km
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-4 w-4" />
+                      {Math.ceil(route.duration / 60)} min
+                    </span>
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] rounded-lg overflow-hidden">
+                <div className="h-[450px] rounded-lg overflow-hidden border-2 border-primary/20">
                   <MapContainer
                     center={currentPosition}
                     zoom={14}
                     style={{ height: '100%', width: '100%' }}
+                    scrollWheelZoom={true}
                   >
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     />
                     
+                    {/* Auto-fit bounds */}
+                    <MapBounds 
+                      bounds={route?.coordinates.length ? route.coordinates : [currentPosition, destination]} 
+                    />
+                    
                     {/* Current driver position */}
-                    <Marker position={currentPosition}>
-                      <Popup>📍 Você está aqui</Popup>
+                    <Marker position={currentPosition} icon={driverIcon}>
+                      <Popup>
+                        <div className="text-center">
+                          <strong>📍 Você está aqui</strong>
+                          <br />
+                          <span className="text-xs text-muted-foreground">
+                            Atualizado em tempo real
+                          </span>
+                        </div>
+                      </Popup>
                     </Marker>
+                    
+                    {/* Route polyline */}
+                    {route && route.coordinates.length > 0 && (
+                      <Polyline
+                        positions={route.coordinates}
+                        color={delivery.status === 'accepted' ? '#22c55e' : '#ef4444'}
+                        weight={4}
+                        opacity={0.7}
+                      />
+                    )}
                     
                     {/* Pickup location */}
                     {delivery.status === 'accepted' && (
-                      <>
-                        <Marker position={[Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]}>
-                          <Popup>📦 Local de coleta</Popup>
-                        </Marker>
-                        <Polyline
-                          positions={[
-                            currentPosition,
-                            [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
-                          ]}
-                          color="blue"
-                          weight={3}
-                          dashArray="10, 10"
-                        />
-                      </>
+                      <Marker 
+                        position={[Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]}
+                        icon={pickupIcon}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <strong>📦 Local de Coleta</strong>
+                            <br />
+                            <span className="text-xs">{delivery.pickup_address}</span>
+                            <br />
+                            {route && (
+                              <span className="text-xs text-muted-foreground">
+                                {(route.distance / 1000).toFixed(1)} km • {Math.ceil(route.duration / 60)} min
+                              </span>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
                     )}
                     
                     {/* Delivery location */}
                     {delivery.status === 'picked_up' && (
-                      <>
-                        <Marker position={[Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]}>
-                          <Popup>🎯 Local de entrega</Popup>
-                        </Marker>
-                        <Polyline
-                          positions={[
-                            currentPosition,
-                            [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]
-                          ]}
-                          color="green"
-                          weight={3}
-                          dashArray="10, 10"
-                        />
-                      </>
+                      <Marker 
+                        position={[Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]}
+                        icon={deliveryIcon}
+                      >
+                        <Popup>
+                          <div className="text-center">
+                            <strong>🎯 Local de Entrega</strong>
+                            <br />
+                            <span className="text-xs">{delivery.delivery_address}</span>
+                            <br />
+                            {route && (
+                              <span className="text-xs text-muted-foreground">
+                                {(route.distance / 1000).toFixed(1)} km • {Math.ceil(route.duration / 60)} min
+                              </span>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
                     )}
                   </MapContainer>
                 </div>
+                
+                {/* Navigation Info Card */}
+                {route && (
+                  <div className="mt-4 p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="grid grid-cols-2 gap-4 text-center">
+                      <div>
+                        <p className="text-2xl font-bold text-primary">
+                          {(route.distance / 1000).toFixed(1)} km
+                        </p>
+                        <p className="text-xs text-muted-foreground">Distância</p>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-primary">
+                          {Math.ceil(route.duration / 60)} min
+                        </p>
+                        <p className="text-xs text-muted-foreground">Tempo Estimado</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {routeLoading && (
+                  <div className="mt-4 text-center text-sm text-muted-foreground">
+                    Calculando melhor rota...
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
