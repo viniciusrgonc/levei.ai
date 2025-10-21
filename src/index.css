@@ -109,12 +109,17 @@ All colors MUST be HSL.
   }
 }
 
-/* Google Maps overrides */
-.gm-style .gm-style-cc,
-.gm-style a[href^="https://maps.google.com/maps"] {
-  display: none !important;
+/* Leaflet overrides */
+.leaflet-container {
+  font-family: inherit;
 }
 
-.gm-style-cc {
-  display: none !important;
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.leaflet-control-attribution a {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
