@@ -11,6 +11,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { Separator } from '@/components/ui/separator';
+import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 
 type Restaurant = {
   id: string;
@@ -45,6 +46,21 @@ export default function RestaurantDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  // Hook de realtime para escutar mudanças nas entregas
+  useRealtimeDeliveries({
+    restaurantId: restaurant?.id,
+    showNotifications: true,
+    onUpdate: (delivery) => {
+      console.log('Delivery updated in realtime:', delivery);
+      // Recarregar dados quando houver atualização
+      fetchRestaurantData();
+    },
+    onInsert: (delivery) => {
+      console.log('New delivery inserted:', delivery);
+      fetchRestaurantData();
+    },
+  });
 
   useEffect(() => {
     fetchRestaurantData();

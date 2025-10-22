@@ -13,6 +13,7 @@ import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
+import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 
 interface Driver {
   id: string;
@@ -47,6 +48,18 @@ export default function DriverDashboard() {
     driverId: driver?.id || '',
     isAvailable: driver?.is_available || false,
     maxDistanceKm: 20,
+  });
+
+  // Hook de realtime para escutar mudanças nas entregas
+  useRealtimeDeliveries({
+    driverId: driver?.id,
+    showNotifications: true,
+    onUpdate: (delivery) => {
+      console.log('Delivery updated in realtime:', delivery);
+      // Recarregar dados quando houver atualização
+      fetchDriver();
+      fetchActiveDelivery();
+    },
   });
 
   useEffect(() => {
