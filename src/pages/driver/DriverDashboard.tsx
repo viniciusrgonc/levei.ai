@@ -142,6 +142,33 @@ export default function DriverDashboard() {
     }
   };
 
+  const completeDelivery = async () => {
+    if (!activeDelivery) return;
+
+    const { error } = await supabase
+      .from('deliveries')
+      .update({
+        status: 'delivered',
+        delivered_at: new Date().toISOString()
+      })
+      .eq('id', activeDelivery.id);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível concluir a entrega'
+      });
+    } else {
+      toast({
+        title: 'Entrega concluída!',
+        description: 'Parabéns pela entrega realizada'
+      });
+      setActiveDelivery(null);
+      fetchDriver();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -171,10 +198,14 @@ export default function DriverDashboard() {
                     <CardTitle>Você tem uma entrega ativa</CardTitle>
                     <CardDescription>Continue sua entrega em andamento</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <Button onClick={() => navigate(`/driver/delivery/${activeDelivery.id}`)} className="w-full">
                       <Navigation className="mr-2 h-4 w-4" />
                       Continuar Entrega
+                    </Button>
+                    <Button onClick={completeDelivery} variant="secondary" className="w-full">
+                      <Package className="mr-2 h-4 w-4" />
+                      Marcar como Entregue
                     </Button>
                   </CardContent>
                 </Card>
