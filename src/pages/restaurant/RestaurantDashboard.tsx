@@ -141,6 +141,30 @@ export default function RestaurantDashboard() {
     setStats({ active: active.length, today: todayCount, todaySpent });
   };
 
+  const markAsPickedUp = async (deliveryId: string) => {
+    const { error } = await supabase
+      .from('deliveries')
+      .update({
+        status: 'picked_up',
+        picked_up_at: new Date().toISOString()
+      })
+      .eq('id', deliveryId);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Não foi possível confirmar a coleta'
+      });
+    } else {
+      toast({
+        title: 'Coleta confirmada!',
+        description: 'O pedido foi marcado como coletado'
+      });
+      fetchDeliveries();
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants = {
       pending: { label: 'Pendente', variant: 'secondary' as const, color: 'text-yellow-600' },
@@ -345,18 +369,32 @@ export default function RestaurantDashboard() {
                               <p className="text-xl font-bold text-primary">
                                 R$ {Number(delivery.price).toFixed(2)}
                               </p>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="mt-2"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/restaurant/delivery/${delivery.id}`);
-                                }}
-                              >
-                                <Eye className="h-3 w-3 mr-1" />
-                                Rastrear
-                              </Button>
+                              <div className="flex flex-col gap-2 mt-2">
+                                {delivery.status === 'accepted' && (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsPickedUp(delivery.id);
+                                    }}
+                                  >
+                                    <Package className="h-3 w-3 mr-1" />
+                                    Coletado
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/restaurant/delivery/${delivery.id}`);
+                                  }}
+                                >
+                                  <Eye className="h-3 w-3 mr-1" />
+                                  Rastrear
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </div>
