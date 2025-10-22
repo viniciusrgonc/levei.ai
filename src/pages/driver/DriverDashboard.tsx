@@ -116,29 +116,35 @@ export default function DriverDashboard() {
   };
 
   const acceptDelivery = async (deliveryId: string) => {
-    if (!driver) return;
+    if (!driver?.id) return;
 
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        driver_id: driver.id,
-        status: 'accepted',
-        accepted_at: new Date().toISOString()
-      })
-      .eq('id', deliveryId);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível aceitar a entrega'
+    try {
+      const { data, error } = await supabase.functions.invoke('accept-delivery', {
+        body: {
+          delivery_id: deliveryId,
+          driver_id: driver.id
+        }
       });
-    } else {
+
+      if (error) throw error;
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       toast({
         title: 'Entrega aceita!',
         description: 'Vá até o local de coleta'
       });
+      
       navigate(`/driver/delivery/${deliveryId}`);
+    } catch (error) {
+      console.error('Error accepting delivery:', error);
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Não foi possível aceitar a entrega',
+        variant: 'destructive',
+      });
     }
   };
 
