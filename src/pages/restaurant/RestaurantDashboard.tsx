@@ -29,6 +29,7 @@ type Delivery = {
   distance_km: number;
   accepted_at: string | null;
   picked_up_at: string | null;
+  driver_name?: string;
 };
 
 export default function RestaurantDashboard() {
@@ -126,15 +127,42 @@ export default function RestaurantDashboard() {
       return;
     }
 
+    // Fetch driver names for deliveries with assigned drivers
+    const deliveriesWithDriverNames = await Promise.all(
+      (data || []).map(async (delivery) => {
+        if (delivery.driver_id) {
+          const { data: driverData } = await supabase
+            .from('drivers')
+            .select('user_id')
+            .eq('id', delivery.driver_id)
+            .single();
+          
+          if (driverData?.user_id) {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('id', driverData.user_id)
+              .single();
+            
+            return {
+              ...delivery,
+              driver_name: profileData?.full_name || 'Motorista'
+            };
+          }
+        }
+        return delivery;
+      })
+    );
+
     // Split active and recent
-    const active = data?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
-    const recent = data?.slice(0, 5) || [];
+    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
+    const recent = deliveriesWithDriverNames?.slice(0, 5) || [];
 
     setActiveDeliveries(active);
     setRecentDeliveries(recent);
 
     // Calculate stats
-    const todayDeliveries = data?.filter(d => new Date(d.created_at) >= today) || [];
+    const todayDeliveries = deliveriesWithDriverNames?.filter(d => new Date(d.created_at) >= today) || [];
     const todayCount = todayDeliveries.length;
     const todaySpent = todayDeliveries.reduce((sum, d) => sum + Number(d.price), 0);
 
@@ -353,16 +381,22 @@ export default function RestaurantDashboard() {
                                   <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                   {delivery.delivery_address}
                                 </p>
-                                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                  <span>{delivery.distance_km.toFixed(1)} km</span>
-                                  <span>•</span>
-                                  <span>
-                                    {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
+                                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                                   <span>{delivery.distance_km.toFixed(1)} km</span>
+                                   <span>•</span>
+                                   <span>
+                                     {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
+                                       hour: '2-digit',
+                                       minute: '2-digit'
+                                     })}
+                                   </span>
+                                 </div>
+                                 {delivery.driver_name && (
+                                   <div className="flex items-center gap-2 mt-2 text-sm font-medium text-primary">
+                                     <Navigation className="h-4 w-4" />
+                                     Coleta será realizada por: {delivery.driver_name}
+                                   </div>
+                                 )}
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
