@@ -9,6 +9,9 @@ import { toast } from '@/hooks/use-toast';
 import { MapPin, Package, CheckCircle, Camera, ArrowLeft, Navigation, Clock, Route } from 'lucide-react';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
+import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
+import { usePickupDelivery } from '@/hooks/usePickupDelivery';
+import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -86,6 +89,21 @@ export default function ActiveDelivery() {
   const [loading, setLoading] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
+
+  // Use secure Edge Function hooks
+  const { acceptDelivery: acceptDeliveryFn, loading: acceptingDelivery } = useAcceptDelivery({
+    onSuccess: () => fetchDelivery()
+  });
+
+  const { pickupDelivery: pickupDeliveryFn, loading: pickingUpDelivery } = usePickupDelivery({
+    onSuccess: () => fetchDelivery()
+  });
+
+  const { completeDelivery: completeDeliveryFn, loading: completingDelivery } = useCompleteDelivery({
+    onSuccess: () => {
+      setTimeout(() => navigate('/driver/dashboard'), 1500);
+    }
+  });
 
   // Determine destination based on delivery status
   const destination: [number, number] | null = delivery
@@ -171,76 +189,18 @@ export default function ActiveDelivery() {
   };
 
   const acceptDelivery = async () => {
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        status: 'accepted',
-        accepted_at: new Date().toISOString(),
-        driver_id: driverId
-      })
-      .eq('id', deliveryId);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível aceitar a entrega'
-      });
-    } else {
-      toast({
-        title: '✅ Entrega aceita!',
-        description: 'Status atualizado. Dirija-se ao local de coleta.'
-      });
-      fetchDelivery(); // Refresh data
-    }
+    if (!deliveryId || !driverId) return;
+    await acceptDeliveryFn(deliveryId, driverId);
   };
 
   const markAsPickedUp = async () => {
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        status: 'picked_up',
-        picked_up_at: new Date().toISOString()
-      })
-      .eq('id', deliveryId);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível atualizar o status'
-      });
-    } else {
-      toast({
-        title: '📦 Pedido coletado!',
-        description: 'Status atualizado. Agora siga para o endereço de entrega.'
-      });
-      fetchDelivery(); // Refresh data
-    }
+    if (!deliveryId || !driverId) return;
+    await pickupDeliveryFn(deliveryId, driverId);
   };
 
   const markAsDelivered = async () => {
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        status: 'delivered',
-        delivered_at: new Date().toISOString()
-      })
-      .eq('id', deliveryId);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível atualizar o status'
-      });
-    } else {
-      toast({
-        title: '🎉 Entrega concluída!',
-        description: `Status atualizado. Você ganhou R$ ${Number(delivery?.price).toFixed(2)}`
-      });
-      setTimeout(() => navigate('/driver/dashboard'), 1500);
-    }
+    if (!deliveryId || !driverId || !delivery) return;
+    await completeDeliveryFn(deliveryId, driverId, Number(delivery.price));
   };
 
   const openInMaps = (lat: number, lng: number, address: string) => {
@@ -468,7 +428,8 @@ export default function ActiveDelivery() {
                   </Button>
                   {delivery.status === 'pending' && (
                     <Button 
-                      onClick={acceptDelivery} 
+                      onClick={acceptDelivery}
+                      disabled={acceptingDelivery}
                       className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
@@ -477,7 +438,8 @@ export default function ActiveDelivery() {
                   )}
                   {delivery.status === 'accepted' && (
                     <Button 
-                      onClick={markAsPickedUp} 
+                      onClick={markAsPickedUp}
+                      disabled={pickingUpDelivery}
                       className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
@@ -522,7 +484,8 @@ export default function ActiveDelivery() {
                   </Button>
                   {delivery.status === 'picked_up' && (
                     <Button 
-                      onClick={markAsDelivered} 
+                      onClick={markAsDelivered}
+                      disabled={completingDelivery}
                       className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />

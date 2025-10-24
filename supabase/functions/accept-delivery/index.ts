@@ -100,52 +100,38 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Start transaction-like operation by checking current status
-    const { data: delivery, error: fetchError } = await supabaseClient
-      .from('deliveries')
-      .select('id, status, restaurant_id, driver_id, pickup_address')
-      .eq('id', delivery_id)
-      .single()
-
-    if (fetchError || !delivery) {
-      console.error('Delivery not found:', fetchError)
-      return new Response(
-        JSON.stringify({ error: 'Entrega não encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Check if delivery is still pending
-    if (delivery.status !== 'pending') {
-      console.log('Delivery already assigned:', delivery.status)
-      return new Response(
-        JSON.stringify({ error: 'Esta entrega já foi aceita por outro motorista' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Update delivery with driver assignment
-    const { data: updatedDelivery, error: updateError } = await supabaseClient
-      .from('deliveries')
-      .update({
-        driver_id: driver_id,
-        status: 'accepted',
-        accepted_at: new Date().toISOString()
+    // Use atomic database function to prevent race conditions
+    const { data: result, error: acceptError } = await supabaseClient
+      .rpc('accept_delivery_atomic', {
+        p_delivery_id: delivery_id,
+        p_driver_id: driver_id
       })
-      .eq('id', delivery_id)
-      .eq('status', 'pending') // Double-check status hasn't changed
-      .select()
-      .single()
 
-    if (updateError || !updatedDelivery) {
-      console.error('Failed to update delivery:', updateError)
+    if (acceptError) {
+      console.error('Error calling accept_delivery_atomic:', acceptError)
       return new Response(
-        JSON.stringify({ error: 'Esta entrega já foi aceita por outro motorista' }),
+        JSON.stringify({ error: 'Erro ao aceitar entrega' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!result.success) {
+      console.log('Delivery acceptance failed:', result.error)
+      return new Response(
+        JSON.stringify({ error: result.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    const updatedDelivery = result.delivery
     console.log('Delivery accepted successfully:', updatedDelivery.id)
+
+    // Get restaurant info for notification
+    const { data: restaurantData } = await supabaseClient
+      .from('restaurants')
+      .select('user_id')
+      .eq('id', updatedDelivery.restaurant_id)
+      .single()
 
     // Get driver info for notification
     const { data: driverData } = await supabaseClient
@@ -154,31 +140,22 @@ Deno.serve(async (req) => {
       .eq('id', driver_id)
       .single()
 
-    if (driverData?.user_id) {
+    if (driverData?.user_id && restaurantData?.user_id) {
       const { data: profileData } = await supabaseClient
         .from('profiles')
         .select('full_name')
         .eq('id', driverData.user_id)
         .single()
 
-      // Notify restaurant about acceptance
-      const { data: restaurantData } = await supabaseClient
-        .from('restaurants')
-        .select('user_id')
-        .eq('id', delivery.restaurant_id)
-        .single()
-
-      if (restaurantData?.user_id) {
-        const driverName = profileData?.full_name || 'Motorista'
-        await supabaseClient.rpc('create_notification', {
-          p_user_id: restaurantData.user_id,
-          p_title: 'Entrega Aceita',
-          p_message: `O motorista ${driverName} aceitou sua entrega!`,
-          p_type: 'delivery_accepted',
-          p_delivery_id: delivery_id
-        })
-        console.log('Notification sent to restaurant')
-      }
+      const driverName = profileData?.full_name || 'Motorista'
+      await supabaseClient.rpc('create_notification', {
+        p_user_id: restaurantData.user_id,
+        p_title: 'Entrega Aceita',
+        p_message: `O motorista ${driverName} aceitou sua entrega!`,
+        p_type: 'delivery_accepted',
+        p_delivery_id: delivery_id
+      })
+      console.log('Notification sent to restaurant')
     }
 
     return new Response(

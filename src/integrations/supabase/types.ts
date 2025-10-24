@@ -472,6 +472,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_delivery_atomic: {
+        Args: { p_delivery_id: string; p_driver_id: string }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           p_delivery_id?: string
