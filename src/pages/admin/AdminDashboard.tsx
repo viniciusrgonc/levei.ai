@@ -228,6 +228,18 @@ export default function AdminDashboard() {
 
   const handleReject = async (id: string, type: 'driver' | 'restaurant') => {
     try {
+      // Check for active deliveries before deletion
+      const { data: activeDeliveries } = await supabase
+        .from('deliveries')
+        .select('id')
+        .eq(type === 'driver' ? 'driver_id' : 'restaurant_id', id)
+        .in('status', ['pending', 'accepted', 'picked_up']);
+
+      if (activeDeliveries && activeDeliveries.length > 0) {
+        toast.error(`Não é possível rejeitar: existem ${activeDeliveries.length} entregas ativas. Aguarde a conclusão ou cancelamento.`);
+        return;
+      }
+
       const table = type === 'driver' ? 'drivers' : 'restaurants';
       const { error } = await supabase
         .from(table)
