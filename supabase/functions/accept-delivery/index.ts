@@ -1,6 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 console.log('Accept Delivery Function loaded')
 
 Deno.serve(async (req) => {
@@ -10,6 +13,16 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Get auth header and validate user
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      console.error('Missing authorization header')
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -21,18 +34,69 @@ Deno.serve(async (req) => {
       }
     )
 
+    // Verify user from token
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Get request body
     const { delivery_id, driver_id } = await req.json()
     
-    console.log('Accept delivery request:', { delivery_id, driver_id })
+    console.log('Accept delivery request:', { delivery_id, driver_id, user_id: user.id })
 
+    // Input validation: Check for required fields
     if (!delivery_id || !driver_id) {
       return new Response(
-        JSON.stringify({ error: 'delivery_id and driver_id are required' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        JSON.stringify({ error: 'Missing required fields: delivery_id and driver_id' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Input validation: Validate UUID format
+    if (!UUID_REGEX.test(delivery_id)) {
+      console.error('Invalid delivery_id format:', delivery_id)
+      return new Response(
+        JSON.stringify({ error: 'Invalid delivery ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!UUID_REGEX.test(driver_id)) {
+      console.error('Invalid driver_id format:', driver_id)
+      return new Response(
+        JSON.stringify({ error: 'Invalid driver ID format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Authorization: Verify driver ownership
+    const { data: driver, error: driverError } = await supabaseClient
+      .from('drivers')
+      .select('user_id')
+      .eq('id', driver_id)
+      .single()
+
+    if (driverError || !driver) {
+      console.error('Driver lookup error:', driverError)
+      return new Response(
+        JSON.stringify({ error: 'Driver not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Verify the authenticated user owns this driver account
+    if (driver.user_id !== user.id) {
+      console.error('Authorization failed: user', user.id, 'attempted to accept delivery as driver', driver_id)
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: You do not own this driver account' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -47,10 +111,7 @@ Deno.serve(async (req) => {
       console.error('Delivery not found:', fetchError)
       return new Response(
         JSON.stringify({ error: 'Entrega não encontrada' }),
-        { 
-          status: 404, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -59,10 +120,7 @@ Deno.serve(async (req) => {
       console.log('Delivery already assigned:', delivery.status)
       return new Response(
         JSON.stringify({ error: 'Esta entrega já foi aceita por outro motorista' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -83,10 +141,7 @@ Deno.serve(async (req) => {
       console.error('Failed to update delivery:', updateError)
       return new Response(
         JSON.stringify({ error: 'Esta entrega já foi aceita por outro motorista' }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

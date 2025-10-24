@@ -164,7 +164,9 @@ export default function NewDelivery() {
           delivery_address: deliveryAddress,
           delivery_latitude: deliveryLat,
           delivery_longitude: deliveryLng,
-          description: `Destinatário: ${recipientName} | Tel: ${recipientPhone}${description ? ` | ${description}` : ''}`,
+          recipient_name: recipientName,
+          recipient_phone: recipientPhone,
+          description: description || null,
           distance_km: calculatedDistance!,
           price: parseFloat(customPrice),
           status: 'pending'

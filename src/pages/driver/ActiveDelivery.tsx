@@ -66,6 +66,8 @@ interface Delivery {
   distance_km: number;
   price: number;
   description: string | null;
+  recipient_name: string | null;
+  recipient_phone: string | null;
   pickup_latitude: number;
   pickup_longitude: number;
   delivery_latitude: number;
@@ -491,6 +493,24 @@ export default function ActiveDelivery() {
                     Entrega
                   </div>
                   <p className="text-sm text-muted-foreground ml-7">{delivery.delivery_address}</p>
+                  
+                  {/* Recipient contact info - only visible to assigned driver */}
+                  {(delivery.status === 'accepted' || delivery.status === 'picked_up') && (
+                    <div className="ml-7 mt-3 p-3 bg-muted/50 rounded-lg border">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Contato do Destinatário</p>
+                      {delivery.recipient_name && (
+                        <p className="text-sm">
+                          <span className="font-medium">Nome:</span> {delivery.recipient_name}
+                        </p>
+                      )}
+                      {delivery.recipient_phone && (
+                        <p className="text-sm">
+                          <span className="font-medium">Tel:</span> {delivery.recipient_phone}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
                   <Button
                     variant="outline"
                     size="sm"

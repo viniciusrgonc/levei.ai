@@ -34,6 +34,8 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url: string | null
           price: number
+          recipient_name: string | null
+          recipient_phone: string | null
           restaurant_id: string
           status: Database["public"]["Enums"]["delivery_status"]
           updated_at: string
@@ -57,6 +59,8 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url?: string | null
           price: number
+          recipient_name?: string | null
+          recipient_phone?: string | null
           restaurant_id: string
           status?: Database["public"]["Enums"]["delivery_status"]
           updated_at?: string
@@ -80,6 +84,8 @@ export type Database = {
           pickup_longitude?: number
           pickup_photo_url?: string | null
           price?: number
+          recipient_name?: string | null
+          recipient_phone?: string | null
           restaurant_id?: string
           status?: Database["public"]["Enums"]["delivery_status"]
           updated_at?: string
