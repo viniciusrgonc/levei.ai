@@ -49,37 +49,40 @@ export const useRealtimeDeliveries = ({
           console.log('Delivery updated:', payload);
           const delivery = payload.new as DeliveryUpdate;
 
-          // Notificação para status 'accepted' (motoboy aceitou)
-          if (delivery.status === 'accepted' && showNotifications) {
-            toast({
-              title: 'Motoboy a caminho!',
-              description: 'Um motorista aceitou sua entrega e está indo buscar o pedido.',
-            });
-          }
+          // Notificações para mudanças de status
+          if (showNotifications) {
+            const notifications: Record<string, { title: string; description: string; variant?: 'default' | 'destructive' }> = {
+              accepted: {
+                title: 'Motoboy a caminho!',
+                description: 'Um motorista aceitou sua entrega e está indo buscar o pedido.',
+              },
+              picking_up: {
+                title: 'Coletando pedido!',
+                description: 'O motorista está coletando o pedido no local.',
+              },
+              picked_up: {
+                title: 'Pedido coletado!',
+                description: 'O motorista coletou o pedido e está a caminho da entrega.',
+              },
+              delivering: {
+                title: 'A caminho!',
+                description: 'O motorista está a caminho do destino.',
+              },
+              delivered: {
+                title: 'Entrega concluída!',
+                description: 'O pedido foi entregue com sucesso.',
+              },
+              cancelled: {
+                title: 'Entrega cancelada',
+                description: 'A entrega foi cancelada.',
+                variant: 'destructive',
+              },
+            };
 
-          // Notificação para status 'picked_up'
-          if (delivery.status === 'picked_up' && showNotifications) {
-            toast({
-              title: 'Pedido coletado!',
-              description: 'O motorista coletou o pedido e está a caminho da entrega.',
-            });
-          }
-
-          // Notificação para status 'delivered'
-          if (delivery.status === 'delivered' && showNotifications) {
-            toast({
-              title: 'Entrega concluída!',
-              description: 'O pedido foi entregue com sucesso.',
-            });
-          }
-
-          // Notificação para status 'cancelled'
-          if (delivery.status === 'cancelled' && showNotifications) {
-            toast({
-              title: 'Entrega cancelada',
-              description: 'A entrega foi cancelada.',
-              variant: 'destructive',
-            });
+            const notification = notifications[delivery.status];
+            if (notification) {
+              toast(notification);
+            }
           }
 
           // Callback customizado

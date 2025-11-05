@@ -171,7 +171,7 @@ export default function RestaurantDashboard() {
     );
 
     // Split active and recent
-    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
+    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering'].includes(d.status)) || [];
     const recent = deliveriesWithDriverNames?.slice(0, 5) || [];
 
     setActiveDeliveries(active);
@@ -211,9 +211,11 @@ export default function RestaurantDashboard() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: { label: 'Pendente', variant: 'secondary' as const, color: 'text-yellow-600' },
+      pending: { label: 'Aguardando', variant: 'secondary' as const, color: 'text-yellow-600' },
       accepted: { label: 'Aceita', variant: 'default' as const, color: 'text-blue-600' },
+      picking_up: { label: 'Coletando', variant: 'default' as const, color: 'text-cyan-600' },
       picked_up: { label: 'Coletada', variant: 'default' as const, color: 'text-purple-600' },
+      delivering: { label: 'Em Rota', variant: 'default' as const, color: 'text-indigo-600' },
       delivered: { label: 'Entregue', variant: 'default' as const, color: 'text-green-600' },
       cancelled: { label: 'Cancelada', variant: 'destructive' as const, color: 'text-red-600' },
     };
@@ -225,7 +227,9 @@ export default function RestaurantDashboard() {
     const icons = {
       pending: '🕐',
       accepted: '✅',
+      picking_up: '🏃',
       picked_up: '📦',
+      delivering: '🚚',
       delivered: '✨',
       cancelled: '❌',
     };

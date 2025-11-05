@@ -95,10 +95,13 @@ export default function DriverHistory() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      accepted: { label: 'Aceita', variant: 'default' as const },
-      picked_up: { label: 'Coletada', variant: 'default' as const },
+      pending: { label: 'Aguardando', variant: 'secondary' as const },
+      accepted: { label: 'Aceito', variant: 'default' as const },
+      picking_up: { label: 'Coletando', variant: 'default' as const },
+      picked_up: { label: 'Coletado', variant: 'default' as const },
+      delivering: { label: 'Em Rota', variant: 'default' as const },
       delivered: { label: 'Entregue', variant: 'default' as const },
-      cancelled: { label: 'Cancelada', variant: 'destructive' as const },
+      cancelled: { label: 'Cancelado', variant: 'destructive' as const },
     };
     const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
@@ -190,10 +193,13 @@ export default function DriverHistory() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="accepted">Aceita</SelectItem>
-                      <SelectItem value="picked_up">Coletada</SelectItem>
+                      <SelectItem value="pending">Aguardando</SelectItem>
+                      <SelectItem value="accepted">Aceito</SelectItem>
+                      <SelectItem value="picking_up">Coletando</SelectItem>
+                      <SelectItem value="picked_up">Coletado</SelectItem>
+                      <SelectItem value="delivering">Em Rota</SelectItem>
                       <SelectItem value="delivered">Entregue</SelectItem>
-                      <SelectItem value="cancelled">Cancelada</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
                 </CardContent>

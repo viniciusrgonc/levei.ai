@@ -139,7 +139,9 @@ export default function DeliveryTracking() {
     const statusMap: Record<string, { label: string; icon: string; color: string }> = {
       pending: { label: 'Aguardando Motorista', icon: '🕐', color: 'text-yellow-500' },
       accepted: { label: 'Aceito - Indo Buscar', icon: '✅', color: 'text-blue-500' },
+      picking_up: { label: 'Coletando Pedido', icon: '🏃', color: 'text-cyan-500' },
       picked_up: { label: 'Pedido Coletado', icon: '📦', color: 'text-purple-500' },
+      delivering: { label: 'A Caminho da Entrega', icon: '🚚', color: 'text-indigo-500' },
       delivered: { label: 'Entregue', icon: '✨', color: 'text-green-600' },
       cancelled: { label: 'Cancelado', icon: '❌', color: 'text-red-500' }
     };
@@ -189,7 +191,7 @@ export default function DeliveryTracking() {
 
   const statusInfo = getStatusInfo(delivery.status);
   const timeline = getTimeline();
-  const isActive = ['accepted', 'picked_up'].includes(delivery.status);
+  const isActive = ['accepted', 'picking_up', 'picked_up', 'delivering'].includes(delivery.status);
 
   return (
     <SidebarProvider>

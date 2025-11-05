@@ -98,7 +98,7 @@ export default function DriverDashboard() {
         .from('deliveries')
         .select('*')
         .eq('driver_id', driverData.id)
-        .in('status', ['accepted', 'picked_up'])
+        .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering'])
         .single();
 
       setActiveDelivery(data);

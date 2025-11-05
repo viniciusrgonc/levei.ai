@@ -95,9 +95,11 @@ export default function RestaurantHistory() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: { label: 'Pendente', variant: 'secondary' as const },
+      pending: { label: 'Aguardando', variant: 'secondary' as const },
       accepted: { label: 'Aceita', variant: 'default' as const },
+      picking_up: { label: 'Coletando', variant: 'default' as const },
       picked_up: { label: 'Coletada', variant: 'default' as const },
+      delivering: { label: 'Em Rota', variant: 'default' as const },
       delivered: { label: 'Entregue', variant: 'default' as const },
       cancelled: { label: 'Cancelada', variant: 'destructive' as const },
     };
@@ -189,9 +191,11 @@ export default function RestaurantHistory() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="pending">Aguardando</SelectItem>
                       <SelectItem value="accepted">Aceita</SelectItem>
+                      <SelectItem value="picking_up">Coletando</SelectItem>
                       <SelectItem value="picked_up">Coletada</SelectItem>
+                      <SelectItem value="delivering">Em Rota</SelectItem>
                       <SelectItem value="delivered">Entregue</SelectItem>
                       <SelectItem value="cancelled">Cancelada</SelectItem>
                     </SelectContent>

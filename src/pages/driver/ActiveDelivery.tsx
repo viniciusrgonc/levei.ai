@@ -220,9 +220,13 @@ export default function ActiveDelivery() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
+      pending: { variant: 'secondary', label: 'Aguardando' },
       accepted: { variant: 'default', label: 'Aceito' },
+      picking_up: { variant: 'default', label: 'Coletando' },
       picked_up: { variant: 'default', label: 'Coletado' },
+      delivering: { variant: 'default', label: 'Em Rota' },
       delivered: { variant: 'default', label: 'Entregue' },
+      cancelled: { variant: 'destructive', label: 'Cancelado' },
     };
     const config = variants[status] || { variant: 'secondary', label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
