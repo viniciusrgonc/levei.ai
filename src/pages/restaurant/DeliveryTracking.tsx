@@ -137,7 +137,7 @@ export default function DeliveryTracking() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; icon: string; color: string }> = {
-      pending: { label: 'Aguardando Motorista', icon: '🕐', color: 'text-yellow-500' },
+      pending: { label: 'Aguardando Entregador', icon: '🕐', color: 'text-yellow-500' },
       accepted: { label: 'Aceito - Indo Buscar', icon: '✅', color: 'text-blue-500' },
       picking_up: { label: 'Coletando Pedido', icon: '🏃', color: 'text-cyan-500' },
       picked_up: { label: 'Pedido Coletado', icon: '📦', color: 'text-purple-500' },
@@ -158,7 +158,7 @@ export default function DeliveryTracking() {
         completed: true
       },
       {
-        label: 'Aceito por Motorista',
+        label: 'Aceito por Entregador',
         time: delivery.accepted_at,
         completed: !!delivery.accepted_at
       },
@@ -240,7 +240,7 @@ export default function DeliveryTracking() {
                       <div>
                         <CardTitle className="text-lg flex items-center gap-2">
                           <Navigation className="w-5 h-5 animate-pulse text-primary" />
-                          Localização do Motorista
+                          Localização do Entregador
                         </CardTitle>
                         <CardDescription className="mt-1">
                           Atualização automática a cada 10 segundos
@@ -271,7 +271,7 @@ export default function DeliveryTracking() {
                       </div>
                       <div className="p-3 bg-blue-500/10 rounded-lg text-center border border-blue-500/20">
                         <div className="w-3 h-3 bg-blue-500 rounded-full mx-auto mb-2 animate-pulse"></div>
-                        <p className="text-xs font-medium">Motorista</p>
+                        <p className="text-xs font-medium">Entregador</p>
                       </div>
                       <div className="p-3 bg-red-500/10 rounded-lg text-center border border-red-500/20">
                         <div className="w-3 h-3 bg-red-500 rounded-full mx-auto mb-2"></div>
@@ -353,7 +353,7 @@ export default function DeliveryTracking() {
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <User className="h-5 w-5" />
-                      Motorista
+                      Entregador
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -410,9 +410,9 @@ export default function DeliveryTracking() {
                         <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Package className="w-8 h-8 text-muted-foreground" />
                         </div>
-                        <p className="font-medium mb-1">Aguardando motorista</p>
+                        <p className="font-medium mb-1">Aguardando entregador</p>
                         <p className="text-sm text-muted-foreground">
-                          Em breve um motorista aceitará sua entrega
+                          Em breve um entregador aceitará sua entrega
                         </p>
                       </div>
                     )}

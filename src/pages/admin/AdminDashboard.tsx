@@ -216,7 +216,7 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      toast.success(`✅ ${type === 'driver' ? 'Motorista' : 'Restaurante'} aprovado com sucesso!`);
+      toast.success(`✅ ${type === 'driver' ? 'Entregador' : 'Solicitante'} aprovado com sucesso!`);
       setDialogType(null);
       setSelectedItem(null);
       loadData();
@@ -248,7 +248,7 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      toast.success(`❌ ${type === 'driver' ? 'Motorista' : 'Restaurante'} rejeitado`);
+      toast.success(`❌ ${type === 'driver' ? 'Entregador' : 'Solicitante'} rejeitado`);
       setDialogType(null);
       setSelectedItem(null);
       loadData();
@@ -323,7 +323,7 @@ export default function AdminDashboard() {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card className="border-2 hover:border-primary/50 transition-colors">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Motoristas</CardTitle>
+                    <CardTitle className="text-sm font-medium">Entregadores</CardTitle>
                     <Users className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
@@ -345,7 +345,7 @@ export default function AdminDashboard() {
 
                 <Card className="border-2 hover:border-primary/50 transition-colors">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Restaurantes</CardTitle>
+                    <CardTitle className="text-sm font-medium">Solicitantes</CardTitle>
                     <Users className="h-4 w-4 text-primary" />
                   </CardHeader>
                   <CardContent>
@@ -418,17 +418,17 @@ export default function AdminDashboard() {
                     <Tabs defaultValue="drivers">
                       <TabsList>
                         <TabsTrigger value="drivers">
-                          Motoristas ({pendingDrivers.length})
+                          Entregadores ({pendingDrivers.length})
                         </TabsTrigger>
                         <TabsTrigger value="restaurants">
-                          Restaurantes ({pendingRestaurants.length})
+                          Solicitantes ({pendingRestaurants.length})
                         </TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="drivers" className="mt-4">
                         {pendingDrivers.length === 0 ? (
                           <p className="text-center py-8 text-muted-foreground">
-                            Nenhum motorista pendente
+                            Nenhum entregador pendente
                           </p>
                         ) : (
                           <Table>
@@ -487,7 +487,7 @@ export default function AdminDashboard() {
                       <TabsContent value="restaurants" className="mt-4">
                         {pendingRestaurants.length === 0 ? (
                           <p className="text-center py-8 text-muted-foreground">
-                            Nenhum restaurante pendente
+                            Nenhum solicitante pendente
                           </p>
                         ) : (
                           <Table>
@@ -554,7 +554,7 @@ export default function AdminDashboard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Detalhes do {dialogType === 'driver' ? 'Motorista' : 'Restaurante'}
+              Detalhes do {dialogType === 'driver' ? 'Entregador' : 'Solicitante'}
             </DialogTitle>
             <DialogDescription>
               Revise as informações antes de aprovar

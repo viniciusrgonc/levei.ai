@@ -53,20 +53,20 @@ export const useRealtimeDeliveries = ({
           if (showNotifications) {
             const notifications: Record<string, { title: string; description: string; variant?: 'default' | 'destructive' }> = {
               accepted: {
-                title: 'Motoboy a caminho!',
-                description: 'Um motorista aceitou sua entrega e está indo buscar o pedido.',
+                title: 'Entregador a caminho!',
+                description: 'Um entregador aceitou sua entrega e está indo buscar o pedido.',
               },
               picking_up: {
                 title: 'Coletando pedido!',
-                description: 'O motorista está coletando o pedido no local.',
+                description: 'O entregador está coletando o pedido no local.',
               },
               picked_up: {
                 title: 'Pedido coletado!',
-                description: 'O motorista coletou o pedido e está a caminho da entrega.',
+                description: 'O entregador coletou o pedido e está a caminho da entrega.',
               },
               delivering: {
                 title: 'A caminho!',
-                description: 'O motorista está a caminho do destino.',
+                description: 'O entregador está a caminho do destino.',
               },
               delivered: {
                 title: 'Entrega concluída!',

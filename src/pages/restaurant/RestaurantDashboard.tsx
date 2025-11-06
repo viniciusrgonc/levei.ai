@@ -162,7 +162,7 @@ export default function RestaurantDashboard() {
             
             return {
               ...delivery,
-              driver_name: profileData?.full_name || 'Motorista'
+              driver_name: profileData?.full_name || 'Entregador'
             };
           }
         }

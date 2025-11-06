@@ -157,7 +157,7 @@ export default function RestaurantProfile() {
         </div>
         
         <h1 className="text-2xl font-bold mt-4 text-foreground">
-          {profile?.business_name || profile?.full_name || 'Restaurante'}
+          {profile?.business_name || profile?.full_name || 'Solicitante'}
         </h1>
         
         <div className="flex items-center gap-1 mt-2">

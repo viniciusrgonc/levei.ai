@@ -76,7 +76,7 @@ export default function Dashboard() {
       setRole(selectedRole);
       toast({
         title: 'Perfil selecionado!',
-        description: `Você agora é um ${selectedRole === 'restaurant' ? 'restaurante' : 'motoboy'}`
+        description: `Você agora é um ${selectedRole === 'restaurant' ? 'solicitante' : 'entregador'}`
       });
       
       // Redirect based on role
@@ -120,9 +120,9 @@ export default function Dashboard() {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110">
                   <Store className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Sou Restaurante</CardTitle>
+                <CardTitle>Sou Solicitante</CardTitle>
                 <CardDescription>
-                  Cadastre seu estabelecimento e crie entregas para motoboys disponíveis
+                  Cadastre seu estabelecimento e solicite entregas para entregadores disponíveis
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -144,9 +144,9 @@ export default function Dashboard() {
                 <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110">
                   <Bike className="h-6 w-6 text-primary" />
                 </div>
-                <CardTitle>Sou Motoboy</CardTitle>
+                <CardTitle>Sou Entregador</CardTitle>
                 <CardDescription>
-                  Cadastre-se como entregador e aceite entregas disponíveis
+                  Cadastre-se como entregador e aceite entregas disponíveis na sua região
                 </CardDescription>
               </CardHeader>
               <CardContent>

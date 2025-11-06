@@ -21,7 +21,7 @@ const Objectives = () => {
     {
       icon: Heart,
       title: "Satisfação Total",
-      description: "Garantir a melhor experiência para motoboys e estabelecimentos"
+      description: "Garantir a melhor experiência para entregadores e solicitantes"
     }
   ];
 

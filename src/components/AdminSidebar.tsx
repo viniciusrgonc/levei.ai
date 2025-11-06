@@ -19,12 +19,12 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Motoristas',
+    title: 'Entregadores',
     url: '/admin/drivers',
     icon: Users,
   },
   {
-    title: 'Restaurantes',
+    title: 'Solicitantes',
     url: '/admin/restaurants',
     icon: Users,
   },

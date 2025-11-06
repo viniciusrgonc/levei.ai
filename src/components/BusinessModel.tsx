@@ -20,7 +20,7 @@ const BusinessModel = () => {
             <div>
               <h3 className="text-2xl font-bold mb-4">Marketplace Bilateral</h3>
               <p className="text-muted-foreground leading-relaxed text-lg">
-                Conectamos motoboys autônomos com estabelecimentos comerciais, criando um ecossistema eficiente e escalável
+                Conectamos entregadores autônomos com estabelecimentos comerciais, criando um ecossistema eficiente e escalável
               </p>
             </div>
           </Card>
@@ -44,7 +44,7 @@ const BusinessModel = () => {
             <div>
               <h3 className="text-2xl font-bold mb-4">Autonomia Total</h3>
               <p className="text-muted-foreground leading-relaxed text-lg">
-                Motoboys trabalham de forma independente, escolhendo horários e entregas conforme disponibilidade
+                Entregadores trabalham de forma independente, escolhendo horários e entregas conforme disponibilidade
               </p>
             </div>
           </Card>

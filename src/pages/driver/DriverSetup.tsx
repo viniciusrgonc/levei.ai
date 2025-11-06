@@ -44,7 +44,7 @@ export default function DriverSetup() {
     } else {
       toast({
         title: 'Cadastro concluído!',
-        description: 'Seu perfil de motorista foi cadastrado com sucesso'
+        description: 'Seu perfil de entregador foi cadastrado com sucesso'
       });
       navigate('/driver/dashboard');
     }
@@ -60,7 +60,7 @@ export default function DriverSetup() {
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <Bike className="h-6 w-6 text-primary" />
             </div>
-            <CardTitle>Cadastro de Motorista</CardTitle>
+            <CardTitle>Cadastro de Entregador</CardTitle>
             <CardDescription>
               Complete as informações do seu veículo para começar
             </CardDescription>

@@ -82,7 +82,7 @@ export default function RestaurantSetup() {
             </div>
             <CardTitle>Cadastro do Estabelecimento</CardTitle>
             <CardDescription>
-              Complete as informações do seu restaurante ou loja
+              Complete as informações do seu estabelecimento
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -93,7 +93,7 @@ export default function RestaurantSetup() {
                   id="businessName"
                   name="businessName"
                   type="text"
-                  placeholder="Restaurante XYZ"
+                  placeholder="Minha Empresa"
                   required
                   disabled={loading}
                 />

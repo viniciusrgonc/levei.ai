@@ -24,7 +24,7 @@ const Hero = () => {
           </h1>
           
           <p className="text-2xl md:text-3xl text-foreground/80 max-w-3xl mx-auto font-medium leading-relaxed">
-            Conectando motoboys autônomos com restaurantes e lojas para entregas mais rápidas e eficientes
+            Conectando entregadores autônomos com solicitantes para entregas mais rápidas e eficientes
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
@@ -33,7 +33,7 @@ const Hero = () => {
               className="h-14 px-8 text-lg font-semibold shadow-elevated hover:shadow-glow transition-all"
               onClick={() => navigate('/auth')}
             >
-              Cadastrar como Motoboy
+              Cadastrar como Entregador
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
             <Button 
@@ -43,7 +43,7 @@ const Hero = () => {
               onClick={() => navigate('/auth')}
             >
               <Store className="w-5 h-5 mr-2" />
-              Sou Estabelecimento
+              Sou Solicitante
             </Button>
           </div>
         </div>

@@ -178,7 +178,7 @@ export default function NewDelivery() {
 
       toast({
         title: '✅ Entrega criada!',
-        description: 'Motoristas disponíveis serão notificados em breve'
+        description: 'Entregadores disponíveis serão notificados em breve'
       });
       
       navigate(`/restaurant/delivery/${data.id}`);
@@ -365,7 +365,7 @@ export default function NewDelivery() {
                           rows={3}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Instruções especiais para o motorista
+                          Instruções especiais para o entregador
                         </p>
                       </div>
                     </div>

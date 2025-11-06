@@ -24,12 +24,12 @@ const Benefits = () => {
     {
       icon: MapPin,
       title: "Cobertura Ampla",
-      description: "Acesso a uma rede de motoboys em toda cidade"
+      description: "Acesso a uma rede de entregadores em toda cidade"
     },
     {
       icon: Shield,
       title: "Confiabilidade",
-      description: "Entregas rastreadas e motoboys verificados"
+      description: "Entregas rastreadas e entregadores verificados"
     },
     {
       icon: Smartphone,
@@ -51,7 +51,7 @@ const Benefits = () => {
         <div className="grid lg:grid-cols-2 gap-16 max-w-7xl mx-auto">
           <div className="space-y-8">
             <div className="inline-block">
-              <h3 className="text-4xl font-bold text-primary mb-2">Para Motoboys</h3>
+              <h3 className="text-4xl font-bold text-primary mb-2">Para Entregadores</h3>
               <div className="h-1 w-20 bg-gradient-to-r from-primary to-primary/50 rounded-full" />
             </div>
             <div className="space-y-5">

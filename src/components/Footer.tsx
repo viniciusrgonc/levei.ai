@@ -15,7 +15,7 @@ const Footer = () => {
           </div>
           
           <p className="text-muted-foreground max-w-md">
-            Conectando motoboys e estabelecimentos para entregas mais eficientes
+            Conectando entregadores e solicitantes para entregas mais eficientes
           </p>
           
           <div className="text-sm text-muted-foreground">

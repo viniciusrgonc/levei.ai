@@ -25,7 +25,7 @@ interface StatusConfig {
 export function getStatusConfig(status: DeliveryStatus): StatusConfig {
   const configs: Record<DeliveryStatus, StatusConfig> = {
     pending: {
-      label: 'Aguardando Motorista',
+      label: 'Aguardando Entregador',
       icon: '🕐',
       color: 'text-yellow-600',
       variant: 'secondary'
