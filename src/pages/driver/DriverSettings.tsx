@@ -12,11 +12,12 @@ import { Settings, Bell, Shield, Truck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
+import { VehicleCategory } from '@/components/VehicleCategorySelector';
 
 export default function DriverSettings() {
   const [loading, setLoading] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
-  const [vehicleType, setVehicleType] = useState<'bicycle' | 'car' | 'motorcycle'>('motorcycle');
+  const [vehicleType, setVehicleType] = useState<VehicleCategory>('motorcycle');
   const [licensePlate, setLicensePlate] = useState('');
   const { user } = useAuth();
 
@@ -38,7 +39,7 @@ export default function DriverSettings() {
 
       if (data) {
         setIsAvailable(data.is_available);
-        setVehicleType(data.vehicle_type);
+        setVehicleType(data.vehicle_type as VehicleCategory);
         setLicensePlate(data.license_plate || '');
       }
     } catch (error) {
@@ -80,7 +81,7 @@ export default function DriverSettings() {
       const { error } = await supabase
         .from('drivers')
         .update({ 
-          vehicle_type: vehicleType,
+          vehicle_type: vehicleType as any,
           license_plate: licensePlate || null
         })
         .eq('user_id', user?.id);
@@ -159,15 +160,18 @@ export default function DriverSettings() {
                     <Label htmlFor="vehicleType">Tipo de Veículo</Label>
                     <Select 
                       value={vehicleType} 
-                      onValueChange={(value) => setVehicleType(value as 'bicycle' | 'car' | 'motorcycle')}
+                      onValueChange={(value) => setVehicleType(value as VehicleCategory)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="motorcycle">Moto</SelectItem>
+                        <SelectItem value="motorcycle">Motocicleta</SelectItem>
                         <SelectItem value="car">Carro</SelectItem>
                         <SelectItem value="bicycle">Bicicleta</SelectItem>
+                        <SelectItem value="van">Van</SelectItem>
+                        <SelectItem value="truck">Caminhão</SelectItem>
+                        <SelectItem value="hourly_service">Serviço por Hora</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

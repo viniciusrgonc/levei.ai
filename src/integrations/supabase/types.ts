@@ -508,7 +508,13 @@ export type Database = {
         | "delivered"
         | "cancelled"
       transaction_type: "delivery_payment" | "withdrawal" | "platform_fee"
-      vehicle_type: "motorcycle" | "bicycle" | "car"
+      vehicle_type:
+        | "motorcycle"
+        | "bicycle"
+        | "car"
+        | "van"
+        | "truck"
+        | "hourly_service"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -647,7 +653,14 @@ export const Constants = {
         "cancelled",
       ],
       transaction_type: ["delivery_payment", "withdrawal", "platform_fee"],
-      vehicle_type: ["motorcycle", "bicycle", "car"],
+      vehicle_type: [
+        "motorcycle",
+        "bicycle",
+        "car",
+        "van",
+        "truck",
+        "hourly_service",
+      ],
     },
   },
 } as const

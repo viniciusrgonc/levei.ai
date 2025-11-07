@@ -175,7 +175,7 @@ export default function NewDelivery() {
           description: description || null,
           distance_km: calculatedDistance!,
           price: parseFloat(customPrice),
-          vehicle_category: selectedVehicleCategory,
+          vehicle_category: selectedVehicleCategory as any,
           status: 'pending'
         }])
         .select()
