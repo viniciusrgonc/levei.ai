@@ -55,7 +55,7 @@ export function useNearbyDeliveries({
   const fetchDriverLocation = async () => {
     const { data } = await supabase
       .from('drivers')
-      .select('latitude, longitude')
+      .select('latitude, longitude, vehicle_type')
       .eq('id', driverId)
       .single();
 

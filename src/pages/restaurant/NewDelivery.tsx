@@ -15,6 +15,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { Separator } from '@/components/ui/separator';
+import VehicleCategorySelector, { VehicleCategory } from '@/components/VehicleCategorySelector';
 
 // Validation schema
 const deliverySchema = z.object({
@@ -48,6 +49,7 @@ export default function NewDelivery() {
   const [description, setDescription] = useState('');
   const [customPrice, setCustomPrice] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [selectedVehicleCategory, setSelectedVehicleCategory] = useState<VehicleCategory | null>(null);
 
   useEffect(() => {
     fetchRestaurant();
@@ -140,6 +142,10 @@ export default function NewDelivery() {
       newErrors.price = 'Valor inválido (R$ 5,00 - R$ 500,00)';
     }
 
+    if (!selectedVehicleCategory) {
+      newErrors.vehicleCategory = 'Selecione o tipo de veículo necessário';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -156,7 +162,7 @@ export default function NewDelivery() {
     try {
       const { data, error } = await supabase
         .from('deliveries')
-        .insert({
+        .insert([{
           restaurant_id: restaurant.id,
           pickup_address: restaurant.address,
           pickup_latitude: restaurant.latitude,
@@ -169,8 +175,9 @@ export default function NewDelivery() {
           description: description || null,
           distance_km: calculatedDistance!,
           price: parseFloat(customPrice),
+          vehicle_category: selectedVehicleCategory,
           status: 'pending'
-        })
+        }])
         .select()
         .single();
 
@@ -254,6 +261,23 @@ export default function NewDelivery() {
                         </p>
                         <p className="text-sm">{restaurant.address}</p>
                       </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Vehicle Category Selection */}
+                    <div className="space-y-4">
+                      <VehicleCategorySelector
+                        selectedCategory={selectedVehicleCategory}
+                        onSelect={(category) => {
+                          setSelectedVehicleCategory(category);
+                          setErrors(prev => ({ ...prev, vehicleCategory: '' }));
+                        }}
+                        disabled={loading}
+                      />
+                      {errors.vehicleCategory && (
+                        <p className="text-sm text-destructive">{errors.vehicleCategory}</p>
+                      )}
                     </div>
 
                     <Separator />
@@ -424,7 +448,7 @@ export default function NewDelivery() {
                       type="submit"
                       size="lg"
                       className="w-full"
-                      disabled={loading || !calculatedDistance}
+                      disabled={loading || !calculatedDistance || !selectedVehicleCategory}
                     >
                       {loading ? (
                         <>

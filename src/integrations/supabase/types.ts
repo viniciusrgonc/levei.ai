@@ -39,6 +39,7 @@ export type Database = {
           restaurant_id: string
           status: Database["public"]["Enums"]["delivery_status"]
           updated_at: string
+          vehicle_category: Database["public"]["Enums"]["vehicle_type"] | null
         }
         Insert: {
           accepted_at?: string | null
@@ -64,6 +65,7 @@ export type Database = {
           restaurant_id: string
           status?: Database["public"]["Enums"]["delivery_status"]
           updated_at?: string
+          vehicle_category?: Database["public"]["Enums"]["vehicle_type"] | null
         }
         Update: {
           accepted_at?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           restaurant_id?: string
           status?: Database["public"]["Enums"]["delivery_status"]
           updated_at?: string
+          vehicle_category?: Database["public"]["Enums"]["vehicle_type"] | null
         }
         Relationships: [
           {
