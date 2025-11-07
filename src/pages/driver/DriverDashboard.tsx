@@ -44,11 +44,23 @@ export default function DriverDashboard() {
   
   const {
     deliveries: availableDeliveries,
+    loading: deliveriesLoading,
   } = useNearbyDeliveries({
     driverId: driver?.id || '',
     isAvailable: driver?.is_available || false,
     maxDistanceKm: 20,
   });
+
+  // Debug log
+  useEffect(() => {
+    console.log('📊 Dashboard Debug:', {
+      driverId: driver?.id,
+      isAvailable: driver?.is_available,
+      vehicleType: driver?.vehicle_type,
+      availableDeliveriesCount: availableDeliveries.length,
+      deliveries: availableDeliveries
+    });
+  }, [driver, availableDeliveries]);
 
   // Hook de realtime para escutar mudanças nas entregas
   useRealtimeDeliveries({
@@ -146,11 +158,16 @@ export default function DriverDashboard() {
       }
 
       toast({
-        title: 'Entrega aceita!',
-        description: 'Vá até o local de coleta'
+        title: '✅ Entrega aceita!',
+        description: 'Dirija até o local de coleta',
       });
       
+      // Navigate to active delivery page
       navigate(`/driver/delivery/${deliveryId}`);
+      
+      // Refresh data
+      fetchDriver();
+      fetchActiveDelivery();
     } catch (error) {
       console.error('Error accepting delivery:', error);
       toast({
@@ -305,13 +322,20 @@ export default function DriverDashboard() {
                     <div className="text-center py-8 text-muted-foreground">
                       Ative sua disponibilidade para ver entregas disponíveis
                     </div>
+                  ) : deliveriesLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
+                      <p className="text-sm text-muted-foreground mt-2">Buscando entregas...</p>
+                    </div>
                   ) : availableDeliveries.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
-                      Nenhuma entrega disponível no momento
+                      <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p>Nenhuma entrega disponível no momento</p>
+                      <p className="text-xs mt-1">Novas entregas aparecerão aqui automaticamente</p>
                     </div>
                    ) : (
-                    <div className="space-y-4">
-                      {availableDeliveries.map((delivery, index) => (
+                     <div className="space-y-4">
+                       {availableDeliveries.map((delivery, index) => (
                         <Card 
                           key={delivery.id}
                           className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"

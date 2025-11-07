@@ -107,7 +107,7 @@ export default function ActiveDelivery() {
 
   // Determine destination based on delivery status
   const destination: [number, number] | null = delivery
-    ? delivery.status === 'accepted'
+    ? (delivery.status === 'accepted' || delivery.status === 'picking_up')
       ? [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
       : delivery.status === 'picked_up'
       ? [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]
@@ -318,14 +318,14 @@ export default function ActiveDelivery() {
                     {route && route.coordinates.length > 0 && (
                       <Polyline
                         positions={route.coordinates}
-                        color={delivery.status === 'accepted' ? '#22c55e' : '#ef4444'}
+                        color={(delivery.status === 'accepted' || delivery.status === 'picking_up') ? '#22c55e' : '#ef4444'}
                         weight={4}
                         opacity={0.7}
                       />
                     )}
                     
                     {/* Pickup location */}
-                    {delivery.status === 'accepted' && (
+                    {(delivery.status === 'accepted' || delivery.status === 'picking_up') && (
                       <Marker 
                         position={[Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]}
                         icon={pickupIcon}
@@ -444,10 +444,10 @@ export default function ActiveDelivery() {
                     <Button 
                       onClick={markAsPickedUp}
                       disabled={pickingUpDelivery}
-                      className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
+                      className="ml-7 mt-2 animate-scale-in bg-green-600 hover:bg-green-700 transition-all duration-300 hover:scale-110 active:scale-95"
                     >
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Coletado
+                      <Package className="mr-2 h-4 w-4" />
+                      ✓ Confirmar Coleta Realizada
                     </Button>
                   )}
                 </div>
@@ -460,10 +460,10 @@ export default function ActiveDelivery() {
                   </div>
                   <p className="text-sm text-muted-foreground ml-7">{delivery.delivery_address}</p>
                   
-                  {/* Recipient contact info - only visible to assigned driver */}
-                  {(delivery.status === 'accepted' || delivery.status === 'picked_up') && (
-                    <div className="ml-7 mt-3 p-3 bg-muted/50 rounded-lg border">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Contato do Destinatário</p>
+                  {/* Recipient contact info - only visible after pickup */}
+                  {delivery.status === 'picked_up' && (
+                    <div className="ml-7 mt-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800 animate-scale-in">
+                      <p className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2">📞 Contato do Destinatário</p>
                       {delivery.recipient_name && (
                         <p className="text-sm">
                           <span className="font-medium">Nome:</span> {delivery.recipient_name}
@@ -490,10 +490,10 @@ export default function ActiveDelivery() {
                     <Button 
                       onClick={markAsDelivered}
                       disabled={completingDelivery}
-                      className="ml-7 mt-2 animate-scale-in transition-all duration-300 hover:scale-110 active:scale-95"
+                      className="ml-7 mt-2 animate-scale-in bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-110 active:scale-95"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" />
-                      Entregue
+                      ✓ Confirmar Entrega Concluída
                     </Button>
                   )}
                 </div>

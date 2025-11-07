@@ -69,11 +69,15 @@ export function useNearbyDeliveries({
 
   const fetchDeliveries = async () => {
     setLoading(true);
-    const { data } = await supabase
+    console.log('🔍 Fetching deliveries for driver:', driverId);
+    
+    const { data, error } = await supabase
       .from('deliveries')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
+
+    console.log('📦 Deliveries fetched:', { data, error, count: data?.length });
 
     if (data && driverLocation) {
       // Calculate distance from driver to each delivery pickup point
@@ -92,8 +96,10 @@ export function useNearbyDeliveries({
         .filter((d) => d.distanceFromDriver! <= maxDistanceKm)
         .sort((a, b) => a.distanceFromDriver! - b.distanceFromDriver!);
 
+      console.log('📍 Nearby deliveries:', nearbyDeliveries.length);
       setDeliveries(nearbyDeliveries);
     } else if (data) {
+      console.log('⚠️ No driver location, showing all deliveries');
       setDeliveries(data);
     }
     setLoading(false);
@@ -121,6 +127,7 @@ export function useNearbyDeliveries({
             filter: 'status=eq.pending',
           },
           () => {
+            console.log('🔄 Delivery status changed, refetching...');
             fetchDeliveries();
           }
         )
@@ -129,6 +136,9 @@ export function useNearbyDeliveries({
       return () => {
         supabase.removeChannel(channel);
       };
+    } else if (isAvailable) {
+      // If available but no location yet, just set loading to false
+      setLoading(false);
     }
   }, [isAvailable, driverLocation]);
 
