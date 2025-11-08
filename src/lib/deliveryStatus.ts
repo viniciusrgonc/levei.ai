@@ -4,13 +4,11 @@
  */
 
 export type DeliveryStatus = 
-  | 'pending'
-  | 'accepted'
-  | 'picking_up'
-  | 'picked_up'
-  | 'delivering'
-  | 'delivered'
-  | 'cancelled';
+  | 'pending'      // Disponível para aceitar
+  | 'accepted'     // Aceito - Indo para coleta
+  | 'picked_up'    // Coletado - Indo para entrega
+  | 'delivered'    // Entregue
+  | 'cancelled';   // Cancelada
 
 interface StatusConfig {
   label: string;
@@ -25,33 +23,21 @@ interface StatusConfig {
 export function getStatusConfig(status: DeliveryStatus): StatusConfig {
   const configs: Record<DeliveryStatus, StatusConfig> = {
     pending: {
-      label: 'Aguardando Entregador',
+      label: 'Disponível',
       icon: '🕐',
       color: 'text-yellow-600',
       variant: 'secondary'
     },
     accepted: {
-      label: 'Aceito - Indo Buscar',
-      icon: '✅',
+      label: 'Coleta em Andamento',
+      icon: '🚗',
       color: 'text-blue-600',
       variant: 'default'
     },
-    picking_up: {
-      label: 'Coletando Pedido',
-      icon: '🏃',
-      color: 'text-cyan-600',
-      variant: 'default'
-    },
     picked_up: {
-      label: 'Pedido Coletado',
+      label: 'Entrega em Andamento',
       icon: '📦',
       color: 'text-purple-600',
-      variant: 'default'
-    },
-    delivering: {
-      label: 'A Caminho da Entrega',
-      icon: '🚚',
-      color: 'text-indigo-600',
       variant: 'default'
     },
     delivered: {
@@ -108,7 +94,15 @@ export function getStatusVariant(status: DeliveryStatus): 'default' | 'secondary
  * Verifica se a entrega está ativa (em andamento)
  */
 export function isDeliveryActive(status: DeliveryStatus): boolean {
-  return ['accepted', 'picking_up', 'picked_up', 'delivering'].includes(status);
+  return ['accepted', 'picked_up'].includes(status);
+}
+
+export function isPickupPhase(status: DeliveryStatus): boolean {
+  return status === 'accepted';
+}
+
+export function isDeliveryPhase(status: DeliveryStatus): boolean {
+  return status === 'picked_up';
 }
 
 /**
@@ -124,10 +118,8 @@ export function isDeliveryComplete(status: DeliveryStatus): boolean {
 export function getNextPossibleStatuses(status: DeliveryStatus): DeliveryStatus[] {
   const transitions: Record<DeliveryStatus, DeliveryStatus[]> = {
     pending: ['accepted', 'cancelled'],
-    accepted: ['picking_up', 'picked_up', 'cancelled'],
-    picking_up: ['picked_up', 'cancelled'],
-    picked_up: ['delivering', 'delivered', 'cancelled'],
-    delivering: ['delivered', 'cancelled'],
+    accepted: ['picked_up', 'cancelled'],
+    picked_up: ['delivered', 'cancelled'],
     delivered: [],
     cancelled: []
   };

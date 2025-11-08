@@ -81,6 +81,17 @@ export default function DriverDashboard() {
     }
   }, [user]);
 
+  // Redirect to appropriate page if has active delivery
+  useEffect(() => {
+    if (activeDelivery) {
+      if (activeDelivery.status === 'accepted') {
+        navigate(`/driver/pickup/${activeDelivery.id}`);
+      } else if (activeDelivery.status === 'picked_up') {
+        navigate(`/driver/delivery/${activeDelivery.id}`);
+      }
+    }
+  }, [activeDelivery, navigate]);
+
   const fetchDriver = async () => {
     const { data, error } = await supabase
       .from('drivers')
@@ -110,7 +121,7 @@ export default function DriverDashboard() {
         .from('deliveries')
         .select('*')
         .eq('driver_id', driverData.id)
-        .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering'])
+        .in('status', ['accepted', 'picked_up'])
         .single();
 
       setActiveDelivery(data);
@@ -159,15 +170,11 @@ export default function DriverDashboard() {
 
       toast({
         title: '✅ Entrega aceita!',
-        description: 'Dirija até o local de coleta',
+        description: 'Indo para a tela de coleta',
       });
       
-      // Navigate to active delivery page
-      navigate(`/driver/delivery/${deliveryId}`);
-      
-      // Refresh data
-      fetchDriver();
-      fetchActiveDelivery();
+      // Navigate to pickup page
+      navigate(`/driver/pickup/${deliveryId}`);
     } catch (error) {
       console.error('Error accepting delivery:', error);
       toast({
@@ -179,30 +186,7 @@ export default function DriverDashboard() {
   };
 
   const completeDelivery = async () => {
-    if (!activeDelivery) return;
-
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        status: 'delivered',
-        delivered_at: new Date().toISOString()
-      })
-      .eq('id', activeDelivery.id);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível concluir a entrega'
-      });
-    } else {
-      toast({
-        title: 'Entrega concluída!',
-        description: 'Parabéns pela entrega realizada'
-      });
-      setActiveDelivery(null);
-      fetchDriver();
-    }
+    // Not used - delivery completion happens in DeliveryInProgress page
   };
 
   if (loading) {
@@ -213,45 +197,7 @@ export default function DriverDashboard() {
     );
   }
 
-  if (activeDelivery) {
-    return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full">
-          <DriverSidebar />
-          <div className="flex-1 flex flex-col">
-            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
-              </div>
-              <NotificationBell />
-            </header>
-
-            <main className="flex-1 p-6 bg-background">
-              <div className="max-w-4xl mx-auto">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Você tem uma entrega ativa</CardTitle>
-                    <CardDescription>Continue sua entrega em andamento</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button onClick={() => navigate(`/driver/delivery/${activeDelivery.id}`)} className="w-full">
-                      <Navigation className="mr-2 h-4 w-4" />
-                      Continuar Entrega
-                    </Button>
-                    <Button onClick={completeDelivery} variant="secondary" className="w-full">
-                      <Package className="mr-2 h-4 w-4" />
-                      Marcar como Entregue
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
-            </main>
-          </div>
-        </div>
-      </SidebarProvider>
-    );
-  }
+  // Active delivery redirect is handled in useEffect above
 
   return (
     <SidebarProvider defaultOpen={false}>
@@ -327,46 +273,52 @@ export default function DriverDashboard() {
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                       <p className="text-sm text-muted-foreground mt-2">Buscando entregas...</p>
                     </div>
-                  ) : availableDeliveries.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Package className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                      <p>Nenhuma entrega disponível no momento</p>
-                      <p className="text-xs mt-1">Novas entregas aparecerão aqui automaticamente</p>
+                   ) : availableDeliveries.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                      <p className="text-muted-foreground font-medium mb-2">Nenhuma entrega disponível no momento</p>
+                      <p className="text-xs text-muted-foreground">Novas entregas aparecerão aqui automaticamente</p>
+                      <Button 
+                        onClick={() => navigate('/driver/map')} 
+                        variant="outline" 
+                        className="mt-4"
+                      >
+                        Ver Mapa de Entregas
+                      </Button>
                     </div>
                    ) : (
                      <div className="space-y-4">
                        {availableDeliveries.map((delivery, index) => (
                         <Card 
                           key={delivery.id}
-                          className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                          className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.01]"
                           style={{ animationDelay: `${index * 100}ms` }}
                         >
                           <CardContent className="pt-6">
                             <div className="flex justify-between items-start mb-4">
-                              <div className="space-y-2 flex-1">
+                              <div className="space-y-3 flex-1">
                                 <div className="flex items-start gap-2">
                                   <Package className="h-4 w-4 text-primary mt-1 shrink-0" />
                                   <div>
-                                    <p className="font-medium">Coleta</p>
+                                    <p className="font-medium text-sm">Coleta</p>
                                     <p className="text-sm text-muted-foreground">{delivery.pickup_address}</p>
                                   </div>
                                 </div>
                                 <div className="flex items-start gap-2">
                                   <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
                                   <div>
-                                    <p className="font-medium">Entrega</p>
+                                    <p className="font-medium text-sm">Entrega</p>
                                     <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
                                   </div>
                                 </div>
                                 {delivery.distanceFromDriver && (
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Badge variant="secondary" className="animate-scale-in">
-                                      {delivery.distanceFromDriver.toFixed(1)} km de você
-                                    </Badge>
-                                  </div>
+                                  <Badge variant="secondary" className="animate-scale-in">
+                                    <Navigation className="h-3 w-3 mr-1" />
+                                    {delivery.distanceFromDriver.toFixed(1)} km de você
+                                  </Badge>
                                 )}
                                 {delivery.description && (
-                                  <p className="text-sm text-muted-foreground">{delivery.description}</p>
+                                  <p className="text-sm text-muted-foreground italic">{delivery.description}</p>
                                 )}
                               </div>
                               <div className="text-right shrink-0 ml-4">
@@ -374,20 +326,25 @@ export default function DriverDashboard() {
                                   R$ {Number(delivery.price).toFixed(2)}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
-                                  {Number(delivery.distance_km).toFixed(1)} km total
+                                  {Number(delivery.distance_km).toFixed(1)} km
                                 </div>
                               </div>
                             </div>
                             <div className="flex items-center justify-between pt-4 border-t">
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock className="h-4 w-4" />
-                                {new Date(delivery.created_at).toLocaleString('pt-BR')}
+                                {new Date(delivery.created_at).toLocaleString('pt-BR', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
                               </div>
                               <Button 
                                 onClick={() => acceptDelivery(delivery.id)}
                                 className="transition-all duration-300 hover:scale-110 active:scale-95"
                               >
-                                Aceitar Entrega
+                                Aceitar Coleta
                               </Button>
                             </div>
                           </CardContent>

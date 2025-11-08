@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Delivery {
   id: string;
+  status: string;
   pickup_address: string;
   delivery_address: string;
   pickup_latitude: number;

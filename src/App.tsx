@@ -23,7 +23,9 @@ import DriverWallet from "./pages/driver/DriverWallet";
 import DriverHistory from "./pages/driver/DriverHistory";
 import DriverProfile from "./pages/driver/DriverProfile";
 import DriverSettings from "./pages/driver/DriverSettings";
-import ActiveDelivery from "./pages/driver/ActiveDelivery";
+import AvailableDeliveries from "./pages/driver/AvailableDeliveries";
+import PickupInProgress from "./pages/driver/PickupInProgress";
+import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -136,6 +138,30 @@ const App = () => (
               }
             />
             <Route
+              path="/driver/available"
+              element={
+                <ProtectedRoute>
+                  <AvailableDeliveries />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/pickup/:deliveryId"
+              element={
+                <ProtectedRoute>
+                  <PickupInProgress />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/driver/delivery/:deliveryId"
+              element={
+                <ProtectedRoute>
+                  <DeliveryInProgress />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/driver/map"
               element={
                 <ProtectedRoute>
@@ -172,14 +198,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DriverSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/driver/delivery/:deliveryId"
-              element={
-                <ProtectedRoute>
-                  <ActiveDelivery />
                 </ProtectedRoute>
               }
             />
