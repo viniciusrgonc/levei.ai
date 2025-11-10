@@ -32,19 +32,38 @@ export const useRealtimeDeliveries = ({
 }: UseRealtimeDeliveriesParams = {}) => {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
+  console.log('useRealtimeDeliveries initialized:', {
+    restaurantId,
+    driverId,
+    showNotifications,
+    callbackTypes: {
+      onUpdate: typeof onUpdate,
+      onInsert: typeof onInsert,
+      onDelete: typeof onDelete
+    }
+  });
+
   useEffect(() => {
-    // Criar canal de realtime
+    // Criar canal de realtime com filtro correto
+    let filter = '';
+    if (restaurantId) {
+      filter = `restaurant_id=eq.${restaurantId}`;
+    } else if (driverId) {
+      filter = `driver_id=eq.${driverId}`;
+    }
+
+    const subscriptionConfig = {
+      event: 'UPDATE' as const,
+      schema: 'public',
+      table: 'deliveries',
+      ...(filter && { filter }),
+    };
+
     const channel = supabase
       .channel('deliveries-changes')
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'deliveries',
-          ...(restaurantId && { filter: `restaurant_id=eq.${restaurantId}` }),
-          ...(driverId && { filter: `driver_id=eq.${driverId}` }),
-        },
+        subscriptionConfig,
         (payload) => {
           console.log('Delivery updated:', payload);
           const delivery = payload.new as DeliveryUpdate;
@@ -84,11 +103,10 @@ export const useRealtimeDeliveries = ({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: 'INSERT' as const,
           schema: 'public',
           table: 'deliveries',
-          ...(restaurantId && { filter: `restaurant_id=eq.${restaurantId}` }),
-          ...(driverId && { filter: `driver_id=eq.${driverId}` }),
+          ...(filter && { filter }),
         },
         (payload) => {
           console.log('Delivery inserted:', payload);
@@ -107,11 +125,10 @@ export const useRealtimeDeliveries = ({
       .on(
         'postgres_changes',
         {
-          event: 'DELETE',
+          event: 'DELETE' as const,
           schema: 'public',
           table: 'deliveries',
-          ...(restaurantId && { filter: `restaurant_id=eq.${restaurantId}` }),
-          ...(driverId && { filter: `driver_id=eq.${driverId}` }),
+          ...(filter && { filter }),
         },
         (payload) => {
           console.log('Delivery deleted:', payload);

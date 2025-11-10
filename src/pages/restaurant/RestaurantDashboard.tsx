@@ -174,8 +174,20 @@ export default function RestaurantDashboard() {
     const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
     const recent = deliveriesWithDriverNames?.slice(0, 5) || [];
 
-    setActiveDeliveries(active);
-    setRecentDeliveries(recent);
+    // Safety checks
+    if (!Array.isArray(active)) {
+      console.error('active deliveries is not an array!', active);
+      setActiveDeliveries([]);
+    } else {
+      setActiveDeliveries(active);
+    }
+
+    if (!Array.isArray(recent)) {
+      console.error('recent deliveries is not an array!', recent);
+      setRecentDeliveries([]);
+    } else {
+      setRecentDeliveries(recent);
+    }
 
     // Calculate stats
     const todayDeliveries = deliveriesWithDriverNames?.filter(d => new Date(d.created_at) >= today) || [];
@@ -186,6 +198,11 @@ export default function RestaurantDashboard() {
   };
 
   const getStatusBadge = (status: string) => {
+    if (!status) {
+      console.error('getStatusBadge: status is undefined');
+      return <Badge variant="secondary">Desconhecido</Badge>;
+    }
+
     const variants = {
       pending: { label: 'Disponível', variant: 'secondary' as const, color: 'text-muted-foreground' },
       accepted: { label: 'Coleta em Andamento', variant: 'default' as const, color: 'text-blue-600' },
@@ -330,7 +347,7 @@ export default function RestaurantDashboard() {
               </div>
 
               {/* Active Deliveries */}
-              {activeDeliveries.length > 0 && (
+              {Array.isArray(activeDeliveries) && activeDeliveries.length > 0 && (
                 <Card className="border-2 border-primary/20">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -426,7 +443,7 @@ export default function RestaurantDashboard() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {recentDeliveries.length === 0 ? (
+                  {!Array.isArray(recentDeliveries) || recentDeliveries.length === 0 ? (
                     <div className="text-center py-12">
                       <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                       <p className="text-muted-foreground mb-4">

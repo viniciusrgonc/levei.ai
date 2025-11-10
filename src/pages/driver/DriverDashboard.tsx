@@ -51,16 +51,20 @@ export default function DriverDashboard() {
     maxDistanceKm: 20,
   });
 
+  // Safety check to ensure deliveries is always an array
+  const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
+
   // Debug log
   useEffect(() => {
     console.log('📊 Dashboard Debug:', {
       driverId: driver?.id,
       isAvailable: driver?.is_available,
       vehicleType: driver?.vehicle_type,
-      availableDeliveriesCount: availableDeliveries.length,
-      deliveries: availableDeliveries
+      availableDeliveriesCount: safeDeliveries.length,
+      deliveriesIsArray: Array.isArray(safeDeliveries),
+      deliveries: safeDeliveries
     });
-  }, [driver, availableDeliveries]);
+  }, [driver, safeDeliveries]);
 
   // Hook de realtime para escutar mudanças nas entregas
   useRealtimeDeliveries({
@@ -152,7 +156,12 @@ export default function DriverDashboard() {
   };
 
   const acceptDelivery = async (deliveryId: string) => {
-    if (!driver?.id) return;
+    if (!driver?.id) {
+      console.error('acceptDelivery: driver.id is undefined');
+      return;
+    }
+
+    console.log('acceptDelivery called:', { deliveryId, driverId: driver.id });
 
     try {
       const { data, error } = await supabase.functions.invoke('accept-delivery', {
@@ -268,12 +277,12 @@ export default function DriverDashboard() {
                     <div className="text-center py-8 text-muted-foreground">
                       Ative sua disponibilidade para ver entregas disponíveis
                     </div>
-                  ) : deliveriesLoading ? (
+                   ) : deliveriesLoading ? (
                     <div className="text-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
                       <p className="text-sm text-muted-foreground mt-2">Buscando entregas...</p>
                     </div>
-                   ) : availableDeliveries.length === 0 ? (
+                   ) : safeDeliveries.length === 0 ? (
                     <div className="text-center py-12">
                       <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
                       <p className="text-muted-foreground font-medium mb-2">Nenhuma entrega disponível no momento</p>
@@ -288,7 +297,7 @@ export default function DriverDashboard() {
                     </div>
                    ) : (
                      <div className="space-y-4">
-                       {availableDeliveries.map((delivery, index) => (
+                       {safeDeliveries.map((delivery, index) => (
                         <Card 
                           key={delivery.id}
                           className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.01]"

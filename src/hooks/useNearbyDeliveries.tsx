@@ -53,6 +53,15 @@ export function useNearbyDeliveries({
     lng: number;
   } | null>(null);
 
+  console.log('useNearbyDeliveries initialized:', {
+    driverId,
+    isAvailable,
+    maxDistanceKm,
+    currentDeliveriesCount: deliveries.length,
+    deliveriesIsArray: Array.isArray(deliveries),
+    loadingType: typeof loading
+  });
+
   const fetchDriverLocation = async () => {
     const { data } = await supabase
       .from('drivers')
@@ -98,10 +107,24 @@ export function useNearbyDeliveries({
         .sort((a, b) => a.distanceFromDriver! - b.distanceFromDriver!);
 
       console.log('📍 Nearby deliveries:', nearbyDeliveries.length);
-      setDeliveries(nearbyDeliveries);
+      
+      // Safety check before setting state
+      if (!Array.isArray(nearbyDeliveries)) {
+        console.error('nearbyDeliveries is not an array!', nearbyDeliveries);
+        setDeliveries([]);
+      } else {
+        setDeliveries(nearbyDeliveries);
+      }
     } else if (data) {
       console.log('⚠️ No driver location, showing all deliveries');
-      setDeliveries(data);
+      
+      // Safety check before setting state
+      if (!Array.isArray(data)) {
+        console.error('data is not an array!', data);
+        setDeliveries([]);
+      } else {
+        setDeliveries(data);
+      }
     }
     setLoading(false);
   };
@@ -143,5 +166,9 @@ export function useNearbyDeliveries({
     }
   }, [isAvailable, driverLocation]);
 
-  return { deliveries, loading, driverLocation };
+  return { 
+    deliveries: Array.isArray(deliveries) ? deliveries : [], 
+    loading: typeof loading === 'boolean' ? loading : false, 
+    driverLocation 
+  };
 }
