@@ -95,16 +95,14 @@ export default function RestaurantHistory() {
 
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: { label: 'Aguardando', variant: 'secondary' as const },
-      accepted: { label: 'Aceita', variant: 'default' as const },
-      picking_up: { label: 'Coletando', variant: 'default' as const },
-      picked_up: { label: 'Coletada', variant: 'default' as const },
-      delivering: { label: 'Em Rota', variant: 'default' as const },
-      delivered: { label: 'Entregue', variant: 'default' as const },
-      cancelled: { label: 'Cancelada', variant: 'destructive' as const },
+      pending: { label: 'Disponível', variant: 'secondary' as const, color: 'bg-muted text-muted-foreground' },
+      accepted: { label: 'Coleta em Andamento', variant: 'default' as const, color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+      picked_up: { label: 'Entrega em Andamento', variant: 'default' as const, color: 'bg-orange-500/10 text-orange-600 border-orange-500/20' },
+      delivered: { label: 'Entregue', variant: 'default' as const, color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+      cancelled: { label: 'Cancelada', variant: 'destructive' as const, color: '' },
     };
-    const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const, color: '' };
+    return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>;
   };
 
   const getStats = () => {
@@ -191,11 +189,9 @@ export default function RestaurantHistory() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos os Status</SelectItem>
-                      <SelectItem value="pending">Aguardando</SelectItem>
-                      <SelectItem value="accepted">Aceita</SelectItem>
-                      <SelectItem value="picking_up">Coletando</SelectItem>
-                      <SelectItem value="picked_up">Coletada</SelectItem>
-                      <SelectItem value="delivering">Em Rota</SelectItem>
+                      <SelectItem value="pending">Disponível</SelectItem>
+                      <SelectItem value="accepted">Coleta em Andamento</SelectItem>
+                      <SelectItem value="picked_up">Entrega em Andamento</SelectItem>
                       <SelectItem value="delivered">Entregue</SelectItem>
                       <SelectItem value="cancelled">Cancelada</SelectItem>
                     </SelectContent>
@@ -216,8 +212,12 @@ export default function RestaurantHistory() {
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {filteredDeliveries.map((delivery) => (
-                        <Card key={delivery.id}>
+                      {filteredDeliveries.map((delivery, index) => (
+                        <Card 
+                          key={delivery.id}
+                          className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.01]"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <CardContent className="pt-6">
                             <div className="flex flex-col md:flex-row justify-between gap-4">
                               <div className="space-y-3 flex-1">

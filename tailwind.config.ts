@@ -60,6 +60,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        status: {
+          pending: "hsl(var(--status-pending))",
+          accepted: "hsl(var(--status-accepted))",
+          "in-progress": "hsl(var(--status-in-progress))",
+          delivered: "hsl(var(--status-delivered))",
+          cancelled: "hsl(var(--status-cancelled))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -56,20 +56,12 @@ export const useRealtimeDeliveries = ({
                 title: 'Entregador a caminho!',
                 description: 'Um entregador aceitou sua entrega e está indo buscar o pedido.',
               },
-              picking_up: {
-                title: 'Coletando pedido!',
-                description: 'O entregador está coletando o pedido no local.',
-              },
               picked_up: {
                 title: 'Pedido coletado!',
                 description: 'O entregador coletou o pedido e está a caminho da entrega.',
               },
-              delivering: {
-                title: 'A caminho!',
-                description: 'O entregador está a caminho do destino.',
-              },
               delivered: {
-                title: 'Entrega concluída!',
+                title: 'Entrega concluída! ✨',
                 description: 'O pedido foi entregue com sucesso.',
               },
               cancelled: {

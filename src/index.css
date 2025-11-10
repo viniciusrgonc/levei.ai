@@ -46,6 +46,13 @@ All colors MUST be HSL.
     --shadow-glow: 0 0 40px hsl(29 100% 50% / 0.3);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
+    /* Status Colors - Delivery System */
+    --status-pending: 240 5% 64%;
+    --status-accepted: 217 91% 60%;
+    --status-in-progress: 27 96% 61%;
+    --status-delivered: 142 76% 36%;
+    --status-cancelled: 0 84% 60%;
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 10% 10%;
     --sidebar-primary: 29 100% 50%;
@@ -84,6 +91,13 @@ All colors MUST be HSL.
     --border: 240 4% 16%;
     --input: 240 4% 16%;
     --ring: 29 100% 50%;
+
+    /* Status Colors - Delivery System (Dark Mode) */
+    --status-pending: 240 5% 64%;
+    --status-accepted: 217 91% 60%;
+    --status-in-progress: 27 96% 61%;
+    --status-delivered: 142 76% 36%;
+    --status-cancelled: 0 84% 60%;
 
     --sidebar-background: 240 10% 8%;
     --sidebar-foreground: 0 0% 98%;

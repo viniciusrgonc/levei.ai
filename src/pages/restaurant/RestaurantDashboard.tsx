@@ -170,8 +170,8 @@ export default function RestaurantDashboard() {
       })
     );
 
-    // Split active and recent
-    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering'].includes(d.status)) || [];
+    // Split active and recent (using correct status values)
+    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
     const recent = deliveriesWithDriverNames?.slice(0, 5) || [];
 
     setActiveDeliveries(active);
@@ -185,51 +185,23 @@ export default function RestaurantDashboard() {
     setStats({ active: active.length, today: todayCount, todaySpent });
   };
 
-  const markAsPickedUp = async (deliveryId: string) => {
-    const { error } = await supabase
-      .from('deliveries')
-      .update({
-        status: 'picked_up',
-        picked_up_at: new Date().toISOString()
-      })
-      .eq('id', deliveryId);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível confirmar a coleta'
-      });
-    } else {
-      toast({
-        title: 'Coleta confirmada!',
-        description: 'O pedido foi marcado como coletado'
-      });
-      fetchDeliveries();
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     const variants = {
-      pending: { label: 'Aguardando', variant: 'secondary' as const, color: 'text-yellow-600' },
-      accepted: { label: 'Aceita', variant: 'default' as const, color: 'text-blue-600' },
-      picking_up: { label: 'Coletando', variant: 'default' as const, color: 'text-cyan-600' },
-      picked_up: { label: 'Coletada', variant: 'default' as const, color: 'text-purple-600' },
-      delivering: { label: 'Em Rota', variant: 'default' as const, color: 'text-indigo-600' },
+      pending: { label: 'Disponível', variant: 'secondary' as const, color: 'text-muted-foreground' },
+      accepted: { label: 'Coleta em Andamento', variant: 'default' as const, color: 'text-blue-600' },
+      picked_up: { label: 'Entrega em Andamento', variant: 'default' as const, color: 'text-orange-600' },
       delivered: { label: 'Entregue', variant: 'default' as const, color: 'text-green-600' },
-      cancelled: { label: 'Cancelada', variant: 'destructive' as const, color: 'text-red-600' },
+      cancelled: { label: 'Cancelada', variant: 'destructive' as const, color: 'text-destructive' },
     };
     const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const, color: '' };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>;
   };
 
   const getStatusIcon = (status: string) => {
     const icons = {
       pending: '🕐',
-      accepted: '✅',
-      picking_up: '🏃',
+      accepted: '🚗',
       picked_up: '📦',
-      delivering: '🚚',
       delivered: '✨',
       cancelled: '❌',
     };
@@ -379,10 +351,11 @@ export default function RestaurantDashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {activeDeliveries.map((delivery) => (
+                      {activeDeliveries.map((delivery, index) => (
                         <div
                           key={delivery.id}
-                          className="p-4 border-2 rounded-lg hover:border-primary/50 transition-all cursor-pointer bg-gradient-to-r from-background to-primary/5"
+                          className="p-4 border-2 rounded-lg hover:border-primary/50 transition-all cursor-pointer bg-gradient-to-r from-background to-primary/5 animate-fade-in hover:shadow-lg hover:scale-[1.01]"
+                          style={{ animationDelay: `${index * 100}ms` }}
                           onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                         >
                           <div className="flex items-start justify-between gap-4">
@@ -419,37 +392,23 @@ export default function RestaurantDashboard() {
                                  )}
                               </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-xl font-bold text-primary">
-                                R$ {Number(delivery.price).toFixed(2)}
-                              </p>
-                              <div className="flex flex-col gap-2 mt-2">
-                                {delivery.status === 'accepted' && (
-                                  <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      markAsPickedUp(delivery.id);
-                                    }}
-                                  >
-                                    <Package className="h-3 w-3 mr-1" />
-                                    Coletado
-                                  </Button>
-                                )}
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/restaurant/delivery/${delivery.id}`);
-                                  }}
-                                >
-                                  <Eye className="h-3 w-3 mr-1" />
-                                  Rastrear
-                                </Button>
-                              </div>
-                            </div>
+                             <div className="text-right flex-shrink-0">
+                               <p className="text-xl font-bold text-primary">
+                                 R$ {Number(delivery.price).toFixed(2)}
+                               </p>
+                               <Button
+                                 size="sm"
+                                 variant="outline"
+                                 onClick={(e) => {
+                                   e.stopPropagation();
+                                   navigate(`/restaurant/delivery/${delivery.id}`);
+                                 }}
+                                 className="mt-2"
+                               >
+                                 <Eye className="h-3 w-3 mr-1" />
+                                 Rastrear
+                               </Button>
+                             </div>
                           </div>
                         </div>
                       ))}
@@ -480,10 +439,11 @@ export default function RestaurantDashboard() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {recentDeliveries.map((delivery) => (
+                      {recentDeliveries.map((delivery, index) => (
                         <div
                           key={delivery.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-all cursor-pointer animate-fade-in hover:shadow-md"
+                          style={{ animationDelay: `${index * 80}ms` }}
                           onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                         >
                           <div className="flex items-start gap-3 flex-1 min-w-0">

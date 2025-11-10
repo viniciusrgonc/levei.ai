@@ -137,15 +137,13 @@ export default function DeliveryTracking() {
 
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; icon: string; color: string }> = {
-      pending: { label: 'Aguardando Entregador', icon: '🕐', color: 'text-yellow-500' },
-      accepted: { label: 'Aceito - Indo Buscar', icon: '✅', color: 'text-blue-500' },
-      picking_up: { label: 'Coletando Pedido', icon: '🏃', color: 'text-cyan-500' },
-      picked_up: { label: 'Pedido Coletado', icon: '📦', color: 'text-purple-500' },
-      delivering: { label: 'A Caminho da Entrega', icon: '🚚', color: 'text-indigo-500' },
+      pending: { label: 'Disponível - Aguardando Entregador', icon: '🕐', color: 'text-muted-foreground' },
+      accepted: { label: 'Coleta em Andamento', icon: '🚗', color: 'text-blue-600' },
+      picked_up: { label: 'Entrega em Andamento', icon: '📦', color: 'text-orange-600' },
       delivered: { label: 'Entregue', icon: '✨', color: 'text-green-600' },
-      cancelled: { label: 'Cancelado', icon: '❌', color: 'text-red-500' }
+      cancelled: { label: 'Cancelado', icon: '❌', color: 'text-destructive' }
     };
-    return statusMap[status] || { label: status, icon: '❓', color: 'text-gray-500' };
+    return statusMap[status] || { label: status, icon: '❓', color: 'text-muted-foreground' };
   };
 
   const getTimeline = () => {
@@ -191,7 +189,7 @@ export default function DeliveryTracking() {
 
   const statusInfo = getStatusInfo(delivery.status);
   const timeline = getTimeline();
-  const isActive = ['accepted', 'picking_up', 'picked_up', 'delivering'].includes(delivery.status);
+  const isActive = ['accepted', 'picked_up'].includes(delivery.status);
 
   return (
     <SidebarProvider>
@@ -283,7 +281,7 @@ export default function DeliveryTracking() {
               )}
 
               {/* Status Card */}
-              <Card className="border-2">
+              <Card className="border-2 animate-fade-in shadow-lg">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -314,7 +312,7 @@ export default function DeliveryTracking() {
 
               <div className="grid md:grid-cols-2 gap-6">
                 {/* Addresses */}
-                <Card>
+                <Card className="animate-fade-in" style={{ animationDelay: '100ms' }}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <MapPin className="h-5 w-5" />
@@ -349,7 +347,7 @@ export default function DeliveryTracking() {
                 </Card>
 
                 {/* Driver Info */}
-                <Card>
+                <Card className="animate-fade-in" style={{ animationDelay: '200ms' }}>
                   <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                       <User className="h-5 w-5" />
@@ -421,7 +419,7 @@ export default function DeliveryTracking() {
               </div>
 
               {/* Timeline */}
-              <Card>
+              <Card className="animate-fade-in" style={{ animationDelay: '300ms' }}>
                 <CardHeader>
                   <CardTitle className="text-lg">Linha do Tempo</CardTitle>
                   <CardDescription>Acompanhe o progresso da entrega</CardDescription>
