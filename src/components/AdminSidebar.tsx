@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -10,7 +10,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
+  SidebarHeader,
 } from '@/components/ui/sidebar';
+import { Badge } from '@/components/ui/badge';
 
 const menuItems = [
   {
@@ -54,6 +56,17 @@ export function AdminSidebar() {
 
   return (
     <Sidebar className={state === 'collapsed' ? 'w-14' : 'w-60'} collapsible="icon">
+      <SidebarHeader className="border-b border-border pb-4">
+        <div className="flex items-center gap-2 px-4 py-2">
+          <Shield className="h-5 w-5 text-primary" />
+          {state !== 'collapsed' && (
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-foreground">Administrador</span>
+              <Badge variant="secondary" className="w-fit text-xs">Acesso Total</Badge>
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
       <SidebarContent className="text-foreground font-sans">
         <SidebarGroup>
           <SidebarGroupLabel className="text-foreground font-semibold">Administração</SidebarGroupLabel>

@@ -103,29 +103,10 @@ export default function AdminDashboard() {
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   useEffect(() => {
-    checkAdminAccess();
+    if (user) {
+      loadData();
+    }
   }, [user]);
-
-  const checkAdminAccess = async () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
-
-    const { data: roleData } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (roleData?.role !== 'admin') {
-      toast.error('Acesso negado - Apenas administradores');
-      navigate('/');
-      return;
-    }
-
-    loadData();
-  };
 
   const loadData = async () => {
     try {
