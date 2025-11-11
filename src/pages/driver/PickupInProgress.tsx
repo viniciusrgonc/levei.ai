@@ -16,6 +16,7 @@ import { getStatusConfig } from '@/lib/deliveryStatus';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
+import { toast } from '@/hooks/use-toast';
 
 // Fix Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -110,10 +111,15 @@ export default function PickupInProgress() {
 
   useEffect(() => {
     if (deliveryId && user) {
-      fetchDelivery();
       fetchDriver();
     }
   }, [deliveryId, user]);
+
+  useEffect(() => {
+    if (driverId && deliveryId) {
+      fetchDelivery();
+    }
+  }, [driverId, deliveryId]);
 
   const fetchDriver = async () => {
     const { data } = await supabase
@@ -128,15 +134,51 @@ export default function PickupInProgress() {
   };
 
   const fetchDelivery = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('deliveries')
       .select('*')
       .eq('id', deliveryId)
       .single();
 
-    if (data) {
-      setDelivery(data);
+    if (error || !data) {
+      toast({
+        title: 'Erro',
+        description: 'Entrega não encontrada',
+        variant: 'destructive',
+      });
+      navigate('/driver/dashboard');
+      return;
     }
+
+    // Validar se a entrega está atribuída ao motorista atual
+    if (!data.driver_id || data.driver_id !== driverId) {
+      toast({
+        title: 'Acesso Negado',
+        description: 'Esta entrega não está atribuída a você',
+        variant: 'destructive',
+      });
+      navigate('/driver/dashboard');
+      return;
+    }
+
+    // Validar se a entrega está no status correto (accepted)
+    if (data.status !== 'accepted') {
+      toast({
+        title: 'Status Incorreto',
+        description: data.status === 'picked_up' 
+          ? 'Esta entrega já foi coletada. Vá para a página de entrega.' 
+          : 'Esta entrega não está no status correto para coleta.',
+        variant: 'destructive',
+      });
+      if (data.status === 'picked_up') {
+        navigate(`/driver/delivery/${deliveryId}`);
+      } else {
+        navigate('/driver/dashboard');
+      }
+      return;
+    }
+
+    setDelivery(data);
     setLoading(false);
   };
 

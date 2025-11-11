@@ -117,10 +117,15 @@ export default function DeliveryInProgress() {
 
   useEffect(() => {
     if (deliveryId && user) {
-      fetchDelivery();
       fetchDriver();
     }
   }, [deliveryId, user]);
+
+  useEffect(() => {
+    if (driverId && deliveryId) {
+      fetchDelivery();
+    }
+  }, [driverId, deliveryId]);
 
   const fetchDriver = async () => {
     const { data } = await supabase
@@ -135,15 +140,45 @@ export default function DeliveryInProgress() {
   };
 
   const fetchDelivery = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('deliveries')
       .select('*')
       .eq('id', deliveryId)
       .single();
 
-    if (data) {
-      setDelivery(data);
+    if (error || !data) {
+      toast({
+        title: 'Erro',
+        description: 'Entrega não encontrada',
+        variant: 'destructive',
+      });
+      navigate('/driver/dashboard');
+      return;
     }
+
+    // Validar se a entrega está atribuída ao motorista atual
+    if (!data.driver_id || data.driver_id !== driverId) {
+      toast({
+        title: 'Acesso Negado',
+        description: 'Esta entrega não está atribuída a você',
+        variant: 'destructive',
+      });
+      navigate('/driver/dashboard');
+      return;
+    }
+
+    // Validar se a entrega está no status correto (picked_up)
+    if (data.status !== 'picked_up') {
+      toast({
+        title: 'Status Incorreto',
+        description: 'Esta entrega ainda não foi coletada. Vá para a página de coleta primeiro.',
+        variant: 'destructive',
+      });
+      navigate(`/driver/pickup/${deliveryId}`);
+      return;
+    }
+
+    setDelivery(data);
     setLoading(false);
   };
 
