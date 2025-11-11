@@ -96,7 +96,10 @@ export default function PickupInProgress() {
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setCurrentPosition([position.coords.latitude, position.coords.longitude]);
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        console.log('[Geo] watchPosition success:', { lat, lng });
+        setCurrentPosition([lat, lng]);
       },
       (error) => console.error('Error getting location:', error),
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
@@ -234,7 +237,7 @@ export default function PickupInProgress() {
                         />
                         
                         <MapBounds 
-                          bounds={route?.coordinates.length ? route.coordinates : [currentPosition, destination]} 
+                          bounds={route?.coordinates?.length ? route.coordinates : [currentPosition, destination]} 
                         />
                         
                         <Marker position={currentPosition} icon={driverIcon}>
