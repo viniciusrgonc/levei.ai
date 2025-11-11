@@ -152,9 +152,9 @@ export default function DeliveryInProgress() {
     await completeDelivery(deliveryId, driverId, Number(delivery.price));
   };
 
-  const openInMaps = () => {
-    if (!delivery) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}`;
+  const openRouteInMaps = () => {
+    if (!delivery || !currentPosition) return;
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentPosition[0]},${currentPosition[1]}&destination=${delivery.delivery_latitude},${delivery.delivery_longitude}`;
     window.open(url, '_blank');
   };
 
@@ -273,12 +273,13 @@ export default function DeliveryInProgress() {
                     </div>
                     
                     <Button 
-                      onClick={openInMaps} 
+                      onClick={openRouteInMaps} 
                       variant="outline" 
                       className="w-full mt-4"
+                      disabled={!currentPosition}
                     >
                       <Navigation className="mr-2 h-4 w-4" />
-                      Abrir no Google Maps
+                      Abrir Rota no GPS
                     </Button>
                   </CardContent>
                 </Card>

@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package } from 'lucide-react';
+import { Package, MapPin } from 'lucide-react';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
 import { DeliveryCard } from '@/components/DeliveryCard';
@@ -58,6 +58,11 @@ export default function AvailableDeliveries() {
   const handleAcceptDelivery = async (deliveryId: string) => {
     if (!driver?.id) return;
     await acceptDelivery(deliveryId, driver.id);
+  };
+
+  const openPickupLocation = (latitude: number, longitude: number) => {
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    window.open(url, '_blank');
   };
 
   return (
@@ -115,16 +120,31 @@ export default function AvailableDeliveries() {
                           key={delivery.id}
                           delivery={delivery}
                           actionButton={
-                            <Button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAcceptDelivery(delivery.id);
-                              }}
-                              disabled={acceptingDelivery}
-                              className="transition-all duration-300 hover:scale-110 active:scale-95"
-                            >
-                              Aceitar Coleta
-                            </Button>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openPickupLocation(delivery.pickup_latitude, delivery.pickup_longitude);
+                                }}
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 min-w-[140px]"
+                              >
+                                <MapPin className="mr-2 h-4 w-4" />
+                                Ver Local
+                              </Button>
+                              <Button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAcceptDelivery(delivery.id);
+                                }}
+                                disabled={acceptingDelivery}
+                                size="sm"
+                                className="flex-1 min-w-[140px] transition-all duration-300 hover:scale-105 active:scale-95"
+                              >
+                                Aceitar Coleta
+                              </Button>
+                            </div>
                           }
                           onNavigate={() => {}}
                         />

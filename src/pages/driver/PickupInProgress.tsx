@@ -145,9 +145,9 @@ export default function PickupInProgress() {
     await pickupDelivery(deliveryId, driverId);
   };
 
-  const openInMaps = () => {
-    if (!delivery) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${delivery.pickup_latitude},${delivery.pickup_longitude}`;
+  const openRouteInMaps = () => {
+    if (!delivery || !currentPosition) return;
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentPosition[0]},${currentPosition[1]}&destination=${delivery.pickup_latitude},${delivery.pickup_longitude}`;
     window.open(url, '_blank');
   };
 
@@ -260,12 +260,13 @@ export default function PickupInProgress() {
                     </div>
                     
                     <Button 
-                      onClick={openInMaps} 
+                      onClick={openRouteInMaps} 
                       variant="outline" 
                       className="w-full mt-4"
+                      disabled={!currentPosition}
                     >
                       <Navigation className="mr-2 h-4 w-4" />
-                      Abrir no Google Maps
+                      Abrir Rota no GPS
                     </Button>
                   </CardContent>
                 </Card>
