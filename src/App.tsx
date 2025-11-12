@@ -28,6 +28,11 @@ import AvailableDeliveries from "./pages/driver/AvailableDeliveries";
 import PickupInProgress from "./pages/driver/PickupInProgress";
 import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminDrivers from "./pages/admin/AdminDrivers";
+import AdminRestaurants from "./pages/admin/AdminRestaurants";
+import AdminDeliveries from "./pages/admin/AdminDeliveries";
+import AdminDisputes from "./pages/admin/AdminDisputes";
+import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -207,6 +212,46 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/drivers"
+              element={
+                <AdminRoute>
+                  <AdminDrivers />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/restaurants"
+              element={
+                <AdminRoute>
+                  <AdminRestaurants />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/deliveries"
+              element={
+                <AdminRoute>
+                  <AdminDeliveries />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/disputes"
+              element={
+                <AdminRoute>
+                  <AdminDisputes />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/settings"
+              element={
+                <AdminRoute>
+                  <AdminSettings />
                 </AdminRoute>
               }
             />
