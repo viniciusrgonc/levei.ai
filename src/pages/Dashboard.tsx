@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { useUserSetup, useAuthRedirect } from '@/hooks/useUserSetup';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,46 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { LogOut, Store, Bike, Shield } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-type UserRole = 'admin' | 'restaurant' | 'driver' | null;
-
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchUserRole = async () => {
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching role:', error);
-      }
-
-      const userRole = data?.role as UserRole || null;
-      setRole(userRole);
-      
-      // Redirect to specific dashboard if user has role
-      if (userRole === 'restaurant') {
-        navigate('/restaurant/dashboard');
-      } else if (userRole === 'driver') {
-        navigate('/driver/dashboard');
-      } else if (userRole === 'admin') {
-        // Admin dashboard route (to be implemented)
-        navigate('/admin/dashboard');
-      } else {
-        setLoading(false);
-      }
-    };
-
-    fetchUserRole();
-  }, [user, navigate]);
+  const { role, loading } = useUserSetup();
+  useAuthRedirect(); // Handle automatic redirects for users with roles
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -60,7 +27,7 @@ export default function Dashboard() {
 
   const selectRole = async (selectedRole: 'restaurant' | 'driver') => {
     if (!user) return;
-    setLoading(true);
+    setSubmitting(true);
 
     const { error } = await supabase
       .from('user_roles')
@@ -72,24 +39,19 @@ export default function Dashboard() {
         title: 'Erro',
         description: 'Não foi possível selecionar o perfil'
       });
+      setSubmitting(false);
     } else {
-      setRole(selectedRole);
       toast({
         title: 'Perfil selecionado!',
         description: `Você agora é um ${selectedRole === 'restaurant' ? 'solicitante' : 'entregador'}`
       });
       
-      // Redirect based on role
-      if (selectedRole === 'restaurant') {
-        navigate('/restaurant/setup');
-      } else {
-        navigate('/driver/setup');
-      }
+      // Redirect will be handled by useAuthRedirect hook
+      // which will detect the new role and redirect appropriately
     }
-
-    setLoading(false);
   };
 
+  // Show loading while checking user setup
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -98,7 +60,17 @@ export default function Dashboard() {
     );
   }
 
-  // If no role, show role selection
+  // If user has a role, useAuthRedirect will handle navigation
+  // This page should only be shown when user has no role
+  if (role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show role selection for users without a role
   if (!role) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4">
@@ -113,7 +85,7 @@ export default function Dashboard() {
           <div className="grid md:grid-cols-2 gap-6">
             <Card 
               className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in hover:border-primary/50"
-              onClick={() => selectRole('restaurant')}
+              onClick={() => !submitting && selectRole('restaurant')}
               style={{ animationDelay: '100ms' }}
             >
               <CardHeader>
@@ -137,7 +109,7 @@ export default function Dashboard() {
 
             <Card 
               className="cursor-pointer hover:shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 animate-fade-in hover:border-primary/50"
-              onClick={() => selectRole('driver')}
+              onClick={() => !submitting && selectRole('driver')}
               style={{ animationDelay: '200ms' }}
             >
               <CardHeader>
