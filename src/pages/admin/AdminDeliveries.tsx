@@ -99,7 +99,7 @@ export default function AdminDeliveries() {
           if (delivery.driver_id) {
             const { data: driverData } = await supabase
               .from('drivers')
-              .select('profiles:user_id(full_name)')
+              .select('profiles!drivers_user_id_fkey(full_name)')
               .eq('id', delivery.driver_id)
               .single();
             
