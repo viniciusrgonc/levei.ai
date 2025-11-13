@@ -122,7 +122,7 @@ export default function DeliveryTracking() {
       .from('drivers')
       .select(`
         *,
-        profiles:user_id (
+        profiles!drivers_user_id_fkey (
           full_name,
           phone
         )

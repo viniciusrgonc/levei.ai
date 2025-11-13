@@ -119,7 +119,7 @@ export default function AdminDashboard() {
           .from('drivers')
           .select(`
             *,
-            profiles:user_id (
+            profiles!drivers_user_id_fkey (
               full_name,
               phone
             )
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
           .from('restaurants')
           .select(`
             *,
-            profiles:user_id (
+            profiles!restaurants_user_id_fkey (
               phone
             )
           `),
