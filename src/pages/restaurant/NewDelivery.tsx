@@ -160,6 +160,26 @@ export default function NewDelivery() {
     setLoading(true);
 
     try {
+      // Verificar saldo antes de criar entrega
+      const deliveryPrice = parseFloat(customPrice);
+      const { data: restaurantData, error: balanceError } = await supabase
+        .from('restaurants')
+        .select('wallet_balance')
+        .eq('id', restaurant.id)
+        .single();
+
+      if (balanceError) throw balanceError;
+
+      if (restaurantData.wallet_balance < deliveryPrice) {
+        toast({
+          variant: 'destructive',
+          title: 'Saldo insuficiente',
+          description: `Você precisa de R$ ${deliveryPrice.toFixed(2)} mas tem apenas R$ ${restaurantData.wallet_balance.toFixed(2)}. Adicione saldo para continuar.`
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('deliveries')
         .insert([{
@@ -174,7 +194,7 @@ export default function NewDelivery() {
           recipient_phone: recipientPhone,
           description: description || null,
           distance_km: calculatedDistance!,
-          price: parseFloat(customPrice),
+          price: deliveryPrice,
           vehicle_category: selectedVehicleCategory as any,
           status: 'pending'
         }])

@@ -120,33 +120,95 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Create transaction record for driver earnings
-    const { error: transactionError } = await supabaseClient
-      .from('transactions')
-      .insert({
+    // Calculate platform fee (20%) and driver earnings (80%)
+    const platformFee = delivery.price * 0.20
+    const driverEarnings = delivery.price * 0.80
+
+    // Get current driver balance
+    const { data: driverBalance } = await supabaseClient
+      .from('drivers')
+      .select('earnings_balance')
+      .eq('id', driver_id)
+      .single()
+
+    // Update driver earnings balance
+    const { error: driverBalanceError } = await supabaseClient
+      .from('drivers')
+      .update({
+        earnings_balance: (driverBalance?.earnings_balance || 0) + driverEarnings
+      })
+      .eq('id', driver_id)
+
+    if (driverBalanceError) {
+      console.error('Error updating driver balance:', driverBalanceError)
+    }
+
+    // Get current restaurant balance
+    const { data: restaurantBalance } = await supabaseClient
+      .from('restaurants')
+      .select('wallet_balance')
+      .eq('id', delivery.restaurant_id)
+      .single()
+
+    // Deduct from restaurant wallet
+    const { error: restaurantBalanceError } = await supabaseClient
+      .from('restaurants')
+      .update({
+        wallet_balance: (restaurantBalance?.wallet_balance || 0) - delivery.price
+      })
+      .eq('id', delivery.restaurant_id)
+
+    if (restaurantBalanceError) {
+      console.error('Error updating restaurant balance:', restaurantBalanceError)
+    }
+
+    // Create transaction records
+    const transactions = [
+      {
         driver_id: driver_id,
         delivery_id: delivery_id,
+        restaurant_id: delivery.restaurant_id,
         amount: delivery.price,
+        driver_earnings: driverEarnings,
+        platform_fee: platformFee,
         type: 'earning',
         description: 'Pagamento de entrega concluída'
-      })
+      },
+      {
+        restaurant_id: delivery.restaurant_id,
+        delivery_id: delivery_id,
+        amount: -delivery.price,
+        type: 'payment',
+        description: 'Pagamento de entrega realizada'
+      },
+      {
+        delivery_id: delivery_id,
+        amount: platformFee,
+        type: 'platform_fee',
+        description: 'Taxa da plataforma (20%)'
+      }
+    ]
+
+    const { error: transactionError } = await supabaseClient
+      .from('transactions')
+      .insert(transactions)
 
     if (transactionError) {
-      console.error('Error creating transaction:', transactionError)
+      console.error('Error creating transactions:', transactionError)
     }
 
     // Update driver total deliveries count
-    const { data: driverData } = await supabaseClient
+    const { data: driverStats } = await supabaseClient
       .from('drivers')
       .select('total_deliveries')
       .eq('id', driver_id)
       .single()
 
-    if (driverData) {
+    if (driverStats) {
       await supabaseClient
         .from('drivers')
         .update({ 
-          total_deliveries: (driverData.total_deliveries || 0) + 1
+          total_deliveries: (driverStats.total_deliveries || 0) + 1
         })
         .eq('id', driver_id)
     }
