@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { ArrowUpCircle, ArrowDownCircle, Wallet, DollarSign } from 'lucide-react';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
-import { Wallet, TrendingUp, TrendingDown, Clock, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useAuth } from '@/lib/auth';
+import { supabase } from '@/integrations/supabase/client';
+import { useAddFunds } from '@/hooks/useAddFunds';
+import { toast } from '@/hooks/use-toast';
 
 interface Transaction {
   id: string;
@@ -17,77 +22,138 @@ interface Transaction {
 }
 
 export default function RestaurantWallet() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (user) {
+  const [addAmount, setAddAmount] = useState('');
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const { addFunds, loading: addingFunds } = useAddFunds({
+    onSuccess: (newBalance) => {
+      setBalance(newBalance);
+      setAddAmount('');
       fetchWalletData();
     }
-  }, [user]);
+  });
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    fetchWalletData();
+  }, [user, navigate]);
 
   const fetchWalletData = async () => {
-    // Mock data for now
-    setBalance(1250.50);
-    setTransactions([
-      {
-        id: '1',
-        amount: -45.00,
-        type: 'delivery',
-        description: 'Pagamento entrega #1234',
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        amount: -38.50,
-        type: 'delivery',
-        description: 'Pagamento entrega #1233',
-        created_at: new Date(Date.now() - 86400000).toISOString(),
-      },
-      {
-        id: '3',
-        amount: 500.00,
-        type: 'deposit',
-        description: 'Recarga de saldo',
-        created_at: new Date(Date.now() - 172800000).toISOString(),
-      },
-    ]);
-    setLoading(false);
+    if (!user) return;
+
+    try {
+      setLoading(true);
+
+      const { data: restaurant, error: restaurantError } = await supabase
+        .from('restaurants')
+        .select('id, wallet_balance')
+        .eq('user_id', user.id)
+        .single();
+
+      if (restaurantError) throw restaurantError;
+
+      setRestaurantId(restaurant.id);
+      setBalance(restaurant.wallet_balance || 0);
+
+      const { data: transactionsData, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('restaurant_id', restaurant.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (transactionsError) throw transactionsError;
+
+      setTransactions(transactionsData || []);
+    } catch (error) {
+      console.error('Error fetching wallet data:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar os dados da carteira',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stats = {
-    thisMonth: -245.80,
-    deliveries: 12,
-    average: 20.48,
+  const handleAddFunds = async () => {
+    const amount = parseFloat(addAmount);
+    
+    if (!restaurantId) {
+      toast({
+        title: 'Erro',
+        description: 'Restaurante não encontrado',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: 'Valor inválido',
+        description: 'Por favor, insira um valor maior que zero',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    await addFunds(restaurantId, amount);
+  };
+
+  const getTransactionIcon = (type: string) => {
+    if (type === 'add_funds') {
+      return <ArrowUpCircle className="h-5 w-5 text-green-500" />;
+    }
+    return <ArrowDownCircle className="h-5 w-5 text-red-500" />;
+  };
+
+  const formatAmount = (amount: number, type: string) => {
+    const value = Math.abs(amount);
+    const prefix = type === 'add_funds' ? '+' : '';
+    return `${prefix}R$ ${value.toFixed(2)}`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-4 text-muted-foreground">Carregando...</p>
+            </div>
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <RestaurantSidebar />
+        
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
+          <header className="h-16 border-b flex items-center justify-between px-6 bg-primary">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-              <h1 className="text-xl font-bold text-primary-foreground">Carteira & Saldo</h1>
+              <h1 className="text-xl font-bold text-primary-foreground">Carteira</h1>
             </div>
             <NotificationBell />
           </header>
 
-          <main className="flex-1 p-6 bg-background overflow-auto animate-fade-in">
-            <div className="max-w-7xl mx-auto space-y-6">
-              {/* Balance Card */}
-              <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground animate-scale-in hover:shadow-2xl transition-all duration-300">
+          <main className="flex-1 overflow-y-auto p-6 bg-background">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Wallet className="h-5 w-5" />
@@ -95,96 +161,93 @@ export default function RestaurantWallet() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-4xl font-bold mb-2">
+                  <div className="text-4xl font-bold">
                     R$ {balance.toFixed(2)}
                   </div>
-                  <p className="text-primary-foreground/80 text-sm">
+                  <p className="text-primary-foreground/80 text-sm mt-2">
                     Disponível para pagamento de entregas
                   </p>
                 </CardContent>
               </Card>
 
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-105">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <TrendingDown className="h-4 w-4 text-destructive" />
-                      Gasto Este Mês
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-destructive">
-                      R$ {Math.abs(stats.thisMonth).toFixed(2)}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ animationDelay: '50ms' }}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <ArrowUpRight className="h-4 w-4 text-primary" />
-                      Entregas Realizadas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{stats.deliveries}</div>
-                  </CardContent>
-                </Card>
-
-                <Card className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-105" style={{ animationDelay: '100ms' }}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      Ticket Médio
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">R$ {stats.average.toFixed(2)}</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Transactions */}
-              <Card className="animate-fade-in" style={{ animationDelay: '150ms' }}>
+              <Card>
                 <CardHeader>
-                  <CardTitle>Histórico de Transações</CardTitle>
-                  <CardDescription>Últimas movimentações da sua carteira</CardDescription>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Adicionar Saldo
+                  </CardTitle>
+                  <CardDescription>
+                    Recarregue sua carteira para criar novas entregas
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {transactions.map((transaction, index) => (
-                      <div
-                        key={transaction.id}
-                        className="flex items-center justify-between p-4 rounded-2xl border hover:bg-muted/50 transition-all duration-300 hover:scale-105 animate-fade-in"
-                        style={{ animationDelay: `${index * 50}ms` }}
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="amount">Valor (R$)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        placeholder="0.00"
+                        value={addAmount}
+                        onChange={(e) => setAddAmount(e.target.value)}
+                        min="0"
+                        step="0.01"
+                        disabled={addingFunds}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={handleAddFunds}
+                        disabled={addingFunds || !addAmount}
+                        className="gap-2"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            transaction.amount < 0 ? 'bg-destructive/10' : 'bg-primary/10'
-                          }`}>
-                            {transaction.amount < 0 ? (
-                              <ArrowDownRight className="h-5 w-5 text-destructive" />
-                            ) : (
-                              <ArrowUpRight className="h-5 w-5 text-primary" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium">{transaction.description}</p>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              {new Date(transaction.created_at).toLocaleString('pt-BR')}
+                        <ArrowUpCircle className="h-4 w-4" />
+                        {addingFunds ? 'Processando...' : 'Adicionar Saldo'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Histórico de Transações</CardTitle>
+                  <CardDescription>
+                    Últimas movimentações na sua carteira
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {transactions.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhuma transação registrada
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {transactions.map((transaction) => (
+                        <div
+                          key={transaction.id}
+                          className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            {getTransactionIcon(transaction.type)}
+                            <div>
+                              <p className="font-medium">{transaction.description}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(transaction.created_at).toLocaleString('pt-BR')}
+                              </p>
                             </div>
                           </div>
+                          <div className={`text-lg font-semibold ${
+                            transaction.type === 'add_funds' 
+                              ? 'text-green-500' 
+                              : 'text-red-500'
+                          }`}>
+                            {formatAmount(transaction.amount, transaction.type)}
+                          </div>
                         </div>
-                        <div className={`text-lg font-bold ${
-                          transaction.amount < 0 ? 'text-destructive' : 'text-primary'
-                        }`}>
-                          {transaction.amount < 0 ? '-' : '+'} R$ {Math.abs(transaction.amount).toFixed(2)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
