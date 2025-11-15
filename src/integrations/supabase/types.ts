@@ -203,6 +203,7 @@ export type Database = {
         Row: {
           created_at: string
           drivers_license_url: string | null
+          earnings_balance: number
           id: string
           is_approved: boolean
           is_available: boolean
@@ -219,6 +220,7 @@ export type Database = {
         Insert: {
           created_at?: string
           drivers_license_url?: string | null
+          earnings_balance?: number
           id?: string
           is_approved?: boolean
           is_available?: boolean
@@ -235,6 +237,7 @@ export type Database = {
         Update: {
           created_at?: string
           drivers_license_url?: string | null
+          earnings_balance?: number
           id?: string
           is_approved?: boolean
           is_available?: boolean
@@ -371,6 +374,7 @@ export type Database = {
           total_deliveries: number | null
           updated_at: string
           user_id: string
+          wallet_balance: number
         }
         Insert: {
           address: string
@@ -386,6 +390,7 @@ export type Database = {
           total_deliveries?: number | null
           updated_at?: string
           user_id: string
+          wallet_balance?: number
         }
         Update: {
           address?: string
@@ -401,6 +406,7 @@ export type Database = {
           total_deliveries?: number | null
           updated_at?: string
           user_id?: string
+          wallet_balance?: number
         }
         Relationships: []
       }
@@ -410,8 +416,11 @@ export type Database = {
           created_at: string
           delivery_id: string | null
           description: string | null
+          driver_earnings: number | null
           driver_id: string | null
           id: string
+          platform_fee: number | null
+          restaurant_id: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Insert: {
@@ -419,8 +428,11 @@ export type Database = {
           created_at?: string
           delivery_id?: string | null
           description?: string | null
+          driver_earnings?: number | null
           driver_id?: string | null
           id?: string
+          platform_fee?: number | null
+          restaurant_id?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
         }
         Update: {
@@ -428,8 +440,11 @@ export type Database = {
           created_at?: string
           delivery_id?: string | null
           description?: string | null
+          driver_earnings?: number | null
           driver_id?: string | null
           id?: string
+          platform_fee?: number | null
+          restaurant_id?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
         }
         Relationships: [
@@ -445,6 +460,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
@@ -477,6 +499,10 @@ export type Database = {
     Functions: {
       accept_delivery_atomic: {
         Args: { p_delivery_id: string; p_driver_id: string }
+        Returns: Json
+      }
+      add_restaurant_funds: {
+        Args: { p_amount: number; p_restaurant_id: string }
         Returns: Json
       }
       create_notification: {
