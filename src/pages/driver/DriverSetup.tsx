@@ -9,13 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { Bike } from 'lucide-react';
-import { VehicleCategory } from '@/components/VehicleCategorySelector';
 
 export default function DriverSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [vehicleType, setVehicleType] = useState<VehicleCategory>('motorcycle');
+  const [vehicleType, setVehicleType] = useState<string>('motorcycle');
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,7 +69,7 @@ export default function DriverSetup() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="vehicleType">Tipo de Veículo *</Label>
-                <Select value={vehicleType} onValueChange={(value) => setVehicleType(value as VehicleCategory)} disabled={loading}>
+                <Select value={vehicleType} onValueChange={(value) => setVehicleType(value)} disabled={loading}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de veículo" />
                   </SelectTrigger>
