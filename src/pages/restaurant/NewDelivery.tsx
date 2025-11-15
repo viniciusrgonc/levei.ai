@@ -15,7 +15,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { Separator } from '@/components/ui/separator';
-import VehicleCategorySelector, { VehicleCategory } from '@/components/VehicleCategorySelector';
+import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
 
 // Validation schema
 const deliverySchema = z.object({
@@ -49,7 +49,8 @@ export default function NewDelivery() {
   const [description, setDescription] = useState('');
   const [customPrice, setCustomPrice] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedVehicleCategory, setSelectedVehicleCategory] = useState<VehicleCategory | null>(null);
+  const [selectedVehicleCategory, setSelectedVehicleCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<DeliveryCategory | null>(null);
 
   useEffect(() => {
     fetchRestaurant();
@@ -102,7 +103,7 @@ export default function NewDelivery() {
     setDeliveryAddress(addr);
     setErrors(prev => ({ ...prev, location: '' }));
     
-    if (restaurant) {
+    if (restaurant && selectedCategory) {
       const distance = calculateDistance(
         restaurant.latitude,
         restaurant.longitude,
@@ -111,8 +112,28 @@ export default function NewDelivery() {
       );
       
       setCalculatedDistance(distance);
-      // Base price R$ 5 + R$ 2 per km
-      const price = 5.00 + (distance * 2.00);
+      // Calculate price using category: base_price + (distance_km * price_per_km)
+      const price = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+      setSuggestedPrice(price);
+    }
+  };
+
+  const handleCategorySelect = (categoryId: string, category: DeliveryCategory) => {
+    setSelectedVehicleCategory(categoryId);
+    setSelectedCategory(category);
+    setErrors(prev => ({ ...prev, vehicleCategory: '' }));
+    
+    // Recalculate price if location is already selected
+    if (deliveryLat && deliveryLng && restaurant) {
+      const distance = calculateDistance(
+        restaurant.latitude,
+        restaurant.longitude,
+        deliveryLat,
+        deliveryLng
+      );
+      
+      setCalculatedDistance(distance);
+      const price = category.base_price + (distance * category.price_per_km);
       setSuggestedPrice(price);
     }
   };
@@ -287,12 +308,9 @@ export default function NewDelivery() {
 
                     {/* Vehicle Category Selection */}
                     <div className="space-y-4">
-                      <VehicleCategorySelector
-                        selectedCategory={selectedVehicleCategory}
-                        onSelect={(category) => {
-                          setSelectedVehicleCategory(category);
-                          setErrors(prev => ({ ...prev, vehicleCategory: '' }));
-                        }}
+                    <VehicleCategorySelector
+                        selectedCategoryId={selectedVehicleCategory}
+                        onSelect={handleCategorySelect}
                         disabled={loading}
                       />
                       {errors.vehicleCategory && (

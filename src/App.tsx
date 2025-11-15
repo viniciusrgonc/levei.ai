@@ -33,6 +33,7 @@ import AdminRestaurants from "./pages/admin/AdminRestaurants";
 import AdminDeliveries from "./pages/admin/AdminDeliveries";
 import AdminDisputes from "./pages/admin/AdminDisputes";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminDeliveryCategories from "./pages/admin/AdminDeliveryCategories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -252,6 +253,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminSettings />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/delivery-categories"
+              element={
+                <AdminRoute>
+                  <AdminDeliveryCategories />
                 </AdminRoute>
               }
             />

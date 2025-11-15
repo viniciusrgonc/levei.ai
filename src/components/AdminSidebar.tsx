@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield, Tag } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -34,6 +34,11 @@ const menuItems = [
     title: 'Entregas',
     url: '/admin/deliveries',
     icon: PackageCheck,
+  },
+  {
+    title: 'Categorias',
+    url: '/admin/delivery-categories',
+    icon: Tag,
   },
   {
     title: 'Disputas',

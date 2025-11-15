@@ -1,84 +1,69 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { Bike, Car, Truck, Clock, Package } from 'lucide-react';
+import { Bike, Car, Truck, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export type VehicleCategory = 'motorcycle' | 'car' | 'van' | 'truck' | 'hourly_service';
-
-interface VehicleCategoryOption {
-  id: VehicleCategory;
+export interface DeliveryCategory {
+  id: string;
   name: string;
-  icon: React.ReactNode;
-  description: string;
-  capacity: {
-    weight: string;
-    dimensions: string;
-  };
+  base_price: number;
+  price_per_km: number;
+  is_active: boolean;
 }
 
-const categories: VehicleCategoryOption[] = [
-  {
-    id: 'motorcycle',
-    name: 'Motocicleta',
-    icon: <Bike className="h-8 w-8" />,
-    description: 'Ideal para pacotes leves e entregas rápidas',
-    capacity: {
-      weight: 'Até 5kg',
-      dimensions: '40 x 40 x 30 cm',
-    },
-  },
-  {
-    id: 'car',
-    name: 'Carro',
-    icon: <Car className="h-8 w-8" />,
-    description: 'Para entregas de tamanho médio',
-    capacity: {
-      weight: 'Até 30kg',
-      dimensions: '60 x 50 x 50 cm',
-    },
-  },
-  {
-    id: 'van',
-    name: 'Van',
-    icon: <Package className="h-8 w-8" />,
-    description: 'Ideal para volumes maiores',
-    capacity: {
-      weight: 'Até 200kg',
-      dimensions: '150 x 120 x 100 cm',
-    },
-  },
-  {
-    id: 'truck',
-    name: 'Caminhão',
-    icon: <Truck className="h-8 w-8" />,
-    description: 'Para cargas grandes e pesadas',
-    capacity: {
-      weight: 'Até 1000kg',
-      dimensions: '250 x 180 x 180 cm',
-    },
-  },
-  {
-    id: 'hourly_service',
-    name: 'Serviço por Hora',
-    icon: <Clock className="h-8 w-8" />,
-    description: 'Entregador à disposição por tempo determinado',
-    capacity: {
-      weight: 'Variável',
-      dimensions: 'Múltiplas entregas',
-    },
-  },
-];
+const iconMap: Record<string, React.ReactNode> = {
+  'Moto': <Bike className="h-8 w-8" />,
+  'Motocicleta': <Bike className="h-8 w-8" />,
+  'Carro': <Car className="h-8 w-8" />,
+  'Van': <Package className="h-8 w-8" />,
+  'Caminhão': <Truck className="h-8 w-8" />,
+};
 
 interface VehicleCategorySelectorProps {
-  selectedCategory: VehicleCategory | null;
-  onSelect: (category: VehicleCategory) => void;
+  selectedCategoryId: string | null;
+  onSelect: (categoryId: string, category: DeliveryCategory) => void;
   disabled?: boolean;
 }
 
 export default function VehicleCategorySelector({
-  selectedCategory,
+  selectedCategoryId,
   onSelect,
   disabled = false,
 }: VehicleCategorySelectorProps) {
+  const { data: categories, isLoading } = useQuery({
+    queryKey: ['delivery-categories-active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('delivery_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+      
+      if (error) throw error;
+      return data as DeliveryCategory[];
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-lg mb-1">Tipo de Veículo</h3>
+          <p className="text-sm text-muted-foreground">
+            Selecione o tipo de veículo necessário para sua entrega
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -89,8 +74,9 @@ export default function VehicleCategorySelector({
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categories.map((category) => {
-          const isSelected = selectedCategory === category.id;
+        {categories?.map((category) => {
+          const isSelected = selectedCategoryId === category.id;
+          const icon = iconMap[category.name] || <Package className="h-8 w-8" />;
           
           return (
             <Card
@@ -102,7 +88,7 @@ export default function VehicleCategorySelector({
                   : 'hover:border-primary/50',
                 disabled && 'opacity-50 cursor-not-allowed'
               )}
-              onClick={() => !disabled && onSelect(category.id)}
+              onClick={() => !disabled && onSelect(category.id, category)}
             >
               <CardContent className="p-4">
                 <div className="flex flex-col h-full">
@@ -110,23 +96,19 @@ export default function VehicleCategorySelector({
                     'w-14 h-14 rounded-full flex items-center justify-center mb-3',
                     isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
                   )}>
-                    {category.icon}
+                    {icon}
                   </div>
                   
                   <h4 className="font-semibold text-base mb-2">{category.name}</h4>
                   
-                  <p className="text-sm text-muted-foreground mb-3 flex-grow">
-                    {category.description}
-                  </p>
-                  
                   <div className="pt-3 border-t space-y-1">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Peso:</span>
-                      <span className="font-medium">{category.capacity.weight}</span>
+                      <span className="text-muted-foreground">Preço Base:</span>
+                      <span className="font-medium">R$ {category.base_price.toFixed(2)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Dimensões:</span>
-                      <span className="font-medium">{category.capacity.dimensions}</span>
+                      <span className="text-muted-foreground">Por KM:</span>
+                      <span className="font-medium">R$ {category.price_per_km.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -136,10 +118,10 @@ export default function VehicleCategorySelector({
         })}
       </div>
 
-      {selectedCategory && (
+      {selectedCategoryId && categories && (
         <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
           <p className="text-sm">
-            ✓ <span className="font-medium">{categories.find(c => c.id === selectedCategory)?.name}</span> selecionado
+            ✓ <span className="font-medium">{categories.find(c => c.id === selectedCategoryId)?.name}</span> selecionado
           </p>
         </div>
       )}

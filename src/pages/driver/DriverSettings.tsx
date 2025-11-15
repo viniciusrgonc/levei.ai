@@ -12,12 +12,11 @@ import { Settings, Bell, Shield, Truck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
-import { VehicleCategory } from '@/components/VehicleCategorySelector';
 
 export default function DriverSettings() {
   const [loading, setLoading] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
-  const [vehicleType, setVehicleType] = useState<VehicleCategory>('motorcycle');
+  const [vehicleType, setVehicleType] = useState<string>('motorcycle');
   const [licensePlate, setLicensePlate] = useState('');
   const { user } = useAuth();
 
@@ -39,7 +38,7 @@ export default function DriverSettings() {
 
       if (data) {
         setIsAvailable(data.is_available);
-        setVehicleType(data.vehicle_type as VehicleCategory);
+        setVehicleType(data.vehicle_type as string);
         setLicensePlate(data.license_plate || '');
       }
     } catch (error) {
@@ -160,7 +159,7 @@ export default function DriverSettings() {
                     <Label htmlFor="vehicleType">Tipo de Veículo</Label>
                     <Select 
                       value={vehicleType} 
-                      onValueChange={(value) => setVehicleType(value as VehicleCategory)}
+                      onValueChange={(value) => setVehicleType(value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />

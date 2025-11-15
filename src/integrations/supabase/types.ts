@@ -110,6 +110,36 @@ export type Database = {
           },
         ]
       }
+      delivery_categories: {
+        Row: {
+          base_price: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          price_per_km: number
+          updated_at: string
+        }
+        Insert: {
+          base_price?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price_per_km?: number
+          updated_at?: string
+        }
+        Update: {
+          base_price?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_per_km?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       disputes: {
         Row: {
           created_at: string
