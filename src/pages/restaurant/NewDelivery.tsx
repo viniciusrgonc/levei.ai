@@ -17,6 +17,21 @@ import NotificationBell from '@/components/NotificationBell';
 import { Separator } from '@/components/ui/separator';
 import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
 
+// Product types
+const PRODUCT_TYPES = [
+  'Documentos',
+  'Eletrônicos',
+  'Roupas',
+  'Alimentos',
+  'Medicamentos',
+  'Produto Frágil',
+  'Encomenda Pequena',
+  'Encomenda Média',
+  'Encomenda Grande',
+  'Volumoso',
+  'Outros'
+] as const;
+
 // Validation schema
 const deliverySchema = z.object({
   recipientName: z.string().trim().min(1, 'Nome do destinatário é obrigatório').max(100),
@@ -24,7 +39,23 @@ const deliverySchema = z.object({
   deliveryAddress: z.string().trim().min(5, 'Endereço muito curto').max(500),
   description: z.string().trim().max(500, 'Descrição muito longa').optional(),
   price: z.number().min(5, 'Valor mínimo: R$ 5,00').max(500, 'Valor máximo: R$ 500,00'),
+  productType: z.string().min(1, 'Tipo de produto é obrigatório'),
+  productNote: z.string().trim().max(500, 'Observações muito longas').optional(),
 });
+
+// Function to adjust price based on product type
+const adjustPriceBasedOnProductType = (basePrice: number, productType: string): number => {
+  switch(productType) {
+    case "Produto Frágil": 
+      return basePrice * 1.10; // +10%
+    case "Volumoso": 
+      return basePrice * 1.20; // +20%
+    case "Eletrônicos": 
+      return basePrice * 1.05; // +5%
+    default: 
+      return basePrice;
+  }
+};
 
 type Restaurant = {
   id: string;
@@ -51,6 +82,8 @@ export default function NewDelivery() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedVehicleCategory, setSelectedVehicleCategory] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<DeliveryCategory | null>(null);
+  const [productType, setProductType] = useState<string>('');
+  const [productNote, setProductNote] = useState<string>('');
 
   useEffect(() => {
     fetchRestaurant();
@@ -112,9 +145,11 @@ export default function NewDelivery() {
       );
       
       setCalculatedDistance(distance);
-      // Calculate price using category: base_price + (distance_km * price_per_km)
-      const price = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      setSuggestedPrice(price);
+      // Calculate base price using category: base_price + (distance_km * price_per_km)
+      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+      // Apply product type adjustment
+      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
+      setSuggestedPrice(adjustedPrice);
     }
   };
 
@@ -133,8 +168,31 @@ export default function NewDelivery() {
       );
       
       setCalculatedDistance(distance);
-      const price = category.base_price + (distance * category.price_per_km);
-      setSuggestedPrice(price);
+      const basePrice = category.base_price + (distance * category.price_per_km);
+      // Apply product type adjustment
+      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
+      setSuggestedPrice(adjustedPrice);
+    }
+  };
+
+  // Recalculate price when product type changes
+  const handleProductTypeChange = (newProductType: string) => {
+    setProductType(newProductType);
+    setErrors(prev => ({ ...prev, productType: '' }));
+
+    // Recalculate price if we have all necessary data
+    if (restaurant && deliveryLat && deliveryLng && selectedCategory) {
+      const distance = calculateDistance(
+        restaurant.latitude,
+        restaurant.longitude,
+        deliveryLat,
+        deliveryLng
+      );
+      
+      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+      const adjustedPrice = adjustPriceBasedOnProductType(basePrice, newProductType);
+      setSuggestedPrice(adjustedPrice);
+      setCustomPrice(adjustedPrice.toFixed(2));
     }
   };
 
@@ -165,6 +223,11 @@ export default function NewDelivery() {
 
     if (!selectedVehicleCategory) {
       newErrors.vehicleCategory = 'Selecione o tipo de veículo necessário';
+    }
+
+    // Validate product type (required)
+    if (!productType) {
+      newErrors.productType = 'Tipo de produto é obrigatório';
     }
 
     setErrors(newErrors);
@@ -217,6 +280,8 @@ export default function NewDelivery() {
           distance_km: calculatedDistance!,
           price: deliveryPrice,
           vehicle_category: selectedVehicleCategory as any,
+          product_type: productType,
+          product_note: productNote.trim() || null,
           status: 'pending'
         }])
         .select()
@@ -393,14 +458,12 @@ export default function NewDelivery() {
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="recipientPhone"
-                              placeholder="11999999999"
+                              placeholder="11999887766"
                               value={recipientPhone}
                               onChange={(e) => {
-                                const value = e.target.value.replace(/\D/g, '');
-                                setRecipientPhone(value);
+                                setRecipientPhone(e.target.value);
                                 setErrors(prev => ({ ...prev, recipientPhone: '' }));
                               }}
-                              maxLength={11}
                               disabled={loading}
                               className={`pl-10 ${errors.recipientPhone ? 'border-destructive' : ''}`}
                             />
@@ -409,6 +472,55 @@ export default function NewDelivery() {
                             <p className="text-sm text-destructive">{errors.recipientPhone}</p>
                           )}
                         </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Product Type Selection */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold text-lg">Informações do Produto</h3>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="productType">Tipo de Produto *</Label>
+                        <select
+                          id="productType"
+                          value={productType}
+                          onChange={(e) => handleProductTypeChange(e.target.value)}
+                          disabled={loading}
+                          className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.productType ? 'border-destructive' : ''}`}
+                        >
+                          <option value="">Selecione o tipo de produto</option>
+                          {PRODUCT_TYPES.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                        {errors.productType && (
+                          <p className="text-sm text-destructive">{errors.productType}</p>
+                        )}
+                        {productType && (productType === 'Produto Frágil' || productType === 'Volumoso' || productType === 'Eletrônicos') && (
+                          <p className="text-xs text-primary font-medium">
+                            ℹ️ Este tipo de produto possui acréscimo automático no valor da entrega
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="productNote">Observações do Item (Opcional)</Label>
+                        <Textarea
+                          id="productNote"
+                          placeholder='Ex: "Objeto frágil, não virar de lado", "Caixa com 7kg", etc.'
+                          value={productNote}
+                          onChange={(e) => setProductNote(e.target.value)}
+                          disabled={loading}
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Informações adicionais sobre o produto para o entregador
+                        </p>
                       </div>
                     </div>
 

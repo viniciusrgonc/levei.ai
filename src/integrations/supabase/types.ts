@@ -34,6 +34,8 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url: string | null
           price: number
+          product_note: string | null
+          product_type: string | null
           recipient_name: string | null
           recipient_phone: string | null
           restaurant_id: string
@@ -60,6 +62,8 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url?: string | null
           price: number
+          product_note?: string | null
+          product_type?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           restaurant_id: string
@@ -86,6 +90,8 @@ export type Database = {
           pickup_longitude?: number
           pickup_photo_url?: string | null
           price?: number
+          product_note?: string | null
+          product_type?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           restaurant_id?: string

@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Package, Clock, Navigation } from 'lucide-react';
+import { MapPin, Package, Clock, Navigation, FileText } from 'lucide-react';
 import { getStatusConfig } from '@/lib/deliveryStatus';
 
 interface DeliveryCardProps {
@@ -15,6 +15,8 @@ interface DeliveryCardProps {
     description?: string | null;
     created_at: string;
     distanceFromDriver?: number;
+    product_type?: string | null;
+    product_note?: string | null;
   };
   actionButton?: React.ReactNode;
   onNavigate?: () => void;
@@ -70,6 +72,22 @@ export function DeliveryCard({ delivery, actionButton, onNavigate }: DeliveryCar
                   <Navigation className="h-3 w-3 mr-1" />
                   {delivery.distanceFromDriver.toFixed(1)} km de você
                 </Badge>
+              )}
+
+              {delivery.product_type && (
+                <div className="flex items-start gap-2 mt-2 p-3 bg-primary/5 rounded-md border border-primary/10">
+                  <FileText className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-sm text-primary">
+                      Tipo de Produto: {delivery.product_type}
+                    </p>
+                    {delivery.product_note && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        <span className="font-medium">Observações:</span> {delivery.product_note}
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
               {delivery.description && (
