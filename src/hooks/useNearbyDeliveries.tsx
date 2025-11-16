@@ -13,6 +13,8 @@ interface Delivery {
   description: string | null;
   created_at: string;
   distanceFromDriver?: number;
+  product_type?: string | null;
+  product_note?: string | null;
 }
 
 // Haversine formula to calculate distance between two points

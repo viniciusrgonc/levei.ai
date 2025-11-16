@@ -4,23 +4,41 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, MapPin } from 'lucide-react';
+import { Package, Filter } from 'lucide-react';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
 import { DeliveryCard } from '@/components/DeliveryCard';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Driver {
   id: string;
   is_available: boolean;
 }
 
+const PRODUCT_FILTER_OPTIONS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'Documentos', label: 'Documentos' },
+  { value: 'Produto Frágil', label: 'Frágil' },
+  { value: 'Eletrônicos', label: 'Eletrônicos' },
+  { value: 'Alimentos', label: 'Alimentos' },
+  { value: 'Medicamentos', label: 'Medicamentos' },
+  { value: 'Volumoso', label: 'Volumoso' },
+];
+
 export default function AvailableDeliveries() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null>(null);
+  const [productFilter, setProductFilter] = useState<string>('all');
 
   const {
     deliveries: availableDeliveries,
@@ -65,6 +83,11 @@ export default function AvailableDeliveries() {
     window.open(url, '_blank');
   };
 
+  // Filter deliveries by product type
+  const filteredDeliveries = productFilter === 'all'
+    ? availableDeliveries
+    : availableDeliveries.filter(delivery => delivery.product_type === productFilter);
+
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
@@ -102,54 +125,68 @@ export default function AvailableDeliveries() {
                     </div>
                   ) : deliveriesLoading ? (
                     <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-                      <p className="text-sm text-muted-foreground">Buscando entregas próximas...</p>
-                    </div>
-                  ) : availableDeliveries.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-muted-foreground">Nenhuma entrega disponível no momento</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Novas entregas aparecerão aqui automaticamente
-                      </p>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                      <p className="mt-4 text-muted-foreground">Buscando entregas próximas...</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {availableDeliveries.map((delivery, index) => (
-                        <DeliveryCard
-                          key={delivery.id}
-                          delivery={delivery}
-                          actionButton={
-                            <div className="flex gap-2 flex-wrap">
-                              <Button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openPickupLocation(delivery.pickup_latitude, delivery.pickup_longitude);
-                                }}
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 min-w-[140px]"
-                              >
-                                <MapPin className="mr-2 h-4 w-4" />
-                                Ver Local
-                              </Button>
-                              <Button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptDelivery(delivery.id);
-                                }}
-                                disabled={acceptingDelivery}
-                                size="sm"
-                                className="flex-1 min-w-[140px] transition-all duration-300 hover:scale-105 active:scale-95"
-                              >
-                                Aceitar Coleta
-                              </Button>
-                            </div>
-                          }
-                          onNavigate={() => {}}
-                        />
-                      ))}
-                    </div>
+                    <>
+                      {/* Product Filter */}
+                      {availableDeliveries.length > 0 && (
+                        <div className="mb-4 flex items-center gap-2">
+                          <Filter className="h-4 w-4 text-muted-foreground" />
+                          <Select value={productFilter} onValueChange={setProductFilter}>
+                            <SelectTrigger className="w-[200px]">
+                              <SelectValue placeholder="Filtrar por tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PRODUCT_FILTER_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {filteredDeliveries.length === 0 ? (
+                        <div className="text-center py-12">
+                          <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                          <p className="text-muted-foreground">
+                            {productFilter !== 'all'
+                              ? 'Nenhuma entrega encontrada com este filtro'
+                              : 'Nenhuma entrega disponível no momento'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            {productFilter !== 'all'
+                              ? 'Tente outro filtro ou aguarde novas entregas'
+                              : 'Aguarde novos pedidos ou ajuste seu raio de busca'}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {filteredDeliveries.map((delivery) => (
+                            <DeliveryCard
+                              key={delivery.id}
+                              delivery={delivery}
+                              actionButton={
+                                <Button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleAcceptDelivery(delivery.id);
+                                  }}
+                                  disabled={acceptingDelivery}
+                                  className="animate-pulse"
+                                >
+                                  {acceptingDelivery ? 'Aceitando...' : 'Aceitar Entrega'}
+                                </Button>
+                              }
+                              onNavigate={() => openPickupLocation(delivery.pickup_latitude, delivery.pickup_longitude)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

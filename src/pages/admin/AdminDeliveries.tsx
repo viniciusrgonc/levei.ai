@@ -41,6 +41,8 @@ interface Delivery {
   created_at: string;
   vehicle_category: string;
   driver_name?: string;
+  product_type?: string | null;
+  product_note?: string | null;
   restaurants: {
     business_name: string;
   };
@@ -312,6 +314,20 @@ export default function AdminDeliveries() {
                     {selectedDelivery.vehicle_category || 'Não especificado'}
                   </p>
                 </div>
+                {selectedDelivery.product_type && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Tipo de Produto</label>
+                      <p className="text-foreground">{selectedDelivery.product_type}</p>
+                    </div>
+                    {selectedDelivery.product_note && (
+                      <div className="col-span-2">
+                        <label className="text-sm font-medium text-muted-foreground">Observações do Produto</label>
+                        <p className="text-foreground text-sm">{selectedDelivery.product_note}</p>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div className="col-span-2">
                   <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                     <MapPin className="h-4 w-4" />
