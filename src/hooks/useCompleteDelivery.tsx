@@ -29,9 +29,11 @@ export const useCompleteDelivery = ({ onSuccess, onError }: UseCompleteDeliveryP
         throw new Error(data.error);
       }
 
+      const earnings = data.delivery?.price_adjusted || price;
+      
       toast({
         title: '🎉 Entrega concluída!',
-        description: `Status atualizado. Você ganhou R$ ${price.toFixed(2)}`,
+        description: `Status atualizado. Você ganhou R$ ${earnings.toFixed(2)}`,
       });
 
       onSuccess?.(deliveryId, price);

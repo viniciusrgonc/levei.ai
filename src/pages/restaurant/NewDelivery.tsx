@@ -84,17 +84,43 @@ export default function NewDelivery() {
   const [selectedCategory, setSelectedCategory] = useState<DeliveryCategory | null>(null);
   const [productType, setProductType] = useState<string>('');
   const [productNote, setProductNote] = useState<string>('');
+  const [productSettings, setProductSettings] = useState<Record<string, number>>({});
+  const [priceAdjusted, setPriceAdjusted] = useState<number>(0);
 
   useEffect(() => {
     fetchRestaurant();
+    fetchProductSettings();
   }, [user]);
 
-  // Update price when suggested price changes
-  useEffect(() => {
-    if (suggestedPrice && !customPrice) {
-      setCustomPrice(suggestedPrice.toFixed(2));
+  const fetchProductSettings = async () => {
+    const { data, error } = await supabase
+      .from('product_type_settings')
+      .select('product_type, percentage_increase')
+      .eq('is_active', true);
+
+    if (!error && data) {
+      const settings: Record<string, number> = {};
+      data.forEach(setting => {
+        settings[setting.product_type] = setting.percentage_increase;
+      });
+      setProductSettings(settings);
     }
-  }, [suggestedPrice]);
+  };
+
+  // Update price when suggested price or product type changes
+  useEffect(() => {
+    if (suggestedPrice) {
+      const finalPrice = productType && productSettings[productType] !== undefined
+        ? suggestedPrice * (1 + productSettings[productType] / 100)
+        : suggestedPrice;
+      
+      setPriceAdjusted(Number(finalPrice.toFixed(2)));
+      
+      if (!customPrice) {
+        setCustomPrice(finalPrice.toFixed(2));
+      }
+    }
+  }, [suggestedPrice, productType, productSettings]);
 
   const fetchRestaurant = async () => {
     if (!user) return;
@@ -190,9 +216,13 @@ export default function NewDelivery() {
       );
       
       const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      const adjustedPrice = adjustPriceBasedOnProductType(basePrice, newProductType);
-      setSuggestedPrice(adjustedPrice);
+      setSuggestedPrice(basePrice);
+      
+      // Calculate adjusted price
+      const increase = productSettings[newProductType] || 0;
+      const adjustedPrice = basePrice * (1 + increase / 100);
       setCustomPrice(adjustedPrice.toFixed(2));
+      setPriceAdjusted(adjustedPrice);
     }
   };
 
@@ -278,7 +308,8 @@ export default function NewDelivery() {
           recipient_phone: recipientPhone,
           description: description || null,
           distance_km: calculatedDistance!,
-          price: deliveryPrice,
+          price: suggestedPrice || deliveryPrice,
+          price_adjusted: deliveryPrice,
           vehicle_category: selectedVehicleCategory as any,
           product_type: productType,
           product_note: productNote.trim() || null,

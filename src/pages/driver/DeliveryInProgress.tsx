@@ -59,6 +59,9 @@ interface Delivery {
   delivery_address: string;
   distance_km: number;
   price: number;
+  price_adjusted: number;
+  product_type: string | null;
+  product_note: string | null;
   description: string | null;
   recipient_name: string | null;
   recipient_phone: string | null;
@@ -376,6 +379,22 @@ export default function DeliveryInProgress() {
                     <p className="text-sm text-muted-foreground ml-7">{delivery.delivery_address}</p>
                   </div>
 
+                  {delivery.product_type && (
+                    <div className="p-3 bg-primary/5 rounded-md border border-primary/10">
+                      <div className="flex items-center gap-2 font-medium mb-2">
+                        <Package className="h-5 w-5 text-primary" />
+                        Tipo de Produto
+                      </div>
+                      <p className="text-sm ml-7">{delivery.product_type}</p>
+                      {delivery.product_note && (
+                        <>
+                          <p className="text-sm font-medium text-muted-foreground mt-2 ml-7">Observações:</p>
+                          <p className="text-sm text-muted-foreground ml-7">{delivery.product_note}</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {delivery.description && (
                     <div>
                       <p className="font-medium mb-2">Observações</p>
@@ -383,8 +402,24 @@ export default function DeliveryInProgress() {
                     </div>
                   )}
 
-                  <Button 
-                    onClick={handleCompleteDelivery}
+                  <div className="pt-4 border-t">
+                    <p className="text-sm text-muted-foreground mb-1">Valor da entrega</p>
+                    <p className="text-2xl font-bold text-primary">R$ {delivery.price_adjusted.toFixed(2)}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Button 
+                      onClick={openRouteInMaps}
+                      variant="secondary"
+                      className="w-full"
+                      size="lg"
+                    >
+                      <Navigation className="mr-2 h-5 w-5" />
+                      Ver Destino no GPS
+                    </Button>
+
+                    <Button 
+                      onClick={handleCompleteDelivery}
                     disabled={completing}
                     className="w-full transition-all duration-300 hover:scale-105"
                     size="lg"

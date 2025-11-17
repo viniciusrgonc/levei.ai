@@ -34,6 +34,7 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url: string | null
           price: number
+          price_adjusted: number
           product_note: string | null
           product_type: string | null
           recipient_name: string | null
@@ -62,6 +63,7 @@ export type Database = {
           pickup_longitude: number
           pickup_photo_url?: string | null
           price: number
+          price_adjusted?: number
           product_note?: string | null
           product_type?: string | null
           recipient_name?: string | null
@@ -90,6 +92,7 @@ export type Database = {
           pickup_longitude?: number
           pickup_photo_url?: string | null
           price?: number
+          price_adjusted?: number
           product_note?: string | null
           product_type?: string | null
           recipient_name?: string | null
@@ -329,6 +332,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      product_type_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          percentage_increase: number
+          product_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          percentage_increase?: number
+          product_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          percentage_increase?: number
+          product_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
