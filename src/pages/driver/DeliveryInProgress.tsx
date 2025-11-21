@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Phone, User, Navigation, ArrowLeft, Route, Clock, CheckCircle } from 'lucide-react';
+import { MapPin, Phone, User, Navigation, ArrowLeft, Route, Clock, CheckCircle, Package } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
@@ -420,13 +420,14 @@ export default function DeliveryInProgress() {
 
                     <Button 
                       onClick={handleCompleteDelivery}
-                    disabled={completing}
-                    className="w-full transition-all duration-300 hover:scale-105"
-                    size="lg"
-                  >
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Confirmar Entrega Concluída
-                  </Button>
+                      disabled={completing}
+                      className="w-full transition-all duration-300 hover:scale-105"
+                      size="lg"
+                    >
+                      <CheckCircle className="mr-2 h-5 w-5" />
+                      Confirmar Entrega Concluída
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
