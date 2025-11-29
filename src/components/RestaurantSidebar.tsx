@@ -42,12 +42,13 @@ export function RestaurantSidebar() {
 
   return (
     <Sidebar className={isCollapsed ? 'w-14' : 'w-60'} collapsible="icon">
-      <SidebarContent className="text-foreground font-sans">
-        {/* Main Navigation */}
+      <SidebarContent className="border-r border-sidebar-border">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-foreground font-semibold">Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3">
+            Navegação
+          </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1 px-2">
               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
@@ -55,14 +56,14 @@ export function RestaurantSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        `transition-all duration-300 hover:scale-105 active:scale-95 text-foreground ${
+                        `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                           isActive
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'hover:bg-muted/50'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                         }`
                       }
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -72,14 +73,12 @@ export function RestaurantSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Settings */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-foreground font-semibold">
-            <Settings className="h-4 w-4 mr-2 inline" />
-            {!isCollapsed && 'Configurações'}
+        <SidebarGroup className="border-t border-sidebar-border pt-4">
+          <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3">
+            Configurações
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1 px-2">
               {settingsMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
@@ -87,14 +86,14 @@ export function RestaurantSidebar() {
                       to={item.url}
                       end
                       className={({ isActive }) =>
-                        `transition-all duration-300 hover:scale-105 active:scale-95 text-foreground ${
+                        `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                           isActive
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'hover:bg-muted/50'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                         }`
                       }
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className="h-5 w-5" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -104,16 +103,15 @@ export function RestaurantSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Logout */}
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup className="mt-auto border-t border-sidebar-border pt-4">
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="px-2">
               <SidebarMenuItem>
                 <SidebarMenuButton 
                   onClick={handleSignOut}
-                  className="transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-destructive/10 hover:text-destructive text-foreground"
+                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                 >
-                  <LogOut className="h-4 w-4" />
+                  <LogOut className="h-5 w-5" />
                   {!isCollapsed && <span>Sair</span>}
                 </SidebarMenuButton>
               </SidebarMenuItem>
