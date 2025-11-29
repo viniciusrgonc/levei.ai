@@ -29,26 +29,25 @@ const Index = () => {
 
   return (
     <div className="min-h-screen">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground">
             Movvi
           </h2>
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
               onClick={() => navigate('/auth')}
-              className="transition-all duration-300 hover:scale-105 active:scale-95"
+              className="h-10"
             >
-              <LogIn className="w-4 h-4" />
+              <LogIn className="w-4 h-4 mr-2" />
               Entrar
             </Button>
             <Button 
-              variant="default" 
               onClick={() => navigate('/auth')}
-              className="transition-all duration-300 hover:scale-110 active:scale-95"
+              className="h-10"
             >
-              <UserPlus className="w-4 h-4" />
+              <UserPlus className="w-4 h-4 mr-2" />
               Cadastrar
             </Button>
           </div>

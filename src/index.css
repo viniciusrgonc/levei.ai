@@ -8,105 +8,120 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 10%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 10%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 10%;
-
-    --primary: 29 100% 50%;
+    /* Brand Colors - Minimalista e Profissional */
+    --primary: 221 83% 48%; /* #1D4ED8 - Azul principal */
+    --primary-light: 217 91% 60%; /* #3B82F6 - Azul claro */
+    --primary-dark: 210 79% 15%; /* #0A2540 - Azul escuro */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 10% 10%;
+    /* Neutral Colors */
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 217 33% 12%; /* #111827 */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 217 33% 12%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 33% 12%;
 
-    --accent: 29 100% 50%;
+    --secondary: 210 40% 98%; /* #F5F7FA - Cinza muito claro */
+    --secondary-foreground: 217 19% 27%; /* #374151 */
+
+    --muted: 210 40% 98%;
+    --muted-foreground: 217 19% 27%;
+
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    /* Status Colors */
+    --success: 142 76% 36%; /* #16A34A - Verde */
+    --warning: 38 92% 50%; /* #F59E0B - Amarelo */
+    --destructive: 0 72% 51%; /* #DC2626 - Vermelho */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 29 100% 50%;
+    /* Border & Input */
+    --border: 220 14% 91%; /* #E5E7EB */
+    --input: 220 14% 91%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem; /* 8px */
     
-    --gradient-primary: linear-gradient(135deg, hsl(29 100% 50%), hsl(29 100% 60%));
-    --gradient-secondary: linear-gradient(135deg, hsl(240 5% 96%), hsl(240 5% 88%));
-    --gradient-hero: linear-gradient(135deg, hsl(29 100% 50% / 0.1), hsl(29 100% 60% / 0.05));
-    --shadow-card: 0 4px 6px -1px hsl(240 10% 10% / 0.08), 0 2px 4px -2px hsl(240 10% 10% / 0.05);
-    --shadow-elevated: 0 10px 15px -3px hsl(240 10% 10% / 0.1), 0 4px 6px -4px hsl(240 10% 10% / 0.06);
-    --shadow-glow: 0 0 40px hsl(29 100% 50% / 0.3);
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(221 83% 48%), hsl(217 91% 60%));
+    --gradient-hero: linear-gradient(135deg, hsl(221 83% 48% / 0.05), hsl(217 91% 60% / 0.02));
+    
+    /* Shadows - Suaves e profissionais */
+    --shadow-card: 0 1px 3px 0 hsl(217 33% 12% / 0.04), 0 1px 2px -1px hsl(217 33% 12% / 0.02);
+    --shadow-elevated: 0 4px 6px -1px hsl(217 33% 12% / 0.06), 0 2px 4px -2px hsl(217 33% 12% / 0.04);
+    --shadow-button: 0 1px 2px 0 hsl(217 33% 12% / 0.06);
+    
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Status Colors - Delivery System */
-    --status-pending: 240 5% 64%;
+    --status-pending: 217 19% 27%;
     --status-accepted: 217 91% 60%;
-    --status-in-progress: 27 96% 61%;
+    --status-in-progress: 38 92% 50%;
     --status-delivered: 142 76% 36%;
-    --status-cancelled: 0 84% 60%;
+    --status-cancelled: 0 72% 51%;
 
+    /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 240 10% 10%;
-    --sidebar-primary: 29 100% 50%;
+    --sidebar-foreground: 217 33% 12%;
+    --sidebar-primary: 221 83% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 240 10% 10%;
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: 29 100% 50%;
+    --sidebar-accent: 210 40% 98%;
+    --sidebar-accent-foreground: 217 33% 12%;
+    --sidebar-border: 220 14% 91%;
+    --sidebar-ring: 217 91% 60%;
   }
 
   .dark {
-    --background: 240 10% 8%;
-    --foreground: 0 0% 98%;
-
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 240 10% 10%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 29 100% 50%;
+    --primary: 217 91% 60%;
+    --primary-light: 217 91% 70%;
+    --primary-dark: 221 83% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 16%;
+    --background: 217 33% 12%; /* #111827 */
+    --foreground: 0 0% 98%;
+
+    --card: 217 19% 18%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 217 19% 18%;
+    --popover-foreground: 0 0% 98%;
+
+    --secondary: 217 19% 20%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 64%;
+    --muted: 217 19% 20%;
+    --muted-foreground: 220 14% 71%;
 
-    --accent: 29 100% 50%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62% 50%;
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 4% 16%;
-    --input: 240 4% 16%;
-    --ring: 29 100% 50%;
+    --border: 217 19% 24%;
+    --input: 217 19% 24%;
+    --ring: 217 91% 60%;
 
-    /* Status Colors - Delivery System (Dark Mode) */
-    --status-pending: 240 5% 64%;
+    --status-pending: 220 14% 71%;
     --status-accepted: 217 91% 60%;
-    --status-in-progress: 27 96% 61%;
+    --status-in-progress: 38 92% 50%;
     --status-delivered: 142 76% 36%;
-    --status-cancelled: 0 84% 60%;
+    --status-cancelled: 0 72% 51%;
 
-    --sidebar-background: 240 10% 8%;
+    --sidebar-background: 217 33% 12%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 29 100% 50%;
+    --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 16%;
+    --sidebar-accent: 217 19% 20%;
     --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 29 100% 50%;
+    --sidebar-border: 217 19% 24%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
