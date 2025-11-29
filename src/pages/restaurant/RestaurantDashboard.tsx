@@ -66,33 +66,7 @@ export default function RestaurantDashboard() {
     fetchRestaurantData();
   }, [user]);
 
-  useEffect(() => {
-    if (!restaurant) return;
-    
-    fetchDeliveries();
-
-    // Subscribe to realtime delivery updates
-    const channel = supabase
-      .channel('restaurant-deliveries')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'deliveries',
-          filter: `restaurant_id=eq.${restaurant.id}`
-        },
-        () => {
-          setLastUpdate(new Date());
-          fetchDeliveries();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [restaurant?.id]);
+  // Removido: subscrição duplicada - já gerenciado pelo hook useRealtimeDeliveries acima
 
   const fetchRestaurantData = async () => {
     if (!user) return;
