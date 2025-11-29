@@ -108,8 +108,8 @@ export default function RestaurantWallet() {
     await addFunds(restaurantId, amount);
   };
 
-  const getTransactionIcon = (type: string) => {
-    if (type === 'add_funds') {
+  const getTransactionIcon = (type: string, amount: number) => {
+    if (type === 'delivery_payment' && amount > 0) {
       return <ArrowUpCircle className="h-5 w-5 text-green-500" />;
     }
     return <ArrowDownCircle className="h-5 w-5 text-red-500" />;
@@ -117,7 +117,7 @@ export default function RestaurantWallet() {
 
   const formatAmount = (amount: number, type: string) => {
     const value = Math.abs(amount);
-    const prefix = type === 'add_funds' ? '+' : '';
+    const prefix = amount > 0 ? '+' : '-';
     return `${prefix}R$ ${value.toFixed(2)}`;
   };
 
@@ -229,7 +229,7 @@ export default function RestaurantWallet() {
                           className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors"
                         >
                           <div className="flex items-center gap-3">
-                            {getTransactionIcon(transaction.type)}
+                            {getTransactionIcon(transaction.type, transaction.amount)}
                             <div>
                               <p className="font-medium">{transaction.description}</p>
                               <p className="text-sm text-muted-foreground">
@@ -238,7 +238,7 @@ export default function RestaurantWallet() {
                             </div>
                           </div>
                           <div className={`text-lg font-semibold ${
-                            transaction.type === 'add_funds' 
+                            transaction.amount > 0
                               ? 'text-green-500' 
                               : 'text-red-500'
                           }`}>
