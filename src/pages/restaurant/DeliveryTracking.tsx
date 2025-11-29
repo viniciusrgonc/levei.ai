@@ -63,9 +63,12 @@ export default function DeliveryTracking() {
     
     fetchDelivery();
 
-    // Subscribe to delivery updates
+    console.log('[DeliveryTracking] Setting up realtime subscription for delivery:', deliveryId);
+
+    // Subscribe to delivery updates with better logging
+    const channelName = `delivery-${deliveryId}-${Date.now()}`;
     const deliveryChannel = supabase
-      .channel(`delivery-${deliveryId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -75,16 +78,33 @@ export default function DeliveryTracking() {
           filter: `id=eq.${deliveryId}`
         },
         (payload) => {
+          console.log('[DeliveryTracking] 🔄 Delivery updated:', {
+            id: payload.new.id,
+            status: payload.new.status,
+            old_status: payload.old?.status,
+            timestamp: new Date().toISOString(),
+          });
+
           setDelivery(payload.new as Delivery);
           setLastUpdate(new Date());
+          
           if (payload.new.driver_id && !driver) {
+            console.log('[DeliveryTracking] Driver assigned, fetching driver info');
             fetchDriver(payload.new.driver_id);
           }
         }
       )
-      .subscribe();
+      .subscribe((status, error) => {
+        console.log('[DeliveryTracking] Subscription status:', {
+          status,
+          error,
+          channelName,
+          timestamp: new Date().toISOString(),
+        });
+      });
 
     return () => {
+      console.log('[DeliveryTracking] 🧹 Cleaning up subscription');
       supabase.removeChannel(deliveryChannel);
     };
   }, [deliveryId]);

@@ -141,9 +141,14 @@ export function useNearbyDeliveries({
     if (isAvailable && driverLocation) {
       fetchDeliveries();
 
-      // Subscribe to realtime updates
+      console.log('[NearbyDeliveries] Setting up realtime subscription');
+      
+      // Subscribe to realtime updates with debounce
+      let debounceTimer: NodeJS.Timeout | null = null;
+      const channelName = `pending-deliveries-nearby-${Date.now()}`;
+      
       const channel = supabase
-        .channel('pending-deliveries-nearby')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
@@ -152,18 +157,44 @@ export function useNearbyDeliveries({
             table: 'deliveries',
             filter: 'status=eq.pending',
           },
-          () => {
-            console.log('🔄 Delivery status changed, refetching...');
-            fetchDeliveries();
+          (payload) => {
+            console.log('[NearbyDeliveries] 🔄 Delivery change detected:', {
+              event: payload.eventType,
+              id: (payload.new as any)?.id || (payload.old as any)?.id,
+              status: (payload.new as any)?.status || (payload.old as any)?.status,
+              timestamp: new Date().toISOString(),
+            });
+
+            // Debounce refetch to avoid excessive calls
+            if (debounceTimer) {
+              clearTimeout(debounceTimer);
+            }
+            
+            debounceTimer = setTimeout(() => {
+              console.log('[NearbyDeliveries] Refetching deliveries after change');
+              fetchDeliveries();
+            }, 500);
           }
         )
-        .subscribe();
+        .subscribe((status, error) => {
+          console.log('[NearbyDeliveries] Subscription status:', {
+            status,
+            error,
+            channelName,
+            timestamp: new Date().toISOString(),
+          });
+        });
 
       return () => {
+        console.log('[NearbyDeliveries] 🧹 Cleaning up subscription');
+        if (debounceTimer) {
+          clearTimeout(debounceTimer);
+        }
         supabase.removeChannel(channel);
       };
     } else if (isAvailable) {
       // If available but no location yet, just set loading to false
+      console.log('[NearbyDeliveries] Available but no location yet');
       setLoading(false);
     }
   }, [isAvailable, driverLocation]);
