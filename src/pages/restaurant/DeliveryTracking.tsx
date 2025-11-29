@@ -13,6 +13,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { Separator } from '@/components/ui/separator';
+import { getGoogleMapsLink } from '@/lib/utils';
 
 type Delivery = {
   id: string;
@@ -195,6 +196,20 @@ export default function DeliveryTracking() {
     return timeline;
   };
 
+  const openPickupInMaps = () => {
+    if (!delivery) return;
+    const destination: [number, number] = [delivery.pickup_latitude, delivery.pickup_longitude];
+    const url = getGoogleMapsLink(undefined, destination);
+    window.open(url, '_blank');
+  };
+
+  const openDeliveryInMaps = () => {
+    if (!delivery) return;
+    const destination: [number, number] = [delivery.delivery_latitude, delivery.delivery_longitude];
+    const url = getGoogleMapsLink(undefined, destination);
+    window.open(url, '_blank');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -345,14 +360,32 @@ export default function DeliveryTracking() {
                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         Coleta
                       </p>
-                      <p className="text-sm text-muted-foreground">{delivery.pickup_address}</p>
+                      <p className="text-sm text-muted-foreground mb-3">{delivery.pickup_address}</p>
+                      <Button 
+                        onClick={openPickupInMaps} 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Navigation className="mr-2 h-3 w-3" />
+                        Ver Coleta
+                      </Button>
                     </div>
                     <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
                       <p className="text-sm font-medium mb-2 flex items-center gap-2">
                         <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         Entrega
                       </p>
-                      <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
+                      <p className="text-sm text-muted-foreground mb-3">{delivery.delivery_address}</p>
+                      <Button 
+                        onClick={openDeliveryInMaps} 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                      >
+                        <Navigation className="mr-2 h-3 w-3" />
+                        Ir para Destino
+                      </Button>
                     </div>
                     {delivery.description && (
                       <>
