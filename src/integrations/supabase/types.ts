@@ -581,6 +581,10 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_delivery_transaction: {
+        Args: { p_delivery_id: string; p_driver_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

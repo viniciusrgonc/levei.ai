@@ -3,16 +3,20 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-console.log('Complete Delivery Function loaded')
+console.log('[Complete-Delivery] Function loaded')
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const requestId = crypto.randomUUID()
+  console.log(`[Complete-Delivery] ${requestId} - New request received`)
+
   try {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
+      console.error(`[Complete-Delivery] ${requestId} - Missing authorization header`)
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -34,17 +38,26 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
     
     if (authError || !user) {
+      console.error(`[Complete-Delivery] ${requestId} - Auth error:`, authError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
+    console.log(`[Complete-Delivery] ${requestId} - User authenticated:`, user.id)
+
     const { delivery_id, driver_id } = await req.json()
     
-    console.log('Complete delivery request:', { delivery_id, driver_id, user_id: user.id })
+    console.log(`[Complete-Delivery] ${requestId} - Request params:`, { 
+      delivery_id, 
+      driver_id, 
+      user_id: user.id 
+    })
 
+    // Input validation
     if (!delivery_id || !driver_id) {
+      console.error(`[Complete-Delivery] ${requestId} - Missing required fields`)
       return new Response(
         JSON.stringify({ error: 'Missing required fields: delivery_id and driver_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -52,6 +65,7 @@ Deno.serve(async (req) => {
     }
 
     if (!UUID_REGEX.test(delivery_id) || !UUID_REGEX.test(driver_id)) {
+      console.error(`[Complete-Delivery] ${requestId} - Invalid UUID format`)
       return new Response(
         JSON.stringify({ error: 'Invalid UUID format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -59,166 +73,93 @@ Deno.serve(async (req) => {
     }
 
     // Verify driver ownership
+    console.log(`[Complete-Delivery] ${requestId} - Verifying driver ownership`)
     const { data: driver, error: driverError } = await supabaseClient
       .from('drivers')
-      .select('user_id')
+      .select('user_id, earnings_balance')
       .eq('id', driver_id)
       .single()
 
     if (driverError || !driver || driver.user_id !== user.id) {
+      console.error(`[Complete-Delivery] ${requestId} - Driver ownership verification failed:`, driverError)
       return new Response(
         JSON.stringify({ error: 'Unauthorized: You do not own this driver account' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Verify delivery is assigned to this driver and in picked_up status
-    const { data: delivery, error: fetchError } = await supabaseClient
-      .from('deliveries')
-      .select('id, status, driver_id, restaurant_id, price')
-      .eq('id', delivery_id)
-      .single()
+    console.log(`[Complete-Delivery] ${requestId} - Driver verified. Current balance: R$${driver.earnings_balance}`)
 
-    if (fetchError || !delivery) {
+    // Call atomic database function to finalize delivery
+    console.log(`[Complete-Delivery] ${requestId} - Calling finalize_delivery_transaction function`)
+    const { data: result, error: finalizeError } = await supabaseClient
+      .rpc('finalize_delivery_transaction', {
+        p_delivery_id: delivery_id,
+        p_driver_id: driver_id
+      })
+
+    if (finalizeError) {
+      console.error(`[Complete-Delivery] ${requestId} - Error calling finalize function:`, finalizeError)
       return new Response(
-        JSON.stringify({ error: 'Entrega não encontrada' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Erro ao processar entrega' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    if (delivery.driver_id !== driver_id) {
-      return new Response(
-        JSON.stringify({ error: 'Esta entrega não está atribuída a você' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
+    console.log(`[Complete-Delivery] ${requestId} - Function result:`, result)
 
-    if (delivery.status !== 'picked_up') {
+    if (!result.success) {
+      console.error(`[Complete-Delivery] ${requestId} - Transaction failed:`, result.error)
       return new Response(
-        JSON.stringify({ error: 'A entrega não está no status correto para conclusão' }),
+        JSON.stringify({ error: result.error }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Update delivery status to delivered
-    const { data: updatedDelivery, error: updateError } = await supabaseClient
+    // Log successful transaction details
+    console.log(`[Complete-Delivery] ${requestId} - ✅ Transaction completed successfully:`)
+    console.log(`  - Delivery ID: ${result.delivery_id}`)
+    console.log(`  - Total Amount: R$${result.total_amount}`)
+    console.log(`  - Driver Earnings (80%): R$${result.driver_earnings}`)
+    console.log(`  - Platform Fee (20%): R$${result.platform_fee}`)
+    console.log(`  - Restaurant Balance: R$${result.restaurant_balance_before} → R$${result.restaurant_balance_after}`)
+    console.log(`  - Driver Balance: R$${result.driver_balance_before} → R$${result.driver_balance_after}`)
+
+    // Get updated delivery
+    const { data: updatedDelivery } = await supabaseClient
       .from('deliveries')
-      .update({
-        status: 'delivered',
-        delivered_at: new Date().toISOString()
-      })
+      .select('*')
       .eq('id', delivery_id)
-      .eq('status', 'picked_up')
-      .eq('driver_id', driver_id)
-      .select()
       .single()
 
-    if (updateError || !updatedDelivery) {
-      return new Response(
-        JSON.stringify({ error: 'Não foi possível atualizar o status da entrega' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Calculate platform fee (20%) and driver earnings (80%)
-    const platformFee = delivery.price * 0.20
-    const driverEarnings = delivery.price * 0.80
-
-    // Get current driver balance
-    const { data: driverBalance } = await supabaseClient
-      .from('drivers')
-      .select('earnings_balance')
-      .eq('id', driver_id)
-      .single()
-
-    // Update driver earnings balance
-    const { error: driverBalanceError } = await supabaseClient
-      .from('drivers')
-      .update({
-        earnings_balance: (driverBalance?.earnings_balance || 0) + driverEarnings
-      })
-      .eq('id', driver_id)
-
-    if (driverBalanceError) {
-      console.error('Error updating driver balance:', driverBalanceError)
-    }
-
-    // Get current restaurant balance
-    const { data: restaurantBalance } = await supabaseClient
+    // Send notifications
+    const { data: restaurantData } = await supabaseClient
       .from('restaurants')
-      .select('wallet_balance')
-      .eq('id', delivery.restaurant_id)
+      .select('user_id')
+      .eq('id', updatedDelivery.restaurant_id)
       .single()
 
-    // Deduct from restaurant wallet
-    const { error: restaurantBalanceError } = await supabaseClient
-      .from('restaurants')
-      .update({
-        wallet_balance: (restaurantBalance?.wallet_balance || 0) - delivery.price
+    if (restaurantData?.user_id) {
+      console.log(`[Complete-Delivery] ${requestId} - Sending notification to restaurant`)
+      await supabaseClient.rpc('create_notification', {
+        p_user_id: restaurantData.user_id,
+        p_title: 'Entrega Concluída! ✅',
+        p_message: `Entrega finalizada com sucesso. R$${result.total_amount.toFixed(2)} debitado da carteira.`,
+        p_type: 'delivery_completed',
+        p_delivery_id: delivery_id
       })
-      .eq('id', delivery.restaurant_id)
-
-    if (restaurantBalanceError) {
-      console.error('Error updating restaurant balance:', restaurantBalanceError)
     }
-
-    // Create transaction records
-    const transactions = [
-      {
-        driver_id: driver_id,
-        delivery_id: delivery_id,
-        restaurant_id: delivery.restaurant_id,
-        amount: delivery.price,
-        driver_earnings: driverEarnings,
-        platform_fee: platformFee,
-        type: 'earning',
-        description: 'Pagamento de entrega concluída'
-      },
-      {
-        restaurant_id: delivery.restaurant_id,
-        delivery_id: delivery_id,
-        amount: -delivery.price,
-        type: 'payment',
-        description: 'Pagamento de entrega realizada'
-      },
-      {
-        delivery_id: delivery_id,
-        amount: platformFee,
-        type: 'platform_fee',
-        description: 'Taxa da plataforma (20%)'
-      }
-    ]
-
-    const { error: transactionError } = await supabaseClient
-      .from('transactions')
-      .insert(transactions)
-
-    if (transactionError) {
-      console.error('Error creating transactions:', transactionError)
-    }
-
-    // Update driver total deliveries count
-    const { data: driverStats } = await supabaseClient
-      .from('drivers')
-      .select('total_deliveries')
-      .eq('id', driver_id)
-      .single()
-
-    if (driverStats) {
-      await supabaseClient
-        .from('drivers')
-        .update({ 
-          total_deliveries: (driverStats.total_deliveries || 0) + 1
-        })
-        .eq('id', driver_id)
-    }
-
-    console.log('Delivery completed successfully:', updatedDelivery.id)
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        delivery: updatedDelivery 
+        delivery: updatedDelivery,
+        transaction: {
+          total_amount: result.total_amount,
+          driver_earnings: result.driver_earnings,
+          platform_fee: result.platform_fee,
+          new_driver_balance: result.driver_balance_after
+        }
       }),
       { 
         status: 200, 
@@ -227,7 +168,7 @@ Deno.serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in complete-delivery function:', error)
+    console.error(`[Complete-Delivery] ${requestId} - Unexpected error:`, error)
     const errorMessage = error instanceof Error ? error.message : 'Erro interno do servidor'
     return new Response(
       JSON.stringify({ error: errorMessage }),
