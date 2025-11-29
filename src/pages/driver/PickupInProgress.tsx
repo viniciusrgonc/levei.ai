@@ -17,6 +17,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { toast } from '@/hooks/use-toast';
+import { getGoogleMapsLink } from '@/lib/utils';
 
 // Fix Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -191,8 +192,9 @@ export default function PickupInProgress() {
   };
 
   const openRouteInMaps = () => {
-    if (!delivery || !currentPosition) return;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${currentPosition[0]},${currentPosition[1]}&destination=${delivery.pickup_latitude},${delivery.pickup_longitude}`;
+    if (!delivery) return;
+    const destination: [number, number] = [delivery.pickup_latitude, delivery.pickup_longitude];
+    const url = getGoogleMapsLink(currentPosition || undefined, destination);
     window.open(url, '_blank');
   };
 
