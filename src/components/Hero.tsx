@@ -42,21 +42,6 @@ const Hero = () => {
               Sou Solicitante
             </Button>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-16 max-w-3xl mx-auto">
-            <div className="text-center space-y-2">
-              <div className="text-3xl font-bold text-primary">20%</div>
-              <div className="text-sm text-muted-foreground">Taxa da plataforma</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-3xl font-bold text-primary">80%</div>
-              <div className="text-sm text-muted-foreground">Para o entregador</div>
-            </div>
-            <div className="text-center space-y-2">
-              <div className="text-3xl font-bold text-primary">100%</div>
-              <div className="text-sm text-muted-foreground">Transparente</div>
-            </div>
-          </div>
         </div>
       </div>
     </section>

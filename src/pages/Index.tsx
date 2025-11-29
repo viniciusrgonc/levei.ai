@@ -4,10 +4,6 @@ import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { LogIn, UserPlus } from 'lucide-react';
 import Hero from "@/components/Hero";
-import BusinessModel from "@/components/BusinessModel";
-import Benefits from "@/components/Benefits";
-import Objectives from "@/components/Objectives";
-import Footer from "@/components/Footer";
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -54,10 +50,6 @@ const Index = () => {
         </div>
       </header>
       <Hero />
-      <BusinessModel />
-      <Benefits />
-      <Objectives />
-      <Footer />
     </div>
   );
 };
