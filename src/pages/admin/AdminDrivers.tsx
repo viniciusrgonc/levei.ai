@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
-import { Search, UserCheck, UserX, MapPin, Phone, Mail, Star, Package } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, UserCheck, UserX, Phone, Star, Package, RefreshCw, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -42,17 +43,33 @@ interface Driver {
   rating: number;
   total_deliveries: number;
   created_at: string;
-  profiles: {
-    full_name: string;
-    phone: string;
-    email?: string;
-  };
+  profile_name: string;
+  profile_phone: string;
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4 p-4 border-b">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-8 w-20 ml-auto" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminDrivers() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
@@ -67,39 +84,46 @@ export default function AdminDrivers() {
   }, [searchTerm, statusFilter, drivers]);
 
   const loadDrivers = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
       const { data, error } = await supabase
         .from('drivers')
         .select('*')
-        .order('created_at', { ascending: false});
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // Get profiles and user emails separately
-      const driversWithDetails = await Promise.all(
+      // Get profiles separately
+      const driversWithProfiles = await Promise.all(
         (data || []).map(async (driver) => {
-          const { data: profileData } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('full_name, phone')
             .eq('id', driver.user_id)
-            .single();
+            .maybeSingle();
 
-          const { data: userData } = await supabase.auth.admin.getUserById(driver.user_id);
-          
           return {
-            ...driver,
-            profiles: {
-              full_name: profileData?.full_name || '',
-              phone: profileData?.phone || '',
-              email: userData?.user?.email
-            }
+            id: driver.id,
+            user_id: driver.user_id,
+            vehicle_type: driver.vehicle_type,
+            license_plate: driver.license_plate || '',
+            is_available: driver.is_available,
+            is_approved: driver.is_approved,
+            rating: driver.rating || 0,
+            total_deliveries: driver.total_deliveries || 0,
+            created_at: driver.created_at,
+            profile_name: profile?.full_name || 'Sem nome',
+            profile_phone: profile?.phone || '',
           };
         })
       );
 
-      setDrivers(driversWithDetails as Driver[]);
-    } catch (error) {
+      setDrivers(driversWithProfiles);
+    } catch (error: any) {
       console.error('Erro ao carregar entregadores:', error);
+      setError(error.message || 'Erro ao carregar entregadores');
       toast.error('Erro ao carregar entregadores');
     } finally {
       setLoading(false);
@@ -111,8 +135,8 @@ export default function AdminDrivers() {
 
     if (searchTerm) {
       filtered = filtered.filter(driver =>
-        driver.profiles.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        driver.profiles.phone.includes(searchTerm) ||
+        driver.profile_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        driver.profile_phone.includes(searchTerm) ||
         driver.license_plate.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -178,11 +202,31 @@ export default function AdminDrivers() {
     }
   };
 
-  if (loading) {
+  // Error state
+  if (error && !loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  Erro ao carregar dados
+                </CardTitle>
+                <CardDescription>{error}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={loadDrivers} className="w-full">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
@@ -198,6 +242,15 @@ export default function AdminDrivers() {
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
                 <h1 className="text-xl font-bold text-primary-foreground">Gerenciar Entregadores</h1>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={loadDrivers}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-3 w-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
             </div>
           </header>
 
@@ -236,76 +289,80 @@ export default function AdminDrivers() {
                     {filteredDrivers.length} entregador(es) encontrado(s)
                   </div>
 
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead>Veículo</TableHead>
-                          <TableHead>Placa</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Avaliação</TableHead>
-                          <TableHead>Entregas</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredDrivers.length === 0 ? (
+                  {loading ? (
+                    <TableSkeleton />
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                              Nenhum entregador encontrado
-                            </TableCell>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Veículo</TableHead>
+                            <TableHead>Placa</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Avaliação</TableHead>
+                            <TableHead>Entregas</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
                           </TableRow>
-                        ) : (
-                          filteredDrivers.map((driver) => (
-                            <TableRow key={driver.id}>
-                              <TableCell className="font-medium">
-                                {driver.profiles.full_name}
-                              </TableCell>
-                              <TableCell className="capitalize">{driver.vehicle_type}</TableCell>
-                              <TableCell>{driver.license_plate}</TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <Badge variant={driver.is_approved ? "default" : "secondary"}>
-                                    {driver.is_approved ? 'Aprovado' : 'Pendente'}
-                                  </Badge>
-                                  {driver.is_available && (
-                                    <Badge variant="outline" className="text-green-600">
-                                      Disponível
-                                    </Badge>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                  <span>{Number(driver.rating).toFixed(1)}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Package className="h-4 w-4 text-muted-foreground" />
-                                  <span>{driver.total_deliveries}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedDriver(driver);
-                                    setDialogOpen(true);
-                                  }}
-                                >
-                                  Detalhes
-                                </Button>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredDrivers.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                Nenhum entregador encontrado
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                          ) : (
+                            filteredDrivers.map((driver) => (
+                              <TableRow key={driver.id}>
+                                <TableCell className="font-medium">
+                                  {driver.profile_name}
+                                </TableCell>
+                                <TableCell className="capitalize">{driver.vehicle_type}</TableCell>
+                                <TableCell>{driver.license_plate || 'N/A'}</TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    <Badge variant={driver.is_approved ? "default" : "secondary"}>
+                                      {driver.is_approved ? 'Aprovado' : 'Pendente'}
+                                    </Badge>
+                                    {driver.is_available && (
+                                      <Badge variant="outline" className="text-green-600">
+                                        Disponível
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                    <span>{Number(driver.rating).toFixed(1)}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                    <span>{driver.total_deliveries}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedDriver(driver);
+                                      setDialogOpen(true);
+                                    }}
+                                  >
+                                    Detalhes
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -328,17 +385,13 @@ export default function AdminDrivers() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Nome</label>
-                  <p className="text-foreground">{selectedDriver.profiles.full_name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-foreground">{selectedDriver.profiles.email || 'N/A'}</p>
+                  <p className="text-foreground">{selectedDriver.profile_name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Telefone</label>
                   <p className="text-foreground flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    {selectedDriver.profiles.phone}
+                    {selectedDriver.profile_phone || 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -347,7 +400,7 @@ export default function AdminDrivers() {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Placa</label>
-                  <p className="text-foreground">{selectedDriver.license_plate}</p>
+                  <p className="text-foreground">{selectedDriver.license_plate || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Total de Entregas</label>
