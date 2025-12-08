@@ -65,6 +65,16 @@ type Restaurant = {
   longitude: number;
 };
 
+// Map category names to vehicle_type enum values
+const categoryToVehicleType: Record<string, string> = {
+  'Moto': 'motorcycle',
+  'Motocicleta': 'motorcycle',
+  'Carro': 'car',
+  'Van': 'van',
+  'Caminhão': 'truck',
+  'Serviço por Hora': 'hourly_service',
+};
+
 export default function NewDelivery() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -86,6 +96,11 @@ export default function NewDelivery() {
   const [productNote, setProductNote] = useState<string>('');
   const [productSettings, setProductSettings] = useState<Record<string, number>>({});
   const [priceAdjusted, setPriceAdjusted] = useState<number>(0);
+  // Pickup address editing
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [pickupLat, setPickupLat] = useState<number | null>(null);
+  const [pickupLng, setPickupLng] = useState<number | null>(null);
+  const [isEditingPickup, setIsEditingPickup] = useState(false);
 
   useEffect(() => {
     fetchRestaurant();
@@ -142,6 +157,10 @@ export default function NewDelivery() {
     }
 
     setRestaurant(data);
+    // Initialize pickup values from restaurant
+    setPickupAddress(data.address);
+    setPickupLat(data.latitude);
+    setPickupLng(data.longitude);
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -162,18 +181,31 @@ export default function NewDelivery() {
     setDeliveryAddress(addr);
     setErrors(prev => ({ ...prev, location: '' }));
     
-    if (restaurant && selectedCategory) {
+    if (pickupLat && pickupLng && selectedCategory) {
       const distance = calculateDistance(
-        restaurant.latitude,
-        restaurant.longitude,
+        pickupLat,
+        pickupLng,
         lat,
         lng
       );
       
       setCalculatedDistance(distance);
-      // Calculate base price using category: base_price + (distance_km * price_per_km)
       const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      // Apply product type adjustment
+      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
+      setSuggestedPrice(adjustedPrice);
+    }
+  };
+
+  const handlePickupLocationSelect = (lat: number, lng: number, addr: string) => {
+    setPickupLat(lat);
+    setPickupLng(lng);
+    setPickupAddress(addr);
+    
+    // Recalculate distance if delivery location is set
+    if (deliveryLat && deliveryLng && selectedCategory) {
+      const distance = calculateDistance(lat, lng, deliveryLat, deliveryLng);
+      setCalculatedDistance(distance);
+      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
       const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
       setSuggestedPrice(adjustedPrice);
     }
@@ -185,17 +217,16 @@ export default function NewDelivery() {
     setErrors(prev => ({ ...prev, vehicleCategory: '' }));
     
     // Recalculate price if location is already selected
-    if (deliveryLat && deliveryLng && restaurant) {
+    if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
       const distance = calculateDistance(
-        restaurant.latitude,
-        restaurant.longitude,
+        pickupLat,
+        pickupLng,
         deliveryLat,
         deliveryLng
       );
       
       setCalculatedDistance(distance);
       const basePrice = category.base_price + (distance * category.price_per_km);
-      // Apply product type adjustment
       const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
       setSuggestedPrice(adjustedPrice);
     }
@@ -207,10 +238,10 @@ export default function NewDelivery() {
     setErrors(prev => ({ ...prev, productType: '' }));
 
     // Recalculate price if we have all necessary data
-    if (restaurant && deliveryLat && deliveryLng && selectedCategory) {
+    if (pickupLat && pickupLng && deliveryLat && deliveryLng && selectedCategory) {
       const distance = calculateDistance(
-        restaurant.latitude,
-        restaurant.longitude,
+        pickupLat,
+        pickupLng,
         deliveryLat,
         deliveryLng
       );
@@ -267,7 +298,7 @@ export default function NewDelivery() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm() || !user || !restaurant || !deliveryLat || !deliveryLng) {
+    if (!validateForm() || !user || !restaurant || !deliveryLat || !deliveryLng || !pickupLat || !pickupLng) {
       return;
     }
 
@@ -294,13 +325,18 @@ export default function NewDelivery() {
         return;
       }
 
+      // Map category name to vehicle_type enum
+      const vehicleType = selectedCategory 
+        ? (categoryToVehicleType[selectedCategory.name] || 'motorcycle')
+        : 'motorcycle';
+
       const { data, error } = await supabase
         .from('deliveries')
         .insert([{
           restaurant_id: restaurant.id,
-          pickup_address: restaurant.address,
-          pickup_latitude: restaurant.latitude,
-          pickup_longitude: restaurant.longitude,
+          pickup_address: pickupAddress,
+          pickup_latitude: pickupLat,
+          pickup_longitude: pickupLng,
           delivery_address: deliveryAddress,
           delivery_latitude: deliveryLat,
           delivery_longitude: deliveryLng,
@@ -310,7 +346,7 @@ export default function NewDelivery() {
           distance_km: calculatedDistance!,
           price: suggestedPrice || deliveryPrice,
           price_adjusted: deliveryPrice,
-          vehicle_category: selectedVehicleCategory as any,
+          vehicle_category: vehicleType as any,
           product_type: productType,
           product_note: productNote.trim() || null,
           status: 'pending'
@@ -388,16 +424,49 @@ export default function NewDelivery() {
                   <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Pickup Section */}
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold text-lg">Local de Coleta</h3>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-5 w-5 text-primary" />
+                          <h3 className="font-semibold text-lg">Local de Coleta</h3>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsEditingPickup(!isEditingPickup)}
+                        >
+                          {isEditingPickup ? 'Usar endereço cadastrado' : 'Alterar endereço'}
+                        </Button>
                       </div>
-                      <div className="p-4 bg-muted/50 rounded-lg border">
-                        <p className="text-sm font-medium text-muted-foreground mb-1">
-                          {restaurant.business_name}
-                        </p>
-                        <p className="text-sm">{restaurant.address}</p>
-                      </div>
+                      
+                      {!isEditingPickup ? (
+                        <div className="p-4 bg-muted/50 rounded-lg border">
+                          <p className="text-sm font-medium text-muted-foreground mb-1">
+                            {restaurant.business_name}
+                          </p>
+                          <p className="text-sm">{pickupAddress}</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <LocationPicker 
+                            onLocationSelect={handlePickupLocationSelect}
+                            initialLat={pickupLat || undefined}
+                            initialLng={pickupLng || undefined}
+                            initialAddress={pickupAddress}
+                          />
+                          <div className="space-y-2">
+                            <Label htmlFor="pickupAddress">Endereço de Coleta</Label>
+                            <Textarea
+                              id="pickupAddress"
+                              placeholder="Rua, número, complemento, bairro..."
+                              value={pickupAddress}
+                              onChange={(e) => setPickupAddress(e.target.value)}
+                              rows={2}
+                              disabled={loading}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <Separator />
