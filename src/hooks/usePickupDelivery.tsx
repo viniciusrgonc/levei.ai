@@ -34,7 +34,12 @@ export const usePickupDelivery = ({ onSuccess, onError }: UsePickupDeliveryParam
         description: 'Status atualizado. Agora siga para o endereço de entrega.',
       });
 
-      onSuccess?.(deliveryId);
+      // Call success callback after a small delay to ensure state updates
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess(deliveryId);
+        }, 100);
+      }
 
       return { success: true, delivery: data.delivery };
     } catch (error) {

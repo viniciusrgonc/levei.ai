@@ -81,8 +81,9 @@ export default function PickupInProgress() {
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
 
   const { pickupDelivery, loading: pickingUp } = usePickupDelivery({
-    onSuccess: () => {
-      navigate(`/driver/delivery/${deliveryId}`);
+    onSuccess: (id: string) => {
+      // Use replace to prevent going back to pickup page
+      navigate(`/driver/delivery/${id}`, { replace: true });
     }
   });
 
