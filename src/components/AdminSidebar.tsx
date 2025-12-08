@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield, Tag, ShoppingBag, DollarSign } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield, Tag, ShoppingBag, DollarSign, BarChart3 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -39,6 +39,11 @@ const menuItems = [
     title: 'Transações',
     url: '/admin/transactions',
     icon: DollarSign,
+  },
+  {
+    title: 'Relatórios',
+    url: '/admin/reports',
+    icon: BarChart3,
   },
   {
     title: 'Categorias',
