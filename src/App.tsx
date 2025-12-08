@@ -38,6 +38,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminDeliveryCategories from "./pages/admin/AdminDeliveryCategories";
 import AdminProductSettings from "./pages/admin/AdminProductSettings";
 import AdminTransactions from "./pages/admin/AdminTransactions";
+import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -281,6 +282,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminTransactions />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/reports"
+              element={
+                <AdminRoute>
+                  <AdminFinancialReports />
                 </AdminRoute>
               }
             />
