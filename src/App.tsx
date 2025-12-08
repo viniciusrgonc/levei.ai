@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, ProtectedRoute } from "@/lib/auth";
 import { AdminRoute } from "@/lib/AdminRoute";
+import { DriverRoute } from "@/lib/DriverRoute";
+import { RestaurantRoute } from "@/lib/RestaurantRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -61,153 +63,153 @@ const App = () => (
             <Route
               path="/restaurant/setup"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantSetup />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/dashboard"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantDashboard />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/history"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantHistory />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/profile"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantProfile />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/new-delivery"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <NewDelivery />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/delivery/:deliveryId"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <DeliveryTracking />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/scheduling"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantScheduling />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/wallet"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantWallet />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/restaurant/account"
               element={
-                <ProtectedRoute>
+                <RestaurantRoute>
                   <RestaurantAccount />
-                </ProtectedRoute>
+                </RestaurantRoute>
               }
             />
             <Route
               path="/driver/setup"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverSetup />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/dashboard"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverDashboard />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/available"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <AvailableDeliveries />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/pickup/:deliveryId"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <PickupInProgress />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/delivery/:deliveryId"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DeliveryInProgress />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/map"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverMap />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/wallet"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverWallet />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/history"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverHistory />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/profile"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverProfile />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
               path="/driver/settings"
               element={
-                <ProtectedRoute>
+                <DriverRoute>
                   <DriverSettings />
-                </ProtectedRoute>
+                </DriverRoute>
               }
             />
             <Route
