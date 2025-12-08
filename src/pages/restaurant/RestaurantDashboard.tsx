@@ -12,6 +12,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { Separator } from '@/components/ui/separator';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
+import { RestaurantDashboardSkeleton } from '@/components/skeletons';
 
 type Restaurant = {
   id: string;
@@ -201,9 +202,30 @@ export default function RestaurantDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 flex flex-col">
+            <header className="sticky top-0 z-10 h-16 border-b bg-primary backdrop-blur supports-[backdrop-filter]:bg-primary/95">
+              <div className="flex h-full items-center justify-between px-6">
+                <div className="flex items-center gap-4">
+                  <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+                  <div>
+                    <div className="h-6 w-32 bg-primary-foreground/20 rounded animate-pulse" />
+                    <div className="h-4 w-24 bg-primary-foreground/10 rounded mt-1 animate-pulse" />
+                  </div>
+                </div>
+                <NotificationBell />
+              </div>
+            </header>
+            <main className="flex-1 p-6 bg-background overflow-auto">
+              <div className="max-w-7xl mx-auto">
+                <RestaurantDashboardSkeleton />
+              </div>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 

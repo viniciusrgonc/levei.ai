@@ -11,6 +11,7 @@ import { DeliveryCard } from '@/components/DeliveryCard';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
+import { DeliveryListSkeleton } from '@/components/skeletons';
 import {
   Select,
   SelectContent,
@@ -124,10 +125,7 @@ export default function AvailableDeliveries() {
                       </Button>
                     </div>
                   ) : deliveriesLoading ? (
-                    <div className="text-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                      <p className="mt-4 text-muted-foreground">Buscando entregas próximas...</p>
-                    </div>
+                    <DeliveryListSkeleton count={3} />
                   ) : (
                     <>
                       {/* Product Filter */}
