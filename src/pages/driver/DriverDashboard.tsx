@@ -14,7 +14,7 @@ import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
-
+import { DriverDashboardSkeleton, DeliveryListSkeleton } from '@/components/skeletons';
 interface Driver {
   id: string;
   is_available: boolean;
@@ -200,9 +200,25 @@ export default function DriverDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full">
+          <DriverSidebar />
+          <div className="flex-1 flex flex-col">
+            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
+              </div>
+              <NotificationBell />
+            </header>
+            <main className="flex-1 p-6 bg-background overflow-auto">
+              <div className="max-w-7xl mx-auto">
+                <DriverDashboardSkeleton />
+              </div>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
@@ -278,10 +294,7 @@ export default function DriverDashboard() {
                       Ative sua disponibilidade para ver entregas disponíveis
                     </div>
                    ) : deliveriesLoading ? (
-                    <div className="text-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary mx-auto"></div>
-                      <p className="text-sm text-muted-foreground mt-2">Buscando entregas...</p>
-                    </div>
+                    <DeliveryListSkeleton count={2} />
                    ) : safeDeliveries.length === 0 ? (
                     <div className="text-center py-12">
                       <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
