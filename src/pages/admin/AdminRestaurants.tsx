@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
-import { Search, UserCheck, UserX, MapPin, Phone, Mail, Star, Package } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Search, UserCheck, UserX, MapPin, Phone, Star, Package, RefreshCw, AlertCircle, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -41,18 +42,35 @@ interface Restaurant {
   is_approved: boolean;
   rating: number;
   total_deliveries: number;
+  wallet_balance: number;
   created_at: string;
-  profiles: {
-    full_name: string;
-    phone: string;
-    email?: string;
-  };
+  profile_name: string;
+  profile_phone: string;
+}
+
+function TableSkeleton() {
+  return (
+    <div className="space-y-3">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex items-center gap-4 p-4 border-b">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-48" />
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-4 w-12" />
+          <Skeleton className="h-8 w-20 ml-auto" />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminRestaurants() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
@@ -67,6 +85,9 @@ export default function AdminRestaurants() {
   }, [searchTerm, statusFilter, restaurants]);
 
   const loadRestaurants = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
       const { data, error } = await supabase
         .from('restaurants')
@@ -75,31 +96,36 @@ export default function AdminRestaurants() {
 
       if (error) throw error;
 
-      // Get profiles and user emails separately
-      const restaurantsWithDetails = await Promise.all(
+      // Get profiles separately
+      const restaurantsWithProfiles = await Promise.all(
         (data || []).map(async (restaurant) => {
-          const { data: profileData } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('full_name, phone')
             .eq('id', restaurant.user_id)
-            .single();
+            .maybeSingle();
 
-          const { data: userData } = await supabase.auth.admin.getUserById(restaurant.user_id);
-          
           return {
-            ...restaurant,
-            profiles: {
-              full_name: profileData?.full_name || '',
-              phone: profileData?.phone || '',
-              email: userData?.user?.email
-            }
+            id: restaurant.id,
+            user_id: restaurant.user_id,
+            business_name: restaurant.business_name,
+            cnpj: restaurant.cnpj || '',
+            address: restaurant.address,
+            is_approved: restaurant.is_approved,
+            rating: restaurant.rating || 0,
+            total_deliveries: restaurant.total_deliveries || 0,
+            wallet_balance: restaurant.wallet_balance || 0,
+            created_at: restaurant.created_at,
+            profile_name: profile?.full_name || 'Sem nome',
+            profile_phone: profile?.phone || '',
           };
         })
       );
 
-      setRestaurants(restaurantsWithDetails as Restaurant[]);
-    } catch (error) {
+      setRestaurants(restaurantsWithProfiles);
+    } catch (error: any) {
       console.error('Erro ao carregar solicitantes:', error);
+      setError(error.message || 'Erro ao carregar solicitantes');
       toast.error('Erro ao carregar solicitantes');
     } finally {
       setLoading(false);
@@ -112,7 +138,7 @@ export default function AdminRestaurants() {
     if (searchTerm) {
       filtered = filtered.filter(restaurant =>
         restaurant.business_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        restaurant.profiles.phone.includes(searchTerm) ||
+        restaurant.profile_phone.includes(searchTerm) ||
         restaurant.cnpj.includes(searchTerm)
       );
     }
@@ -176,11 +202,31 @@ export default function AdminRestaurants() {
     }
   };
 
-  if (loading) {
+  // Error state
+  if (error && !loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full bg-background">
+          <AdminSidebar />
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="w-full max-w-md mx-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  Erro ao carregar dados
+                </CardTitle>
+                <CardDescription>{error}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={loadRestaurants} className="w-full">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
@@ -196,6 +242,15 @@ export default function AdminRestaurants() {
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
                 <h1 className="text-xl font-bold text-primary-foreground">Gerenciar Solicitantes</h1>
               </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={loadRestaurants}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-3 w-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Atualizar
+              </Button>
             </div>
           </header>
 
@@ -233,71 +288,73 @@ export default function AdminRestaurants() {
                     {filteredRestaurants.length} solicitante(s) encontrado(s)
                   </div>
 
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome do Negócio</TableHead>
-                          <TableHead>CNPJ</TableHead>
-                          <TableHead>Endereço</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Avaliação</TableHead>
-                          <TableHead>Entregas</TableHead>
-                          <TableHead className="text-right">Ações</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredRestaurants.length === 0 ? (
+                  {loading ? (
+                    <TableSkeleton />
+                  ) : (
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                              Nenhum solicitante encontrado
-                            </TableCell>
+                            <TableHead>Nome do Negócio</TableHead>
+                            <TableHead>CNPJ</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>Saldo</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Entregas</TableHead>
+                            <TableHead className="text-right">Ações</TableHead>
                           </TableRow>
-                        ) : (
-                          filteredRestaurants.map((restaurant) => (
-                            <TableRow key={restaurant.id}>
-                              <TableCell className="font-medium">
-                                {restaurant.business_name}
-                              </TableCell>
-                              <TableCell>{restaurant.cnpj || 'N/A'}</TableCell>
-                              <TableCell className="max-w-xs truncate">
-                                {restaurant.address}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={restaurant.is_approved ? "default" : "secondary"}>
-                                  {restaurant.is_approved ? 'Aprovado' : 'Pendente'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                  <span>{Number(restaurant.rating).toFixed(1)}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center gap-1">
-                                  <Package className="h-4 w-4 text-muted-foreground" />
-                                  <span>{restaurant.total_deliveries}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => {
-                                    setSelectedRestaurant(restaurant);
-                                    setDialogOpen(true);
-                                  }}
-                                >
-                                  Detalhes
-                                </Button>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredRestaurants.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                Nenhum solicitante encontrado
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                          ) : (
+                            filteredRestaurants.map((restaurant) => (
+                              <TableRow key={restaurant.id}>
+                                <TableCell className="font-medium">
+                                  {restaurant.business_name}
+                                </TableCell>
+                                <TableCell>{restaurant.cnpj || 'N/A'}</TableCell>
+                                <TableCell>{restaurant.profile_phone || 'N/A'}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1 text-green-600">
+                                    <Wallet className="h-4 w-4" />
+                                    R$ {Number(restaurant.wallet_balance).toFixed(2)}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={restaurant.is_approved ? "default" : "secondary"}>
+                                    {restaurant.is_approved ? 'Aprovado' : 'Pendente'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Package className="h-4 w-4 text-muted-foreground" />
+                                    <span>{restaurant.total_deliveries}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedRestaurant(restaurant);
+                                      setDialogOpen(true);
+                                    }}
+                                  >
+                                    Detalhes
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -323,14 +380,14 @@ export default function AdminRestaurants() {
                   <p className="text-foreground">{selectedRestaurant.business_name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-foreground">{selectedRestaurant.profiles.email || 'N/A'}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Responsável</label>
+                  <p className="text-foreground">{selectedRestaurant.profile_name}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Telefone</label>
                   <p className="text-foreground flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    {selectedRestaurant.profiles.phone}
+                    {selectedRestaurant.profile_phone || 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -347,6 +404,13 @@ export default function AdminRestaurants() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Total de Entregas</label>
                   <p className="text-foreground">{selectedRestaurant.total_deliveries}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Saldo na Carteira</label>
+                  <p className="text-foreground flex items-center gap-1 text-green-600">
+                    <Wallet className="h-4 w-4" />
+                    R$ {Number(selectedRestaurant.wallet_balance).toFixed(2)}
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Avaliação</label>
