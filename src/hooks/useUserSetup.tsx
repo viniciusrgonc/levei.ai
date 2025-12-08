@@ -107,28 +107,47 @@ export function useAuthRedirect() {
   useEffect(() => {
     if (loading || !user) return;
 
-    // No role selected yet
-    if (!role) {
-      navigate('/dashboard');
+    // Get current path to avoid redirecting users who are already on valid driver/restaurant routes
+    const currentPath = window.location.pathname;
+    
+    // CRITICAL: Never redirect drivers away from driver routes
+    if (currentPath.startsWith('/driver/') && role === 'driver') {
+      return; // Driver is on a valid driver route, don't interfere
+    }
+    
+    // CRITICAL: Never redirect restaurants away from restaurant routes
+    if (currentPath.startsWith('/restaurant/') && role === 'restaurant') {
+      // Only allow redirect to setup if they haven't completed it and are on the setup page
+      if (!hasCompletedSetup && currentPath !== '/restaurant/setup') {
+        navigate('/restaurant/setup');
+      }
       return;
     }
 
-    // Has role but hasn't completed setup
+    // No role selected yet
+    if (!role) {
+      if (currentPath !== '/dashboard') {
+        navigate('/dashboard');
+      }
+      return;
+    }
+
+    // Has role but hasn't completed setup - redirect to appropriate setup page
     if (!hasCompletedSetup) {
-      if (role === 'restaurant') {
+      if (role === 'restaurant' && currentPath !== '/restaurant/setup') {
         navigate('/restaurant/setup');
-      } else if (role === 'driver') {
+      } else if (role === 'driver' && currentPath !== '/driver/setup') {
         navigate('/driver/setup');
       }
       return;
     }
 
-    // Has role and completed setup - go to dashboard
-    if (role === 'restaurant') {
+    // Has role and completed setup - go to dashboard (only if not already on a valid route)
+    if (role === 'restaurant' && !currentPath.startsWith('/restaurant/')) {
       navigate('/restaurant/dashboard');
-    } else if (role === 'driver') {
+    } else if (role === 'driver' && !currentPath.startsWith('/driver/')) {
       navigate('/driver/dashboard');
-    } else if (role === 'admin') {
+    } else if (role === 'admin' && !currentPath.startsWith('/admin/')) {
       navigate('/admin/dashboard');
     }
   }, [user, role, hasCompletedSetup, loading, navigate]);
