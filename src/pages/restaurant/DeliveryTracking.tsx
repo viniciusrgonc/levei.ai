@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star } from 'lucide-react';
+import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -13,6 +13,7 @@ import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { getGoogleMapsLink } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingModal } from '@/components/RatingModal';
+import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 
 type Delivery = {
   id: string;
@@ -64,6 +65,7 @@ export default function DeliveryTracking() {
   const [loading, setLoading] = useState(true);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [hasRated, setHasRated] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -304,6 +306,24 @@ export default function DeliveryTracking() {
                     <p className="text-sm text-muted-foreground">
                       Aguarde enquanto buscamos um entregador disponível
                     </p>
+                    <Button
+                      variant="outline"
+                      className="mt-4 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                      onClick={() => setShowCancelModal(true)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancelar entrega
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : delivery.status === 'cancelled' ? (
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="p-6 text-center">
+                    <XCircle className="h-12 w-12 text-red-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-red-800">Entrega Cancelada</h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      Esta entrega foi cancelada e não está mais disponível.
+                    </p>
                   </CardContent>
                 </Card>
               ) : null}
@@ -417,6 +437,17 @@ export default function DeliveryTracking() {
           }}
         />
       )}
+
+      {/* Cancel Modal */}
+      <CancelDeliveryModal
+        deliveryId={delivery.id}
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        onCancelled={() => {
+          setShowCancelModal(false);
+          fetchDelivery();
+        }}
+      />
     </SidebarProvider>
   );
 }

@@ -5,13 +5,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, Loader2, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 
 type Restaurant = {
   id: string;
@@ -46,6 +47,20 @@ export default function RestaurantDashboard() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+
+  const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
+    e.stopPropagation();
+    setSelectedDeliveryId(deliveryId);
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelSuccess = () => {
+    setCancelModalOpen(false);
+    setSelectedDeliveryId(null);
+    fetchDeliveries();
+  };
 
   useRealtimeDeliveries({
     restaurantId: restaurant?.id,
@@ -247,18 +262,30 @@ export default function RestaurantDashboard() {
                               <p className="text-xl font-bold text-primary">
                                 R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
                               </p>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="mt-1"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/restaurant/delivery/${delivery.id}`);
-                                }}
-                              >
-                                <Eye className="h-4 w-4 mr-1" />
-                                Rastrear
-                              </Button>
+                              <div className="flex flex-col gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/restaurant/delivery/${delivery.id}`);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4 mr-1" />
+                                  Rastrear
+                                </Button>
+                                {delivery.status === 'pending' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => handleOpenCancelModal(e, delivery.id)}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancelar
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </CardContent>
@@ -317,6 +344,16 @@ export default function RestaurantDashboard() {
           </main>
         </div>
       </div>
+
+      {/* Cancel Modal */}
+      {selectedDeliveryId && (
+        <CancelDeliveryModal
+          deliveryId={selectedDeliveryId}
+          open={cancelModalOpen}
+          onOpenChange={setCancelModalOpen}
+          onCancelled={handleCancelSuccess}
+        />
+      )}
     </SidebarProvider>
   );
 }
