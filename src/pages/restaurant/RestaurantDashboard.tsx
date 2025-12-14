@@ -3,90 +3,79 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Clock, DollarSign, Star, MapPin, TrendingUp, Navigation, RefreshCw, Eye } from 'lucide-react';
+import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
-import { Separator } from '@/components/ui/separator';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
-import { RestaurantDashboardSkeleton } from '@/components/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Restaurant = {
   id: string;
   business_name: string;
-  rating: number;
-  total_deliveries: number;
+  wallet_balance: number;
 };
 
 type Delivery = {
   id: string;
   delivery_address: string;
+  pickup_address: string;
   status: string;
   price: number;
+  price_adjusted: number;
   created_at: string;
   driver_id: string | null;
   distance_km: number;
-  accepted_at: string | null;
-  picked_up_at: string | null;
-  driver_name?: string;
+  recipient_name: string | null;
+};
+
+const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
+  pending: { label: 'Aguardando entregador', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '🕐' },
+  accepted: { label: 'Coleta em andamento', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '🚗' },
+  picked_up: { label: 'Em rota de entrega', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '📦' },
+  delivered: { label: 'Entregue', color: 'bg-green-100 text-green-800 border-green-200', icon: '✅' },
+  cancelled: { label: 'Cancelada', color: 'bg-red-100 text-red-800 border-red-200', icon: '❌' },
 };
 
 export default function RestaurantDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
-  const [recentDeliveries, setRecentDeliveries] = useState<Delivery[]>([]);
-  const [stats, setStats] = useState({
-    active: 0,
-    today: 0,
-    todaySpent: 0
-  });
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
-  // Hook de realtime para escutar mudanças nas entregas
   useRealtimeDeliveries({
     restaurantId: restaurant?.id,
     showNotifications: true,
-    onUpdate: (delivery) => {
-      console.log('Delivery updated in realtime:', delivery);
-      // Recarregar dados quando houver atualização
-      fetchRestaurantData();
-    },
-    onInsert: (delivery) => {
-      console.log('New delivery inserted:', delivery);
-      fetchRestaurantData();
-    },
+    onUpdate: () => fetchDeliveries(),
+    onInsert: () => fetchDeliveries(),
   });
 
   useEffect(() => {
-    fetchRestaurantData();
+    fetchRestaurant();
   }, [user]);
 
-  // Removido: subscrição duplicada - já gerenciado pelo hook useRealtimeDeliveries acima
+  useEffect(() => {
+    if (restaurant) {
+      fetchDeliveries();
+    }
+  }, [restaurant]);
 
-  const fetchRestaurantData = async () => {
+  const fetchRestaurant = async () => {
     if (!user) return;
 
     const { data, error } = await supabase
       .from('restaurants')
-      .select('*')
+      .select('id, business_name, wallet_balance')
       .eq('user_id', user.id)
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
         navigate('/restaurant/setup');
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: 'Não foi possível carregar os dados'
-        });
       }
       setLoading(false);
       return;
@@ -99,106 +88,18 @@ export default function RestaurantDashboard() {
   const fetchDeliveries = async () => {
     if (!restaurant) return;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Fetch all deliveries
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('deliveries')
       .select('*')
       .eq('restaurant_id', restaurant.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(20);
 
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível carregar as entregas'
-      });
-      return;
-    }
-
-    // Fetch driver names for deliveries with assigned drivers
-    const deliveriesWithDriverNames = await Promise.all(
-      (data || []).map(async (delivery) => {
-        if (delivery.driver_id) {
-          const { data: driverData } = await supabase
-            .from('drivers')
-            .select('user_id')
-            .eq('id', delivery.driver_id)
-            .single();
-          
-          if (driverData?.user_id) {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('id', driverData.user_id)
-              .single();
-            
-            return {
-              ...delivery,
-              driver_name: profileData?.full_name || 'Entregador'
-            };
-          }
-        }
-        return delivery;
-      })
-    );
-
-    // Split active and recent (using correct status values)
-    const active = deliveriesWithDriverNames?.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status)) || [];
-    const recent = deliveriesWithDriverNames?.slice(0, 5) || [];
-
-    // Safety checks
-    if (!Array.isArray(active)) {
-      console.error('active deliveries is not an array!', active);
-      setActiveDeliveries([]);
-    } else {
-      setActiveDeliveries(active);
-    }
-
-    if (!Array.isArray(recent)) {
-      console.error('recent deliveries is not an array!', recent);
-      setRecentDeliveries([]);
-    } else {
-      setRecentDeliveries(recent);
-    }
-
-    // Calculate stats
-    const todayDeliveries = deliveriesWithDriverNames?.filter(d => new Date(d.created_at) >= today) || [];
-    const todayCount = todayDeliveries.length;
-    const todaySpent = todayDeliveries.reduce((sum, d) => sum + Number(d.price), 0);
-
-    setStats({ active: active.length, today: todayCount, todaySpent });
+    setDeliveries(data || []);
   };
 
-  const getStatusBadge = (status: string) => {
-    if (!status) {
-      console.error('getStatusBadge: status is undefined');
-      return <Badge variant="secondary">Desconhecido</Badge>;
-    }
-
-    const variants = {
-      pending: { label: 'Disponível', variant: 'secondary' as const, color: 'text-muted-foreground' },
-      accepted: { label: 'Coleta em Andamento', variant: 'default' as const, color: 'text-blue-600' },
-      picked_up: { label: 'Entrega em Andamento', variant: 'default' as const, color: 'text-orange-600' },
-      delivered: { label: 'Entregue', variant: 'default' as const, color: 'text-green-600' },
-      cancelled: { label: 'Cancelada', variant: 'destructive' as const, color: 'text-destructive' },
-    };
-    const config = variants[status as keyof typeof variants] || { label: status, variant: 'secondary' as const, color: '' };
-    return <Badge variant={config.variant} className={config.color}>{config.label}</Badge>;
-  };
-
-  const getStatusIcon = (status: string) => {
-    const icons = {
-      pending: '🕐',
-      accepted: '🚗',
-      picked_up: '📦',
-      delivered: '✨',
-      cancelled: '❌',
-    };
-    return icons[status as keyof typeof icons] || '❓';
-  };
+  const activeDeliveries = deliveries.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status));
+  const completedDeliveries = deliveries.filter(d => d.status === 'delivered');
 
   if (loading) {
     return (
@@ -206,22 +107,19 @@ export default function RestaurantDashboard() {
         <div className="min-h-screen flex w-full">
           <RestaurantSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="sticky top-0 z-10 h-16 border-b bg-primary backdrop-blur supports-[backdrop-filter]:bg-primary/95">
-              <div className="flex h-full items-center justify-between px-6">
-                <div className="flex items-center gap-4">
-                  <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                  <div>
-                    <div className="h-6 w-32 bg-primary-foreground/20 rounded animate-pulse" />
-                    <div className="h-4 w-24 bg-primary-foreground/10 rounded mt-1 animate-pulse" />
-                  </div>
+            <header className="sticky top-0 z-10 h-16 border-b bg-primary">
+              <div className="flex h-full items-center justify-between px-4 md:px-6">
+                <div className="flex items-center gap-3">
+                  <SidebarTrigger className="text-primary-foreground" />
+                  <Skeleton className="h-6 w-32 bg-primary-foreground/20" />
                 </div>
                 <NotificationBell />
               </div>
             </header>
-            <main className="flex-1 p-6 bg-background overflow-auto">
-              <div className="max-w-7xl mx-auto">
-                <RestaurantDashboardSkeleton />
-              </div>
+            <main className="flex-1 p-4 md:p-6 space-y-6">
+              <Skeleton className="h-14 w-full rounded-xl" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-48 w-full rounded-xl" />
             </main>
           </div>
         </div>
@@ -229,272 +127,193 @@ export default function RestaurantDashboard() {
     );
   }
 
-  if (!restaurant) {
-    return null;
-  }
+  if (!restaurant) return null;
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 h-16 border-b bg-primary backdrop-blur supports-[backdrop-filter]:bg-primary/95">
-            <div className="flex h-full items-center justify-between px-6">
-              <div className="flex items-center gap-4">
+          {/* Header */}
+          <header className="sticky top-0 z-10 h-16 border-b bg-primary">
+            <div className="flex h-full items-center justify-between px-4 md:px-6">
+              <div className="flex items-center gap-3">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <div>
-                  <h1 className="text-xl font-bold text-primary-foreground">
-                    {restaurant.business_name}
-                  </h1>
-                  <div className="flex items-center gap-2 text-sm text-primary-foreground/80">
-                    <div className="flex items-center">
-                      <Star className="h-3 w-3 fill-primary-foreground text-primary-foreground mr-1" />
-                      {Number(restaurant.rating || 0).toFixed(1)}
-                    </div>
-                    <span>•</span>
-                    <span>{restaurant.total_deliveries || 0} entregas</span>
-                  </div>
-                </div>
+                <h1 className="text-lg font-bold text-primary-foreground truncate">
+                  {restaurant.business_name}
+                </h1>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="text-xs text-primary-foreground/60">
-                  Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}
-                </div>
-                <Button 
-                  onClick={() => navigate('/restaurant/new-delivery')}
-                  variant="secondary"
-                  size="sm"
-                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Entrega
-                </Button>
-                <NotificationBell />
-              </div>
+              <NotificationBell />
             </div>
           </header>
 
-          <main className="flex-1 p-6 bg-background overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card className="border-2 hover:border-primary/50 transition-colors">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center justify-between">
-                      <span>Entregas Ativas</span>
-                      <Navigation className="h-4 w-4 text-primary animate-pulse" />
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Package className="h-8 w-8 text-primary" />
-                      <span className="text-3xl font-bold">{stats.active}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Em andamento
-                    </p>
-                  </CardContent>
-                </Card>
+          <main className="flex-1 p-4 md:p-6 space-y-6 overflow-auto pb-24">
+            {/* CTA Principal */}
+            <Button
+              onClick={() => navigate('/restaurant/new-delivery')}
+              size="xl"
+              className="w-full gap-3 text-lg shadow-lg"
+            >
+              <Plus className="h-6 w-6" />
+              Nova Entrega
+            </Button>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Entregas Hoje</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-8 w-8 text-primary" />
-                      <span className="text-3xl font-bold">{stats.today}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Solicitações
-                    </p>
-                  </CardContent>
-                </Card>
+            {/* Saldo */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => navigate('/restaurant/wallet')}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Wallet className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Saldo disponível</p>
+                    <p className="text-2xl font-bold">R$ {restaurant.wallet_balance.toFixed(2)}</p>
+                  </div>
+                </div>
+                <Button variant="outline" size="sm">
+                  Adicionar
+                </Button>
+              </CardContent>
+            </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Gasto Hoje</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-8 w-8 text-primary" />
-                      <span className="text-3xl font-bold">R$ {stats.todaySpent.toFixed(2)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Total investido
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Avaliação</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
-                      <span className="text-3xl font-bold">{Number(restaurant.rating || 0).toFixed(1)}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Média geral
-                    </p>
-                  </CardContent>
-                </Card>
+            {/* Entregas Ativas */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Em andamento
+                  {activeDeliveries.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {activeDeliveries.length}
+                    </Badge>
+                  )}
+                </h2>
               </div>
 
-              {/* Active Deliveries */}
-              {Array.isArray(activeDeliveries) && activeDeliveries.length > 0 && (
-                <Card className="border-2 border-primary/20">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <Navigation className="h-5 w-5 text-primary animate-pulse" />
-                          Entregas Ativas ({activeDeliveries.length})
-                        </CardTitle>
-                        <CardDescription className="mt-2">
-                          Acompanhe em tempo real
-                        </CardDescription>
-                      </div>
-                      <RefreshCw 
-                        className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-primary transition-colors" 
-                        onClick={fetchDeliveries}
-                      />
+              {activeDeliveries.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                      <Package className="h-8 w-8 text-muted-foreground" />
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {activeDeliveries.map((delivery, index) => (
-                        <div
-                          key={delivery.id}
-                          className="p-4 border-2 rounded-lg hover:border-primary/50 transition-all cursor-pointer bg-gradient-to-r from-background to-primary/5 animate-fade-in hover:shadow-lg hover:scale-[1.01]"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                          onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex items-start gap-3 flex-1 min-w-0">
-                              <div className="text-2xl flex-shrink-0">
-                                {getStatusIcon(delivery.status)}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  {getStatusBadge(delivery.status)}
-                                  <span className="text-xs text-muted-foreground">
-                                    #{delivery.id.slice(0, 8)}
-                                  </span>
-                                </div>
-                                <p className="font-medium truncate flex items-center gap-2">
-                                  <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                  {delivery.delivery_address}
-                                </p>
-                                 <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                                   <span>{delivery.distance_km.toFixed(1)} km</span>
-                                   <span>•</span>
-                                   <span>
-                                     {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
-                                       hour: '2-digit',
-                                       minute: '2-digit'
-                                     })}
-                                   </span>
-                                 </div>
-                                 {delivery.driver_name && (
-                                   <div className="flex items-center gap-2 mt-2 text-sm font-medium text-primary">
-                                     <Navigation className="h-4 w-4" />
-                                     Coleta será realizada por: {delivery.driver_name}
-                                   </div>
-                                 )}
-                              </div>
-                            </div>
-                             <div className="text-right flex-shrink-0">
-                               <p className="text-xl font-bold text-primary">
-                                 R$ {Number(delivery.price).toFixed(2)}
-                               </p>
-                               <Button
-                                 size="sm"
-                                 variant="outline"
-                                 onClick={(e) => {
-                                   e.stopPropagation();
-                                   navigate(`/restaurant/delivery/${delivery.id}`);
-                                 }}
-                                 className="mt-2"
-                               >
-                                 <Eye className="h-3 w-3 mr-1" />
-                                 Rastrear
-                               </Button>
-                             </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <h3 className="font-semibold mb-2">Nenhuma entrega ativa</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Clique em "Nova Entrega" para solicitar sua primeira entrega
+                    </p>
+                    <Button onClick={() => navigate('/restaurant/new-delivery')} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Criar entrega
+                    </Button>
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Recent Deliveries */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entregas Recentes</CardTitle>
-                  <CardDescription>
-                    Histórico das últimas solicitações
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!Array.isArray(recentDeliveries) || recentDeliveries.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground mb-4">
-                        Nenhuma entrega ainda
-                      </p>
-                      <Button onClick={() => navigate('/restaurant/new-delivery')}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Criar Primeira Entrega
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {recentDeliveries.map((delivery, index) => (
-                        <div
-                          key={delivery.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-all cursor-pointer animate-fade-in hover:shadow-md"
-                          style={{ animationDelay: `${index * 80}ms` }}
-                          onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
-                        >
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
-                            <MapPin className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              ) : (
+                <div className="space-y-3">
+                  {activeDeliveries.map((delivery) => {
+                    const status = statusConfig[delivery.status] || statusConfig.pending;
+                    return (
+                      <Card
+                        key={delivery.id}
+                        className="cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
+                        onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{delivery.delivery_address}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(delivery.created_at).toLocaleString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xl">{status.icon}</span>
+                                <Badge className={`${status.color} border font-medium`}>
+                                  {status.label}
+                                </Badge>
+                              </div>
+                              <p className="font-medium truncate flex items-center gap-2">
+                                <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                {delivery.delivery_address}
                               </p>
+                              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                                <span>{delivery.distance_km?.toFixed(1)} km</span>
+                                <span>•</span>
+                                <span>
+                                  {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xl font-bold text-primary">
+                                R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                              </p>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="mt-1"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/restaurant/delivery/${delivery.id}`);
+                                }}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                Rastrear
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="font-bold">R$ {Number(delivery.price).toFixed(2)}</p>
-                              {getStatusBadge(delivery.status)}
-                            </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            {/* Entregas Concluídas */}
+            {completedDeliveries.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    Concluídas recentemente
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/restaurant/history')}
+                  >
+                    Ver todas
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  {completedDeliveries.slice(0, 3).map((delivery) => (
+                    <Card
+                      key={delivery.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
+                    >
+                      <CardContent className="p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="text-lg">✅</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {delivery.recipient_name || delivery.delivery_address}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(delivery.created_at).toLocaleDateString('pt-BR')}
+                            </p>
                           </div>
                         </div>
-                      ))}
-                      {recentDeliveries.length >= 5 && (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => navigate('/restaurant/history')}
-                        >
-                          Ver Todas as Entregas
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                        <p className="font-semibold text-green-600">
+                          R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
           </main>
         </div>
       </div>
