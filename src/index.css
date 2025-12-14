@@ -2,126 +2,152 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* 
+  LEVEI Design System
+  Inspirado em: Uber, Lalamove, iFood, 99 Entregas
+  Estilo: Minimalista, profissional, tecnológico
+  Todas as cores em HSL
 */
 
 @layer base {
   :root {
-    /* Brand Colors - Minimalista e Profissional */
-    --primary: 221 83% 48%; /* #1D4ED8 - Azul principal */
-    --primary-light: 217 91% 60%; /* #3B82F6 - Azul claro */
-    --primary-dark: 210 79% 15%; /* #0A2540 - Azul escuro */
+    /* Brand Colors - Azul Moderno (Confiança e Tecnologia) */
+    --primary: 220 84% 50%; /* #1E6FEB - Azul vibrante principal */
+    --primary-light: 213 94% 58%; /* #3B8DF8 - Azul claro */
+    --primary-dark: 220 90% 28%; /* #0B3D91 - Azul profundo */
     --primary-foreground: 0 0% 100%;
 
-    /* Neutral Colors */
-    --background: 0 0% 100%; /* #FFFFFF */
-    --foreground: 217 33% 12%; /* #111827 */
+    /* Neutral Colors - Clean e Moderno */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 13%; /* #1C2127 - Texto escuro */
     
     --card: 0 0% 100%;
-    --card-foreground: 217 33% 12%;
+    --card-foreground: 220 13% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 217 33% 12%;
+    --popover-foreground: 220 13% 13%;
 
-    --secondary: 210 40% 98%; /* #F5F7FA - Cinza muito claro */
-    --secondary-foreground: 217 19% 27%; /* #374151 */
+    /* Secondary - Cinza suave off-white */
+    --secondary: 220 14% 96%; /* #F4F5F7 */
+    --secondary-foreground: 220 13% 35%; /* #505866 */
 
-    --muted: 210 40% 98%;
-    --muted-foreground: 217 19% 27%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
 
-    --accent: 217 91% 60%;
+    --accent: 220 84% 50%;
     --accent-foreground: 0 0% 100%;
 
-    /* Status Colors */
-    --success: 142 76% 36%; /* #16A34A - Verde */
-    --warning: 38 92% 50%; /* #F59E0B - Amarelo */
-    --destructive: 0 72% 51%; /* #DC2626 - Vermelho */
+    /* Status Colors - Claros e Distintos */
+    --success: 145 63% 42%; /* #28A745 - Verde sucesso */
+    --success-foreground: 0 0% 100%;
+    --warning: 40 96% 50%; /* #F5A623 - Amarelo alerta */
+    --warning-foreground: 0 0% 100%;
+    --destructive: 4 72% 52%; /* #DC3545 - Vermelho erro */
     --destructive-foreground: 0 0% 100%;
+    
+    /* Info */
+    --info: 200 94% 46%; /* #0096D6 */
+    --info-foreground: 0 0% 100%;
 
     /* Border & Input */
-    --border: 220 14% 91%; /* #E5E7EB */
-    --input: 220 14% 91%;
-    --ring: 217 91% 60%;
+    --border: 220 13% 90%; /* #E2E5E9 */
+    --input: 220 13% 90%;
+    --ring: 220 84% 50%;
 
-    --radius: 0.5rem; /* 8px */
+    --radius: 0.75rem; /* 12px - Mais arredondado */
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(221 83% 48%), hsl(217 91% 60%));
-    --gradient-hero: linear-gradient(135deg, hsl(221 83% 48% / 0.05), hsl(217 91% 60% / 0.02));
+    /* Shadows - Suaves e refinadas */
+    --shadow-xs: 0 1px 2px 0 hsl(220 13% 13% / 0.03);
+    --shadow-sm: 0 1px 3px 0 hsl(220 13% 13% / 0.06), 0 1px 2px -1px hsl(220 13% 13% / 0.03);
+    --shadow-md: 0 4px 6px -1px hsl(220 13% 13% / 0.08), 0 2px 4px -2px hsl(220 13% 13% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(220 13% 13% / 0.08), 0 4px 6px -4px hsl(220 13% 13% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(220 13% 13% / 0.1), 0 8px 10px -6px hsl(220 13% 13% / 0.05);
     
-    /* Shadows - Suaves e profissionais */
-    --shadow-card: 0 1px 3px 0 hsl(217 33% 12% / 0.04), 0 1px 2px -1px hsl(217 33% 12% / 0.02);
-    --shadow-elevated: 0 4px 6px -1px hsl(217 33% 12% / 0.06), 0 2px 4px -2px hsl(217 33% 12% / 0.04);
-    --shadow-button: 0 1px 2px 0 hsl(217 33% 12% / 0.06);
+    /* Legacy aliases */
+    --shadow-card: var(--shadow-sm);
+    --shadow-elevated: var(--shadow-md);
+    --shadow-button: var(--shadow-xs);
     
+    /* Transitions */
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Status Colors - Delivery System */
-    --status-pending: 217 19% 27%;
-    --status-accepted: 217 91% 60%;
-    --status-in-progress: 38 92% 50%;
-    --status-delivered: 142 76% 36%;
-    --status-cancelled: 0 72% 51%;
+    --status-pending: 220 9% 46%;
+    --status-accepted: 220 84% 50%;
+    --status-picking-up: 40 96% 50%;
+    --status-picked-up: 28 87% 55%;
+    --status-delivering: 213 94% 58%;
+    --status-delivered: 145 63% 42%;
+    --status-cancelled: 4 72% 52%;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 217 33% 12%;
-    --sidebar-primary: 221 83% 48%;
+    --sidebar-foreground: 220 13% 13%;
+    --sidebar-primary: 220 84% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 98%;
-    --sidebar-accent-foreground: 217 33% 12%;
-    --sidebar-border: 220 14% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 13% 13%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 220 84% 50%;
   }
 
   .dark {
-    --primary: 217 91% 60%;
-    --primary-light: 217 91% 70%;
-    --primary-dark: 221 83% 48%;
+    /* Brand Colors - Dark Mode */
+    --primary: 213 94% 58%;
+    --primary-light: 213 94% 68%;
+    --primary-dark: 220 84% 50%;
     --primary-foreground: 0 0% 100%;
 
-    --background: 217 33% 12%; /* #111827 */
-    --foreground: 0 0% 98%;
+    --background: 220 16% 10%; /* #151921 */
+    --foreground: 220 14% 96%;
 
-    --card: 217 19% 18%;
-    --card-foreground: 0 0% 98%;
+    --card: 220 16% 14%; /* #1E232D */
+    --card-foreground: 220 14% 96%;
 
-    --popover: 217 19% 18%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 220 16% 14%;
+    --popover-foreground: 220 14% 96%;
 
-    --secondary: 217 19% 20%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 220 14% 90%;
 
-    --muted: 217 19% 20%;
-    --muted-foreground: 220 14% 71%;
+    --muted: 220 16% 18%;
+    --muted-foreground: 220 9% 60%;
 
-    --accent: 217 91% 60%;
+    --accent: 213 94% 58%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
-    --warning: 38 92% 50%;
-    --destructive: 0 72% 51%;
+    --success: 145 63% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 40 96% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 4 72% 52%;
     --destructive-foreground: 0 0% 100%;
+    
+    --info: 200 94% 46%;
+    --info-foreground: 0 0% 100%;
 
-    --border: 217 19% 24%;
-    --input: 217 19% 24%;
-    --ring: 217 91% 60%;
+    --border: 220 16% 22%;
+    --input: 220 16% 22%;
+    --ring: 213 94% 58%;
 
-    --status-pending: 220 14% 71%;
-    --status-accepted: 217 91% 60%;
-    --status-in-progress: 38 92% 50%;
-    --status-delivered: 142 76% 36%;
-    --status-cancelled: 0 72% 51%;
+    --status-pending: 220 9% 60%;
+    --status-accepted: 213 94% 58%;
+    --status-picking-up: 40 96% 50%;
+    --status-picked-up: 28 87% 55%;
+    --status-delivering: 213 94% 58%;
+    --status-delivered: 145 63% 42%;
+    --status-cancelled: 4 72% 52%;
 
-    --sidebar-background: 217 33% 12%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-background: 220 16% 10%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 213 94% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 19% 20%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 217 19% 24%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 220 16% 18%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 220 16% 22%;
+    --sidebar-ring: 213 94% 58%;
   }
 }
 
@@ -130,22 +156,248 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+
+  /* Melhor legibilidade */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus visible para acessibilidade */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* KPI Card - Destaque para métricas */
+  .kpi-card {
+    @apply rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-sm)] transition-all duration-200;
+  }
+  
+  .kpi-card:hover {
+    @apply shadow-[var(--shadow-md)] -translate-y-0.5;
+  }
+
+  .kpi-value {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+  }
+
+  .kpi-label {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  /* Status Badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .status-badge-pending {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-badge-active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .status-badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .status-badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .status-badge-error {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  /* Action Button - Para ações rápidas visíveis */
+  .action-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-sm)] transition-all duration-200;
+  }
+
+  .action-button:hover {
+    @apply bg-primary/90 shadow-[var(--shadow-md)] -translate-y-0.5;
+  }
+
+  .action-button:active {
+    @apply translate-y-0 shadow-[var(--shadow-xs)];
+  }
+
+  .action-button:disabled {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply mb-4 h-16 w-16 text-muted-foreground/40;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .empty-state-description {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  /* Touch friendly (mobile-first) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-lg;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Animações suaves */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
 }
 
 /* Leaflet overrides */
 .leaflet-container {
   font-family: inherit;
+  border-radius: var(--radius);
 }
 
 .leaflet-control-attribution {
   font-size: 10px;
-  background: rgba(0, 0, 0, 0.3) !important;
-  color: rgba(255, 255, 255, 0.7) !important;
+  background: hsl(220 16% 10% / 0.6) !important;
+  color: hsl(0 0% 100% / 0.8) !important;
+  border-radius: 4px;
+  padding: 2px 6px !important;
 }
 
 .leaflet-control-attribution a {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: hsl(0 0% 100% / 0.9) !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.leaflet-control-zoom a {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: hsl(var(--secondary)) !important;
+}
+
+/* Scrollbar estilizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
 }

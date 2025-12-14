@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useAuthRedirect } from '@/hooks/useUserSetup';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,13 @@ export default function Auth() {
   // Show loading while checking auth state and redirecting
   if (user && redirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse-soft">
+            <Bike className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        </div>
       </div>
     );
   }
@@ -97,27 +102,32 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary rounded-full p-3">
-              <Bike className="h-8 w-8 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      {/* Subtle background */}
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--primary)/0.03),transparent_60%)]" />
+      
+      <Card className="w-full max-w-md relative z-10 animate-fade-in">
+        <CardHeader className="space-y-4 text-center pb-2">
+          <div className="flex justify-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-md">
+              <Bike className="h-7 w-7 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Levei</CardTitle>
-          <CardDescription>
-            Entregas sob demanda
-          </CardDescription>
+          <div className="space-y-1">
+            <CardTitle className="text-2xl font-bold">Levei</CardTitle>
+            <CardDescription>
+              Entregas sob demanda
+            </CardDescription>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="signin">Entrar</TabsTrigger>
               <TabsTrigger value="signup">Criar Conta</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin">
+            <TabsContent value="signin" className="space-y-4">
               <form onSubmit={handleSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signin-email">Email</Label>
@@ -128,6 +138,7 @@ export default function Auth() {
                     placeholder="seu@email.com"
                     required
                     disabled={loading}
+                    autoComplete="email"
                   />
                 </div>
                 <div className="space-y-2">
@@ -136,18 +147,19 @@ export default function Auth() {
                     id="signin-password"
                     name="password"
                     type="password"
-                    placeholder="••••••"
+                    placeholder="••••••••"
                     required
                     disabled={loading}
+                    autoComplete="current-password"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Entrando...' : 'Entrar'}
+                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                  Entrar
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup">
+            <TabsContent value="signup" className="space-y-4">
               <form onSubmit={handleSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Nome Completo</Label>
@@ -158,6 +170,7 @@ export default function Auth() {
                     placeholder="João Silva"
                     required
                     disabled={loading}
+                    autoComplete="name"
                   />
                 </div>
                 <div className="space-y-2">
@@ -169,6 +182,7 @@ export default function Auth() {
                     placeholder="(11) 99999-9999"
                     required
                     disabled={loading}
+                    autoComplete="tel"
                   />
                 </div>
                 <div className="space-y-2">
@@ -180,6 +194,7 @@ export default function Auth() {
                     placeholder="seu@email.com"
                     required
                     disabled={loading}
+                    autoComplete="email"
                   />
                 </div>
                 <div className="space-y-2">
@@ -188,17 +203,18 @@ export default function Auth() {
                     id="signup-password"
                     name="password"
                     type="password"
-                    placeholder="••••••"
+                    placeholder="••••••••"
                     required
                     disabled={loading}
                     minLength={6}
+                    autoComplete="new-password"
                   />
                   <p className="text-xs text-muted-foreground">
                     Mínimo de 6 caracteres
                   </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Criando conta...' : 'Criar Conta'}
+                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                  Criar Conta
                 </Button>
               </form>
             </TabsContent>
