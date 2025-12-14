@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { ArrowUpCircle, Wallet, TrendingUp } from 'lucide-react';
+import { ArrowUpCircle, Wallet, TrendingUp, ArrowLeft, Bike } from 'lucide-react';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Transaction {
   id: string;
@@ -17,7 +18,6 @@ interface Transaction {
   description: string;
   created_at: string;
   driver_earnings?: number;
-  platform_fee?: number;
 }
 
 export default function DriverWallet() {
@@ -40,39 +40,28 @@ export default function DriverWallet() {
     if (!user) return;
 
     try {
-      setLoading(true);
-
-      const { data: driver, error: driverError } = await supabase
+      const { data: driver } = await supabase
         .from('drivers')
         .select('id, earnings_balance')
         .eq('user_id', user.id)
         .single();
 
-      if (driverError) throw driverError;
+      if (driver) {
+        setBalance(driver.earnings_balance || 0);
 
-      setBalance(driver.earnings_balance || 0);
+        const { data: transactionsData } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('driver_id', driver.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
 
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('driver_id', driver.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-
-      if (transactionsError) throw transactionsError;
-
-      setTransactions(transactionsData || []);
-
-      const total = transactionsData?.reduce((sum, t) => sum + (t.driver_earnings || 0), 0) || 0;
-      setTotalEarnings(total);
-
+        setTransactions(transactionsData || []);
+        const total = transactionsData?.reduce((sum, t) => sum + (t.driver_earnings || 0), 0) || 0;
+        setTotalEarnings(total);
+      }
     } catch (error) {
-      console.error('Error fetching wallet data:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os dados da carteira',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar os dados', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -80,14 +69,21 @@ export default function DriverWallet() {
 
   if (loading) {
     return (
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <div className="min-h-screen flex w-full">
           <DriverSidebar />
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-4 text-muted-foreground">Carregando...</p>
-            </div>
+          <div className="flex-1 flex flex-col">
+            <header className="h-14 border-b flex items-center px-4 bg-primary safe-top">
+              <SidebarTrigger className="text-primary-foreground" />
+              <h1 className="text-lg font-bold text-primary-foreground ml-3">Ganhos</h1>
+            </header>
+            <main className="flex-1 p-4 bg-background">
+              <div className="space-y-4 max-w-lg mx-auto">
+                <Skeleton className="h-32 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
+                <Skeleton className="h-48 rounded-xl" />
+              </div>
+            </main>
           </div>
         </div>
       </SidebarProvider>
@@ -95,105 +91,81 @@ export default function DriverWallet() {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <DriverSidebar />
-        
         <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
-            <SidebarTrigger />
-            <h1 className="text-lg font-semibold">Financeiro</h1>
-            <div className="ml-auto">
-              <NotificationBell />
+          <header className="h-14 border-b flex items-center justify-between px-4 bg-primary safe-top">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="text-primary-foreground" />
+              <Bike className="w-5 h-5 text-primary-foreground" />
+              <h1 className="text-lg font-bold text-primary-foreground">Ganhos</h1>
             </div>
+            <NotificationBell />
           </header>
 
-          <main className="flex-1 overflow-y-auto p-6 bg-background">
-            <div className="max-w-4xl mx-auto space-y-6">
+          <main className="flex-1 p-4 bg-background overflow-auto safe-bottom">
+            <div className="max-w-lg mx-auto space-y-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/driver/dashboard')}>
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Voltar
+              </Button>
+
+              {/* Saldo */}
               <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-                <CardContent className="pt-6">
+                <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm opacity-90">Saldo Disponível</p>
-                      <h2 className="text-4xl font-bold mt-2">
-                        R$ {balance.toFixed(2)}
-                      </h2>
+                      <h2 className="text-3xl font-bold mt-1">R$ {balance.toFixed(2)}</h2>
                     </div>
-                    <Wallet className="h-12 w-12 opacity-80" />
+                    <Wallet className="h-10 w-10 opacity-80" />
                   </div>
-                  <Button 
-                    variant="secondary" 
-                    className="w-full mt-6 gap-2"
-                    disabled
-                  >
-                    <ArrowUpCircle className="h-4 w-4" />
-                    Solicitar Saque
+                  <Button variant="secondary" className="w-full mt-4" disabled>
+                    <ArrowUpCircle className="h-4 w-4 mr-2" />
+                    Solicitar Saque (em breve)
                   </Button>
-                  <p className="text-xs text-primary-foreground/80 mt-2 text-center">
-                    Em breve você poderá solicitar o saque do seu saldo
-                  </p>
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Estatísticas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Ganhos</p>
-                    <p className="text-2xl font-bold text-green-500">
-                      R$ {totalEarnings.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Entregas Pagas</p>
-                    <p className="text-2xl font-bold">{transactions.length}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Estatísticas */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="kpi-card">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Total Ganho</p>
+                    <p className="text-xl font-bold text-success">R$ {totalEarnings.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="kpi-card">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Entregas Pagas</p>
+                    <p className="text-xl font-bold">{transactions.length}</p>
+                  </CardContent>
+                </Card>
+              </div>
 
+              {/* Histórico */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Histórico de Pagamentos</CardTitle>
-                  <CardDescription>
-                    Pagamentos recebidos pelas entregas realizadas (80% do valor)
-                  </CardDescription>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Histórico</CardTitle>
+                  <CardDescription className="text-xs">Você recebe 80% de cada entrega</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {transactions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nenhum pagamento registrado
-                    </div>
+                    <p className="text-center py-8 text-muted-foreground text-sm">Nenhum pagamento</p>
                   ) : (
-                    <div className="space-y-4">
-                      {transactions.map((transaction) => (
-                        <div
-                          key={transaction.id}
-                          className="flex items-center justify-between p-4 rounded-lg border hover:bg-accent/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <ArrowUpCircle className="h-5 w-5 text-green-500" />
-                            <div>
-                              <p className="font-medium">{transaction.description}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(transaction.created_at).toLocaleString('pt-BR')}
-                              </p>
-                              {transaction.driver_earnings && transaction.platform_fee && (
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Valor total: R$ {transaction.amount.toFixed(2)} | 
-                                  Você recebeu: R$ {transaction.driver_earnings.toFixed(2)} (80%) | 
-                                  Taxa plataforma: R$ {transaction.platform_fee.toFixed(2)} (20%)
-                                </p>
-                              )}
-                            </div>
+                    <div className="space-y-2">
+                      {transactions.map((t) => (
+                        <div key={t.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                          <div>
+                            <p className="text-sm font-medium">Entrega concluída</p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(t.created_at).toLocaleDateString('pt-BR')}
+                            </p>
                           </div>
-                          <div className="text-lg font-semibold text-green-500">
-                            +R$ {(transaction.driver_earnings || transaction.amount).toFixed(2)}
-                          </div>
+                          <span className="font-semibold text-success">
+                            +R$ {(t.driver_earnings || t.amount).toFixed(2)}
+                          </span>
                         </div>
                       ))}
                     </div>

@@ -3,21 +3,25 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Phone, User, Navigation, ArrowLeft, Route, Clock, CheckCircle, Package } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getStatusConfig } from '@/lib/deliveryStatus';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { DriverSidebar } from '@/components/DriverSidebar';
-import NotificationBell from '@/components/NotificationBell';
 import { toast } from '@/hooks/use-toast';
 import { getGoogleMapsLink } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Fix Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -48,7 +52,7 @@ const deliveryIcon = new L.Icon({
 function MapBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
   const map = useMap();
   useEffect(() => {
-    map.fitBounds(bounds, { padding: [50, 50] });
+    map.fitBounds(bounds, { padding: [60, 60] });
   }, [map, bounds]);
   return null;
 }
@@ -62,8 +66,6 @@ interface Delivery {
   price: number;
   price_adjusted: number;
   product_type: string | null;
-  product_note: string | null;
-  description: string | null;
   recipient_name: string | null;
   recipient_phone: string | null;
   pickup_latitude: number;
@@ -81,14 +83,12 @@ export default function DeliveryInProgress() {
   const [loading, setLoading] = useState(true);
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
+  const [geoError, setGeoError] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
     onSuccess: () => {
-      toast({
-        title: '🎉 Parabéns!',
-        description: 'Entrega concluída com sucesso!',
-      });
-      setTimeout(() => navigate('/driver/dashboard'), 1500);
+      setShowSuccess(true);
     }
   });
 
@@ -96,7 +96,7 @@ export default function DeliveryInProgress() {
     ? [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)]
     : null;
 
-  const { route, loading: routeLoading } = useMapNavigation(currentPosition, destination);
+  const { route } = useMapNavigation(currentPosition, destination);
 
   useDriverLocationTracking({
     driverId: driverId || '',
@@ -104,31 +104,28 @@ export default function DeliveryInProgress() {
     isActive: !!driverId && !!deliveryId,
   });
 
+  // Geolocation
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        console.log('[Geo] watchPosition success:', { lat, lng });
-        setCurrentPosition([lat, lng]);
+        setCurrentPosition([position.coords.latitude, position.coords.longitude]);
+        setGeoError(false);
       },
-      (error) => console.error('Error getting location:', error),
+      (error) => {
+        console.error('Geolocation error:', error);
+        setGeoError(true);
+      },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
-
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   useEffect(() => {
-    if (deliveryId && user) {
-      fetchDriver();
-    }
+    if (deliveryId && user) fetchDriver();
   }, [deliveryId, user]);
 
   useEffect(() => {
-    if (driverId && deliveryId) {
-      fetchDelivery();
-    }
+    if (driverId && deliveryId) fetchDelivery();
   }, [driverId, deliveryId]);
 
   const fetchDriver = async () => {
@@ -137,10 +134,7 @@ export default function DeliveryInProgress() {
       .select('id')
       .eq('user_id', user?.id)
       .single();
-
-    if (data) {
-      setDriverId(data.id);
-    }
+    if (data) setDriverId(data.id);
   };
 
   const fetchDelivery = async () => {
@@ -151,34 +145,23 @@ export default function DeliveryInProgress() {
       .single();
 
     if (error || !data) {
-      toast({
-        title: 'Erro',
-        description: 'Entrega não encontrada',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Entrega não encontrada', variant: 'destructive' });
       navigate('/driver/dashboard');
       return;
     }
 
-    // Validar se a entrega está atribuída ao motorista atual
     if (!data.driver_id || data.driver_id !== driverId) {
-      toast({
-        title: 'Acesso Negado',
-        description: 'Esta entrega não está atribuída a você',
-        variant: 'destructive',
-      });
+      toast({ title: 'Acesso Negado', description: 'Esta entrega não está atribuída a você', variant: 'destructive' });
       navigate('/driver/dashboard');
       return;
     }
 
-    // Validar se a entrega está no status correto (picked_up)
     if (data.status !== 'picked_up') {
-      toast({
-        title: 'Status Incorreto',
-        description: 'Esta entrega ainda não foi coletada. Vá para a página de coleta primeiro.',
-        variant: 'destructive',
-      });
-      navigate(`/driver/pickup/${deliveryId}`);
+      if (data.status === 'accepted') {
+        navigate(`/driver/pickup/${deliveryId}`, { replace: true });
+      } else {
+        navigate('/driver/dashboard');
+      }
       return;
     }
 
@@ -191,10 +174,9 @@ export default function DeliveryInProgress() {
     await completeDelivery(deliveryId, driverId, Number(delivery.price));
   };
 
-  const openRouteInMaps = () => {
+  const openGPS = () => {
     if (!delivery) return;
-    const destination: [number, number] = [delivery.delivery_latitude, delivery.delivery_longitude];
-    const url = getGoogleMapsLink(currentPosition || undefined, destination);
+    const url = getGoogleMapsLink(currentPosition || undefined, [delivery.delivery_latitude, delivery.delivery_longitude]);
     window.open(url, '_blank');
   };
 
@@ -204,238 +186,193 @@ export default function DeliveryInProgress() {
     }
   };
 
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    navigate('/driver/dashboard', { replace: true });
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="min-h-screen bg-background flex flex-col">
+        <div className="flex-1 relative">
+          <Skeleton className="absolute inset-0" />
+        </div>
+        <div className="p-4 space-y-3 safe-bottom">
+          <Skeleton className="h-24 rounded-xl" />
+          <Skeleton className="h-14 rounded-xl" />
+        </div>
       </div>
     );
   }
 
   if (!delivery) return null;
 
-  const statusConfig = getStatusConfig(delivery.status as any);
+  const estimatedTime = route ? Math.ceil(route.duration / 60) : Math.ceil(Number(delivery.distance_km) * 3);
+  const routeDistance = route ? (route.distance / 1000).toFixed(1) : null;
 
   return (
-    <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full">
-        <DriverSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-              <h1 className="text-xl font-bold text-primary-foreground">Entrega em Andamento</h1>
-            </div>
-            <NotificationBell />
-          </header>
-
-          <main className="flex-1 p-6 bg-background overflow-auto">
-            <div className="max-w-4xl mx-auto space-y-6">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/driver/dashboard')}
-                className="transition-all duration-300 hover:scale-105"
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
-
-              {/* Location Tracking Alert */}
-              <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3">
-                    <Navigation className="h-5 w-5 text-primary mt-0.5 animate-pulse" />
-                    <div>
-                      <p className="font-medium text-sm">Rastreamento Ativo</p>
-                      <p className="text-xs text-muted-foreground">
-                        Sua localização está sendo compartilhada automaticamente
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Map */}
-              {currentPosition && destination && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Route className="h-5 w-5" />
-                      Rota para Entrega
-                    </CardTitle>
-                    {route && (
-                      <CardDescription className="flex flex-wrap gap-4 mt-2">
-                        <span className="flex items-center gap-1">
-                          <Route className="h-4 w-4" />
-                          {(route.distance / 1000).toFixed(1)} km
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4" />
-                          {Math.ceil(route.duration / 60)} min
-                        </span>
-                      </CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[400px] rounded-lg overflow-hidden border-2 border-primary/20">
-                      <MapContainer
-                        center={currentPosition}
-                        zoom={14}
-                        style={{ height: '100%', width: '100%' }}
-                        scrollWheelZoom={true}
-                      >
-                        <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution='&copy; OpenStreetMap'
-                        />
-                        
-                        <MapBounds 
-                          bounds={route?.coordinates?.length ? route.coordinates : [currentPosition, destination]} 
-                        />
-                        
-                        <Marker position={currentPosition} icon={driverIcon}>
-                          <Popup>Você está aqui</Popup>
-                        </Marker>
-                        
-                        {route && route.coordinates.length > 0 && (
-                          <Polyline
-                            positions={route.coordinates}
-                            color="#ef4444"
-                            weight={4}
-                            opacity={0.7}
-                          />
-                        )}
-                        
-                        <Marker position={destination} icon={deliveryIcon}>
-                          <Popup>Local de Entrega</Popup>
-                        </Marker>
-                      </MapContainer>
-                    </div>
-                    
-                    <Button 
-                      onClick={openRouteInMaps} 
-                      variant="outline" 
-                      className="w-full mt-4"
-                      disabled={!currentPosition}
-                    >
-                      <Navigation className="mr-2 h-4 w-4" />
-                      Abrir Rota no GPS
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recipient Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informações do Destinatário</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {delivery.recipient_name && (
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-primary" />
-                      <div>
-                        <p className="font-medium">Nome</p>
-                        <p className="text-sm text-muted-foreground">{delivery.recipient_name}</p>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {delivery.recipient_phone && (
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-5 w-5 text-primary" />
-                      <div className="flex-1">
-                        <p className="font-medium">Telefone</p>
-                        <p className="text-sm text-muted-foreground">{delivery.recipient_phone}</p>
-                      </div>
-                      <Button onClick={callRecipient} variant="outline" size="sm">
-                        <Phone className="mr-2 h-4 w-4" />
-                        Ligar
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Delivery Details */}
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>Detalhes da Entrega</CardTitle>
-                      <CardDescription>
-                        {Number(delivery.distance_km).toFixed(1)} km • R$ {Number(delivery.price).toFixed(2)}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={statusConfig.variant}>
-                      {statusConfig.icon} {statusConfig.label}
+    <>
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header flutuante sobre o mapa */}
+        <div className="absolute top-0 left-0 right-0 z-[1000] p-4 safe-top">
+          <Card className="glass">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
+                  <p className="font-semibold text-foreground">Levando ao destino</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {routeDistance && (
+                    <Badge variant="secondary">
+                      <Navigation className="w-3 h-3 mr-1" />
+                      {routeDistance} km
                     </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <div className="flex items-center gap-2 font-medium mb-2">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      Endereço de Entrega
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-7">{delivery.delivery_address}</p>
-                  </div>
+                  )}
+                  <Badge variant="secondary">
+                    <Clock className="w-3 h-3 mr-1" />
+                    ~{estimatedTime} min
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-                  {delivery.product_type && (
-                    <div className="p-3 bg-primary/5 rounded-md border border-primary/10">
-                      <div className="flex items-center gap-2 font-medium mb-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        Tipo de Produto
-                      </div>
-                      <p className="text-sm ml-7">{delivery.product_type}</p>
-                      {delivery.product_note && (
-                        <>
-                          <p className="text-sm font-medium text-muted-foreground mt-2 ml-7">Observações:</p>
-                          <p className="text-sm text-muted-foreground ml-7">{delivery.product_note}</p>
-                        </>
+        {/* Mapa fullscreen */}
+        <div className="flex-1 relative">
+          {currentPosition && destination ? (
+            <MapContainer
+              center={currentPosition}
+              zoom={14}
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+              attributionControl={false}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='OpenStreetMap'
+              />
+              <MapBounds 
+                bounds={route?.coordinates?.length ? route.coordinates : [currentPosition, destination]} 
+              />
+              <Marker position={currentPosition} icon={driverIcon} />
+              {route && route.coordinates.length > 0 && (
+                <Polyline
+                  positions={route.coordinates}
+                  color="#ef4444"
+                  weight={5}
+                  opacity={0.8}
+                />
+              )}
+              <Marker position={destination} icon={deliveryIcon} />
+            </MapContainer>
+          ) : (
+            <div className="h-full flex items-center justify-center bg-muted">
+              {geoError ? (
+                <div className="text-center p-4">
+                  <AlertCircle className="w-12 h-12 text-warning mx-auto mb-2" />
+                  <p className="font-medium">Localização indisponível</p>
+                  <p className="text-sm text-muted-foreground">Ative o GPS do seu dispositivo</p>
+                </div>
+              ) : (
+                <div className="animate-pulse text-muted-foreground">Obtendo localização...</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom sheet com ações */}
+        <div className="bg-background border-t border-border p-4 space-y-3 safe-bottom animate-slide-up">
+          {/* Endereço de entrega e destinatário */}
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                  <MapPin className="w-5 h-5 text-destructive" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">DESTINO</p>
+                  <p className="text-sm text-foreground">{delivery.delivery_address}</p>
+                  
+                  {/* Info do destinatário */}
+                  {(delivery.recipient_name || delivery.recipient_phone) && (
+                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
+                      {delivery.recipient_name && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <User className="w-3 h-3" />
+                          {delivery.recipient_name}
+                        </div>
+                      )}
+                      {delivery.recipient_phone && (
+                        <Button 
+                          onClick={callRecipient} 
+                          variant="ghost" 
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                        >
+                          <Phone className="w-3 h-3 mr-1" />
+                          Ligar
+                        </Button>
                       )}
                     </div>
                   )}
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-primary">
+                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                  {delivery.description && (
-                    <div>
-                      <p className="font-medium mb-2">Observações</p>
-                      <p className="text-sm text-muted-foreground">{delivery.description}</p>
-                    </div>
-                  )}
+          {/* Botões de ação */}
+          <div className="grid grid-cols-2 gap-3">
+            <Button 
+              onClick={openGPS}
+              variant="outline"
+              size="lg"
+              className="h-14"
+            >
+              <Navigation className="w-5 h-5 mr-2" />
+              Abrir GPS
+            </Button>
 
-                  <div className="pt-4 border-t">
-                    <p className="text-sm text-muted-foreground mb-1">Valor da entrega</p>
-                    <p className="text-2xl font-bold text-primary">R$ {delivery.price_adjusted.toFixed(2)}</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    <Button 
-                      onClick={openRouteInMaps}
-                      variant="secondary"
-                      className="w-full"
-                      size="lg"
-                    >
-                      <Navigation className="mr-2 h-5 w-5" />
-                      Ir para Destino no GPS
-                    </Button>
-
-                    <Button 
-                      onClick={handleCompleteDelivery}
-                      disabled={completing}
-                      className="w-full transition-all duration-300 hover:scale-105"
-                      size="lg"
-                    >
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      Confirmar Entrega Concluída
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </main>
+            <Button 
+              onClick={handleCompleteDelivery}
+              disabled={completing}
+              size="lg"
+              className="h-14 font-semibold bg-success hover:bg-success/90"
+            >
+              <CheckCircle className="w-5 h-5 mr-2" />
+              {completing ? 'Finalizando...' : 'Finalizar Entrega'}
+            </Button>
+          </div>
         </div>
       </div>
-    </SidebarProvider>
+
+      {/* Modal de sucesso */}
+      <Dialog open={showSuccess} onOpenChange={handleSuccessClose}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader className="space-y-4">
+            <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto animate-scale-in">
+              <PartyPopper className="w-10 h-10 text-success" />
+            </div>
+            <DialogTitle className="text-2xl">Entrega Concluída!</DialogTitle>
+            <DialogDescription className="text-base">
+              Parabéns! Você ganhou{' '}
+              <span className="font-bold text-success">
+                R$ {delivery ? (Number(delivery.price_adjusted || delivery.price) * 0.8).toFixed(2) : '0.00'}
+              </span>
+              {' '}com essa entrega.
+            </DialogDescription>
+          </DialogHeader>
+          <Button onClick={handleSuccessClose} size="lg" className="w-full mt-4">
+            Voltar ao Início
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
