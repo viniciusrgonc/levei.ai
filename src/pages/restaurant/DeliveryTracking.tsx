@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -12,6 +12,7 @@ import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { getGoogleMapsLink } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RatingModal } from '@/components/RatingModal';
 
 type Delivery = {
   id: string;
@@ -61,6 +62,8 @@ export default function DeliveryTracking() {
   const [delivery, setDelivery] = useState<Delivery | null>(null);
   const [driver, setDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -107,8 +110,23 @@ export default function DeliveryTracking() {
     setDelivery(data);
     if (data.driver_id) {
       fetchDriver(data.driver_id);
+      // Check if already rated
+      checkIfRated(data.id);
     }
     setLoading(false);
+  };
+
+  const checkIfRated = async (deliveryId: string) => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('ratings')
+      .select('id')
+      .eq('delivery_id', deliveryId)
+      .eq('rated_by', user.id)
+      .maybeSingle();
+    
+    setHasRated(!!data);
   };
 
   const fetchDriver = async (driverId: string) => {
@@ -360,6 +378,24 @@ export default function DeliveryTracking() {
                     <p className="text-sm text-green-700 mt-1">
                       Entregue em {delivery.delivered_at && new Date(delivery.delivered_at).toLocaleString('pt-BR')}
                     </p>
+                    
+                    {/* Rating Button */}
+                    {driver && !hasRated && (
+                      <Button
+                        className="mt-4 gap-2"
+                        onClick={() => setShowRatingModal(true)}
+                      >
+                        <Star className="h-4 w-4" />
+                        Avaliar Entregador
+                      </Button>
+                    )}
+                    
+                    {hasRated && (
+                      <p className="mt-4 text-sm text-green-600 flex items-center justify-center gap-2">
+                        <Star className="h-4 w-4 fill-current" />
+                        Você já avaliou esta entrega
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -367,6 +403,20 @@ export default function DeliveryTracking() {
           </main>
         </div>
       </div>
+
+      {/* Rating Modal */}
+      {showRatingModal && driver && (
+        <RatingModal
+          deliveryId={delivery.id}
+          driverUserId={driver.user_id}
+          driverName={driver.profiles.full_name}
+          onClose={() => setShowRatingModal(false)}
+          onSubmitted={() => {
+            setShowRatingModal(false);
+            setHasRated(true);
+          }}
+        />
+      )}
     </SidebarProvider>
   );
 }
