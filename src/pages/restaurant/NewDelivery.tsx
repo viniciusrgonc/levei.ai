@@ -3,69 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Package, MapPin, DollarSign, Calculator, User, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, Check, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import LocationPicker from '@/components/LocationPicker';
-import { z } from 'zod';
+import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
-import NotificationBell from '@/components/NotificationBell';
-import { Separator } from '@/components/ui/separator';
-import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Product types
 const PRODUCT_TYPES = [
-  'Documentos',
-  'Eletrônicos',
-  'Roupas',
-  'Alimentos',
-  'Medicamentos',
-  'Produto Frágil',
-  'Encomenda Pequena',
-  'Encomenda Média',
-  'Encomenda Grande',
-  'Volumoso',
-  'Outros'
-] as const;
+  { id: 'documento', label: 'Documento', icon: '📄' },
+  { id: 'encomenda', label: 'Encomenda', icon: '📦' },
+  { id: 'alimento', label: 'Alimento', icon: '🍔' },
+  { id: 'fragil', label: 'Produto Frágil', icon: '⚠️' },
+  { id: 'eletronico', label: 'Eletrônico', icon: '📱' },
+  { id: 'outro', label: 'Outro', icon: '📋' },
+];
 
-// Validation schema
-const deliverySchema = z.object({
-  recipientName: z.string().trim().min(1, 'Nome do destinatário é obrigatório').max(100),
-  recipientPhone: z.string().trim().regex(/^\d{10,11}$/, 'Telefone inválido (apenas números, 10-11 dígitos)'),
-  deliveryAddress: z.string().trim().min(5, 'Endereço muito curto').max(500),
-  description: z.string().trim().max(500, 'Descrição muito longa').optional(),
-  price: z.number().min(5, 'Valor mínimo: R$ 5,00').max(500, 'Valor máximo: R$ 500,00'),
-  productType: z.string().min(1, 'Tipo de produto é obrigatório'),
-  productNote: z.string().trim().max(500, 'Observações muito longas').optional(),
-});
-
-// Function to adjust price based on product type
-const adjustPriceBasedOnProductType = (basePrice: number, productType: string): number => {
-  switch(productType) {
-    case "Produto Frágil": 
-      return basePrice * 1.10; // +10%
-    case "Volumoso": 
-      return basePrice * 1.20; // +20%
-    case "Eletrônicos": 
-      return basePrice * 1.05; // +5%
-    default: 
-      return basePrice;
-  }
-};
-
-type Restaurant = {
-  id: string;
-  business_name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-};
-
-// Map category names to vehicle_type enum values
 const categoryToVehicleType: Record<string, string> = {
   'Moto': 'motorcycle',
   'Motocicleta': 'motorcycle',
@@ -75,260 +32,157 @@ const categoryToVehicleType: Record<string, string> = {
   'Serviço por Hora': 'hourly_service',
 };
 
+type Restaurant = {
+  id: string;
+  business_name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  wallet_balance: number;
+};
+
 export default function NewDelivery() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Wizard step
+  const [step, setStep] = useState(1);
+  const totalSteps = 5;
+  
+  // Data
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [calculatedDistance, setCalculatedDistance] = useState<number | null>(null);
-  const [suggestedPrice, setSuggestedPrice] = useState<number | null>(null);
-  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
-  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [description, setDescription] = useState('');
-  const [customPrice, setCustomPrice] = useState<string>('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [selectedVehicleCategory, setSelectedVehicleCategory] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<DeliveryCategory | null>(null);
-  const [productType, setProductType] = useState<string>('');
-  const [productNote, setProductNote] = useState<string>('');
-  const [productSettings, setProductSettings] = useState<Record<string, number>>({});
-  const [priceAdjusted, setPriceAdjusted] = useState<number>(0);
-  // Pickup address editing
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  // Step 1: Pickup
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupLat, setPickupLat] = useState<number | null>(null);
   const [pickupLng, setPickupLng] = useState<number | null>(null);
-  const [isEditingPickup, setIsEditingPickup] = useState(false);
+  
+  // Step 2: Delivery
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+  const [recipientName, setRecipientName] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState('');
+  
+  // Step 3: Vehicle
+  const [selectedCategory, setSelectedCategory] = useState<DeliveryCategory | null>(null);
+  
+  // Step 4: Product
+  const [productType, setProductType] = useState('');
+  
+  // Calculated
+  const [distance, setDistance] = useState<number>(0);
+  const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
+  const [productSettings, setProductSettings] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchRestaurant();
     fetchProductSettings();
   }, [user]);
 
-  const fetchProductSettings = async () => {
-    const { data, error } = await supabase
-      .from('product_type_settings')
-      .select('product_type, percentage_increase')
-      .eq('is_active', true);
-
-    if (!error && data) {
-      const settings: Record<string, number> = {};
-      data.forEach(setting => {
-        settings[setting.product_type] = setting.percentage_increase;
-      });
-      setProductSettings(settings);
-    }
-  };
-
-  // Update price when suggested price or product type changes
   useEffect(() => {
-    if (suggestedPrice) {
-      const finalPrice = productType && productSettings[productType] !== undefined
-        ? suggestedPrice * (1 + productSettings[productType] / 100)
-        : suggestedPrice;
-      
-      setPriceAdjusted(Number(finalPrice.toFixed(2)));
-      
-      if (!customPrice) {
-        setCustomPrice(finalPrice.toFixed(2));
-      }
+    if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
+      const dist = calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
+      setDistance(dist);
     }
-  }, [suggestedPrice, productType, productSettings]);
+  }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
+
+  useEffect(() => {
+    if (distance > 0 && selectedCategory) {
+      let price = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+      
+      // Apply product type surcharge
+      if (productType && productSettings[productType]) {
+        price = price * (1 + productSettings[productType] / 100);
+      }
+      
+      setEstimatedPrice(price);
+    }
+  }, [distance, selectedCategory, productType, productSettings]);
 
   const fetchRestaurant = async () => {
     if (!user) return;
 
     const { data, error } = await supabase
       .from('restaurants')
-      .select('id, business_name, address, latitude, longitude')
+      .select('id, business_name, address, latitude, longitude, wallet_balance')
       .eq('user_id', user.id)
       .single();
 
     if (error || !data) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível carregar dados do restaurante'
-      });
       navigate('/restaurant/dashboard');
       return;
     }
 
     setRestaurant(data);
-    // Initialize pickup values from restaurant
     setPickupAddress(data.address);
     setPickupLat(data.latitude);
     setPickupLng(data.longitude);
+    setLoading(false);
+  };
+
+  const fetchProductSettings = async () => {
+    const { data } = await supabase
+      .from('product_type_settings')
+      .select('product_type, percentage_increase')
+      .eq('is_active', true);
+
+    if (data) {
+      const settings: Record<string, number> = {};
+      data.forEach(s => settings[s.product_type] = s.percentage_increase);
+      setProductSettings(settings);
+    }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
   };
 
-  const handleLocationSelect = (lat: number, lng: number, addr: string) => {
-    setDeliveryLat(lat);
-    setDeliveryLng(lng);
-    setDeliveryAddress(addr);
-    setErrors(prev => ({ ...prev, location: '' }));
-    
-    if (pickupLat && pickupLng && selectedCategory) {
-      const distance = calculateDistance(
-        pickupLat,
-        pickupLng,
-        lat,
-        lng
-      );
-      
-      setCalculatedDistance(distance);
-      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
-      setSuggestedPrice(adjustedPrice);
+  const canProceed = () => {
+    switch (step) {
+      case 1:
+        return pickupLat && pickupLng && pickupAddress;
+      case 2:
+        return deliveryLat && deliveryLng && deliveryAddress;
+      case 3:
+        return selectedCategory !== null;
+      case 4:
+        return productType !== '';
+      case 5:
+        return true;
+      default:
+        return false;
     }
   };
 
-  const handlePickupLocationSelect = (lat: number, lng: number, addr: string) => {
-    setPickupLat(lat);
-    setPickupLng(lng);
-    setPickupAddress(addr);
-    
-    // Recalculate distance if delivery location is set
-    if (deliveryLat && deliveryLng && selectedCategory) {
-      const distance = calculateDistance(lat, lng, deliveryLat, deliveryLng);
-      setCalculatedDistance(distance);
-      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
-      setSuggestedPrice(adjustedPrice);
-    }
-  };
-
-  const handleCategorySelect = (categoryId: string, category: DeliveryCategory) => {
-    setSelectedVehicleCategory(categoryId);
-    setSelectedCategory(category);
-    setErrors(prev => ({ ...prev, vehicleCategory: '' }));
-    
-    // Recalculate price if location is already selected
-    if (deliveryLat && deliveryLng && pickupLat && pickupLng) {
-      const distance = calculateDistance(
-        pickupLat,
-        pickupLng,
-        deliveryLat,
-        deliveryLng
-      );
-      
-      setCalculatedDistance(distance);
-      const basePrice = category.base_price + (distance * category.price_per_km);
-      const adjustedPrice = productType ? adjustPriceBasedOnProductType(basePrice, productType) : basePrice;
-      setSuggestedPrice(adjustedPrice);
-    }
-  };
-
-  // Recalculate price when product type changes
-  const handleProductTypeChange = (newProductType: string) => {
-    setProductType(newProductType);
-    setErrors(prev => ({ ...prev, productType: '' }));
-
-    // Recalculate price if we have all necessary data
-    if (pickupLat && pickupLng && deliveryLat && deliveryLng && selectedCategory) {
-      const distance = calculateDistance(
-        pickupLat,
-        pickupLng,
-        deliveryLat,
-        deliveryLng
-      );
-      
-      const basePrice = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
-      setSuggestedPrice(basePrice);
-      
-      // Calculate adjusted price
-      const increase = productSettings[newProductType] || 0;
-      const adjustedPrice = basePrice * (1 + increase / 100);
-      setCustomPrice(adjustedPrice.toFixed(2));
-      setPriceAdjusted(adjustedPrice);
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!recipientName.trim()) {
-      newErrors.recipientName = 'Nome do destinatário é obrigatório';
-    }
-
-    const phoneDigits = recipientPhone.replace(/\D/g, '');
-    if (phoneDigits.length < 10 || phoneDigits.length > 11) {
-      newErrors.recipientPhone = 'Telefone inválido (10-11 dígitos)';
-    }
-
-    if (!deliveryAddress.trim() || deliveryAddress.length < 5) {
-      newErrors.deliveryAddress = 'Endereço de entrega é obrigatório';
-    }
-
-    if (!deliveryLat || !deliveryLng) {
-      newErrors.location = 'Selecione a localização no mapa';
-    }
-
-    const price = parseFloat(customPrice);
-    if (isNaN(price) || price < 5 || price > 500) {
-      newErrors.price = 'Valor inválido (R$ 5,00 - R$ 500,00)';
-    }
-
-    if (!selectedVehicleCategory) {
-      newErrors.vehicleCategory = 'Selecione o tipo de veículo necessário';
-    }
-
-    // Validate product type (required)
-    if (!productType) {
-      newErrors.productType = 'Tipo de produto é obrigatório';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm() || !user || !restaurant || !deliveryLat || !deliveryLng || !pickupLat || !pickupLng) {
+  const handleSubmit = async () => {
+    if (!restaurant || !pickupLat || !pickupLng || !deliveryLat || !deliveryLng || !selectedCategory) {
       return;
     }
 
-    setLoading(true);
+    if (restaurant.wallet_balance < estimatedPrice) {
+      toast({
+        variant: 'destructive',
+        title: 'Saldo insuficiente',
+        description: `Você precisa de R$ ${estimatedPrice.toFixed(2)} mas tem apenas R$ ${restaurant.wallet_balance.toFixed(2)}.`
+      });
+      navigate('/restaurant/wallet');
+      return;
+    }
+
+    setSubmitting(true);
 
     try {
-      // Verificar saldo antes de criar entrega
-      const deliveryPrice = parseFloat(customPrice);
-      const { data: restaurantData, error: balanceError } = await supabase
-        .from('restaurants')
-        .select('wallet_balance')
-        .eq('id', restaurant.id)
-        .single();
-
-      if (balanceError) throw balanceError;
-
-      if (restaurantData.wallet_balance < deliveryPrice) {
-        toast({
-          variant: 'destructive',
-          title: 'Saldo insuficiente',
-          description: `Você precisa de R$ ${deliveryPrice.toFixed(2)} mas tem apenas R$ ${restaurantData.wallet_balance.toFixed(2)}. Adicione saldo para continuar.`
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Map category name to vehicle_type enum
-      const vehicleType = selectedCategory 
-        ? (categoryToVehicleType[selectedCategory.name] || 'motorcycle')
-        : 'motorcycle';
+      const vehicleType = categoryToVehicleType[selectedCategory.name] || 'motorcycle';
 
       const { data, error } = await supabase
         .from('deliveries')
@@ -340,15 +194,13 @@ export default function NewDelivery() {
           delivery_address: deliveryAddress,
           delivery_latitude: deliveryLat,
           delivery_longitude: deliveryLng,
-          recipient_name: recipientName,
-          recipient_phone: recipientPhone,
-          description: description || null,
-          distance_km: calculatedDistance!,
-          price: suggestedPrice || deliveryPrice,
-          price_adjusted: deliveryPrice,
+          recipient_name: recipientName || null,
+          recipient_phone: recipientPhone || null,
+          distance_km: distance,
+          price: selectedCategory.base_price + (distance * selectedCategory.price_per_km),
+          price_adjusted: estimatedPrice,
           vehicle_category: vehicleType as any,
           product_type: productType,
-          product_note: productNote.trim() || null,
           status: 'pending'
         }])
         .select()
@@ -358,371 +210,342 @@ export default function NewDelivery() {
 
       toast({
         title: '✅ Entrega criada!',
-        description: 'Entregadores disponíveis serão notificados em breve'
+        description: 'Aguardando entregador aceitar'
       });
       
       navigate(`/restaurant/delivery/${data.id}`);
     } catch (error: any) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao criar entrega',
-        description: error.message || 'Tente novamente'
+        title: 'Erro',
+        description: error.message
       });
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (!restaurant) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 p-6">
+            <Skeleton className="h-12 w-full mb-6" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        </div>
+      </SidebarProvider>
     );
   }
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="min-h-screen flex w-full bg-background">
         <RestaurantSidebar />
-        <div className="flex-1">
-          <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-16 items-center justify-between px-6">
-              <div className="flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => navigate('/restaurant/dashboard')}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar
-                </Button>
-                <h1 className="text-xl font-semibold">Nova Entrega</h1>
-              </div>
-              <NotificationBell />
+        <div className="flex-1 flex flex-col">
+          {/* Header */}
+          <header className="sticky top-0 z-10 h-16 border-b bg-background flex items-center px-4 gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => step > 1 ? setStep(step - 1) : navigate('/restaurant/dashboard')}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="font-semibold">Nova Entrega</h1>
+              <p className="text-xs text-muted-foreground">Etapa {step} de {totalSteps}</p>
+            </div>
+            {/* Progress */}
+            <div className="flex gap-1">
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 w-6 rounded-full transition-colors ${
+                    i < step ? 'bg-primary' : 'bg-muted'
+                  }`}
+                />
+              ))}
             </div>
           </header>
 
-          <main className="p-6">
-            <div className="max-w-3xl mx-auto">
-              <Card className="border-2">
-                <CardHeader>
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Package className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-2xl">Solicitar Nova Entrega</CardTitle>
-                      <CardDescription className="mt-2">
-                        Preencha os dados abaixo para solicitar uma entrega
-                      </CardDescription>
-                    </div>
+          <main className="flex-1 overflow-auto">
+            {/* Step 1: Pickup Location */}
+            {step === 1 && (
+              <div className="p-4 space-y-4">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-3 flex items-center justify-center">
+                    <MapPin className="h-8 w-8 text-green-600" />
                   </div>
-                </CardHeader>
+                  <h2 className="text-xl font-bold">Local de Coleta</h2>
+                  <p className="text-sm text-muted-foreground">De onde será coletado o pacote?</p>
+                </div>
 
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Pickup Section */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold text-lg">Local de Coleta</h3>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setIsEditingPickup(!isEditingPickup)}
-                        >
-                          {isEditingPickup ? 'Usar endereço cadastrado' : 'Alterar endereço'}
-                        </Button>
-                      </div>
-                      
-                      {!isEditingPickup ? (
-                        <div className="p-4 bg-muted/50 rounded-lg border">
-                          <p className="text-sm font-medium text-muted-foreground mb-1">
-                            {restaurant.business_name}
-                          </p>
-                          <p className="text-sm">{pickupAddress}</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          <LocationPicker 
-                            onLocationSelect={handlePickupLocationSelect}
-                            initialLat={pickupLat || undefined}
-                            initialLng={pickupLng || undefined}
-                            initialAddress={pickupAddress}
-                          />
-                          <div className="space-y-2">
-                            <Label htmlFor="pickupAddress">Endereço de Coleta</Label>
-                            <Textarea
-                              id="pickupAddress"
-                              placeholder="Rua, número, complemento, bairro..."
-                              value={pickupAddress}
-                              onChange={(e) => setPickupAddress(e.target.value)}
-                              rows={2}
-                              disabled={loading}
-                            />
-                          </div>
-                        </div>
-                      )}
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="p-3 bg-muted/50 rounded-lg mb-4">
+                      <p className="text-sm font-medium">{restaurant?.business_name}</p>
+                      <p className="text-sm text-muted-foreground">{pickupAddress}</p>
                     </div>
+                    
+                    <LocationPicker
+                      onLocationSelect={(lat, lng, addr) => {
+                        setPickupLat(lat);
+                        setPickupLng(lng);
+                        setPickupAddress(addr);
+                      }}
+                      initialLat={pickupLat || undefined}
+                      initialLng={pickupLng || undefined}
+                      initialAddress={pickupAddress}
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-                    <Separator />
+            {/* Step 2: Delivery Location */}
+            {step === 2 && (
+              <div className="p-4 space-y-4">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-3 flex items-center justify-center">
+                    <Navigation className="h-8 w-8 text-red-600" />
+                  </div>
+                  <h2 className="text-xl font-bold">Local de Entrega</h2>
+                  <p className="text-sm text-muted-foreground">Para onde será entregue?</p>
+                </div>
 
-                    {/* Vehicle Category Selection */}
-                    <div className="space-y-4">
-                    <VehicleCategorySelector
-                        selectedCategoryId={selectedVehicleCategory}
-                        onSelect={handleCategorySelect}
-                        disabled={loading}
-                      />
-                      {errors.vehicleCategory && (
-                        <p className="text-sm text-destructive">{errors.vehicleCategory}</p>
-                      )}
-                    </div>
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <LocationPicker
+                      onLocationSelect={(lat, lng, addr) => {
+                        setDeliveryLat(lat);
+                        setDeliveryLng(lng);
+                        setDeliveryAddress(addr);
+                      }}
+                      initialLat={deliveryLat || undefined}
+                      initialLng={deliveryLng || undefined}
+                      initialAddress={deliveryAddress}
+                    />
 
-                    <Separator />
-
-                    {/* Delivery Location */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5 text-destructive" />
-                        <h3 className="font-semibold text-lg">Local de Entrega</h3>
-                      </div>
-                      
-                      <LocationPicker 
-                        onLocationSelect={handleLocationSelect}
-                        initialLat={deliveryLat || undefined}
-                        initialLng={deliveryLng || undefined}
-                        initialAddress={deliveryAddress}
-                      />
-                      {errors.location && (
-                        <p className="text-sm text-destructive">{errors.location}</p>
-                      )}
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="deliveryAddress">
-                          Endereço Completo de Entrega *
-                        </Label>
-                        <Textarea
-                          id="deliveryAddress"
-                          placeholder="Rua, número, complemento, bairro..."
-                          value={deliveryAddress}
-                          onChange={(e) => {
-                            setDeliveryAddress(e.target.value);
-                            setErrors(prev => ({ ...prev, deliveryAddress: '' }));
-                          }}
-                          rows={3}
-                          disabled={loading}
-                          className={errors.deliveryAddress ? 'border-destructive' : ''}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="recipientName">Nome do destinatário</Label>
+                        <Input
+                          id="recipientName"
+                          placeholder="Nome (opcional)"
+                          value={recipientName}
+                          onChange={(e) => setRecipientName(e.target.value)}
                         />
-                        {errors.deliveryAddress && (
-                          <p className="text-sm text-destructive">{errors.deliveryAddress}</p>
-                        )}
                       </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Recipient Info */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <User className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold text-lg">Dados do Destinatário</h3>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="recipientName">Nome Completo *</Label>
-                          <Input
-                            id="recipientName"
-                            placeholder="Ex: João Silva"
-                            value={recipientName}
-                            onChange={(e) => {
-                              setRecipientName(e.target.value);
-                              setErrors(prev => ({ ...prev, recipientName: '' }));
-                            }}
-                            disabled={loading}
-                            className={errors.recipientName ? 'border-destructive' : ''}
-                          />
-                          {errors.recipientName && (
-                            <p className="text-sm text-destructive">{errors.recipientName}</p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="recipientPhone">Telefone *</Label>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="recipientPhone"
-                              placeholder="11999887766"
-                              value={recipientPhone}
-                              onChange={(e) => {
-                                setRecipientPhone(e.target.value);
-                                setErrors(prev => ({ ...prev, recipientPhone: '' }));
-                              }}
-                              disabled={loading}
-                              className={`pl-10 ${errors.recipientPhone ? 'border-destructive' : ''}`}
-                            />
-                          </div>
-                          {errors.recipientPhone && (
-                            <p className="text-sm text-destructive">{errors.recipientPhone}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Product Type Selection */}
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-primary" />
-                        <h3 className="font-semibold text-lg">Informações do Produto</h3>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="productType">Tipo de Produto *</Label>
-                        <select
-                          id="productType"
-                          value={productType}
-                          onChange={(e) => handleProductTypeChange(e.target.value)}
-                          disabled={loading}
-                          className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${errors.productType ? 'border-destructive' : ''}`}
-                        >
-                          <option value="">Selecione o tipo de produto</option>
-                          {PRODUCT_TYPES.map((type) => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                        {errors.productType && (
-                          <p className="text-sm text-destructive">{errors.productType}</p>
-                        )}
-                        {productType && (productType === 'Produto Frágil' || productType === 'Volumoso' || productType === 'Eletrônicos') && (
-                          <p className="text-xs text-primary font-medium">
-                            ℹ️ Este tipo de produto possui acréscimo automático no valor da entrega
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="productNote">Observações do Item (Opcional)</Label>
-                        <Textarea
-                          id="productNote"
-                          placeholder='Ex: "Objeto frágil, não virar de lado", "Caixa com 7kg", etc.'
-                          value={productNote}
-                          onChange={(e) => setProductNote(e.target.value)}
-                          disabled={loading}
-                          rows={3}
+                      <div>
+                        <Label htmlFor="recipientPhone">Telefone</Label>
+                        <Input
+                          id="recipientPhone"
+                          placeholder="(00) 00000-0000"
+                          value={recipientPhone}
+                          onChange={(e) => setRecipientPhone(e.target.value)}
                         />
-                        <p className="text-xs text-muted-foreground">
-                          Informações adicionais sobre o produto para o entregador
-                        </p>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
 
-                    <Separator />
+                {distance > 0 && (
+                  <div className="text-center p-3 bg-muted rounded-lg">
+                    <p className="text-sm text-muted-foreground">Distância estimada</p>
+                    <p className="text-2xl font-bold">{distance.toFixed(1)} km</p>
+                  </div>
+                )}
+              </div>
+            )}
 
-                    {/* Additional Info */}
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Observações / Instruções (Opcional)</Label>
-                        <Textarea
-                          id="description"
-                          placeholder="Ex: Tocar campainha 3 vezes, apartamento 201"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
-                          disabled={loading}
-                          rows={3}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Instruções especiais para o entregador
-                        </p>
-                      </div>
-                    </div>
+            {/* Step 3: Vehicle Category */}
+            {step === 3 && (
+              <div className="p-4 space-y-4">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-3 flex items-center justify-center">
+                    <span className="text-3xl">🚗</span>
+                  </div>
+                  <h2 className="text-xl font-bold">Tipo de Veículo</h2>
+                  <p className="text-sm text-muted-foreground">Selecione o veículo adequado</p>
+                </div>
 
-                    {/* Price Calculation */}
-                    {calculatedDistance && suggestedPrice && (
-                      <div className="p-5 bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 rounded-lg space-y-3">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Calculator className="h-5 w-5 text-primary" />
-                          <h3 className="font-semibold text-lg">Cálculo da Entrega</h3>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div className="p-3 bg-background/50 rounded-md">
-                            <p className="text-muted-foreground mb-1">Distância</p>
-                            <p className="text-lg font-bold">{calculatedDistance.toFixed(2)} km</p>
-                          </div>
-                          <div className="p-3 bg-background/50 rounded-md">
-                            <p className="text-muted-foreground mb-1">Preço Sugerido</p>
-                            <p className="text-lg font-bold text-primary">R$ {suggestedPrice.toFixed(2)}</p>
-                          </div>
-                        </div>
+                <VehicleCategorySelector
+                  onSelect={(id, category) => setSelectedCategory(category)}
+                  selectedCategoryId={selectedCategory?.id || null}
+                />
 
-                        <div className="space-y-2">
-                          <Label htmlFor="price">Valor a Pagar (R$) *</Label>
-                          <div className="relative">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="price"
-                              type="number"
-                              step="0.01"
-                              min="5"
-                              max="500"
-                              placeholder="0.00"
-                              value={customPrice}
-                              onChange={(e) => {
-                                setCustomPrice(e.target.value);
-                                setErrors(prev => ({ ...prev, price: '' }));
-                              }}
-                              disabled={loading}
-                              className={`pl-10 text-lg font-semibold ${errors.price ? 'border-destructive' : ''}`}
-                            />
-                          </div>
-                          {errors.price && (
-                            <p className="text-sm text-destructive">{errors.price}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground">
-                            💡 Você pode ajustar o valor sugerido (mín: R$ 5,00 | máx: R$ 500,00)
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Submit Button */}
-                    <Button
-                      type="submit"
-                      size="lg"
-                      className="w-full"
-                      disabled={loading || !calculatedDistance || !selectedVehicleCategory}
-                    >
-                      {loading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-background mr-2" />
-                          Criando Entrega...
-                        </>
-                      ) : (
-                        <>
-                          <Package className="mr-2 h-4 w-4" />
-                          Criar Entrega - R$ {customPrice || '0.00'}
-                        </>
-                      )}
-                    </Button>
-
-                    {!calculatedDistance && (
-                      <p className="text-sm text-center text-muted-foreground">
-                        ⚠️ Selecione o local de entrega no mapa para continuar
+                {selectedCategory && distance > 0 && (
+                  <Card className="border-primary/50 bg-primary/5">
+                    <CardContent className="p-4 text-center">
+                      <p className="text-sm text-muted-foreground mb-1">Preço estimado</p>
+                      <p className="text-3xl font-bold text-primary">
+                        R$ {(selectedCategory.base_price + (distance * selectedCategory.price_per_km)).toFixed(2)}
                       </p>
-                    )}
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Base R$ {selectedCategory.base_price.toFixed(2)} + R$ {selectedCategory.price_per_km.toFixed(2)}/km
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {/* Step 4: Product Type */}
+            {step === 4 && (
+              <div className="p-4 space-y-4">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-3 flex items-center justify-center">
+                    <Package className="h-8 w-8 text-purple-600" />
+                  </div>
+                  <h2 className="text-xl font-bold">O que será enviado?</h2>
+                  <p className="text-sm text-muted-foreground">Isso ajuda no cuidado com sua entrega</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {PRODUCT_TYPES.map((type) => (
+                    <Card
+                      key={type.id}
+                      className={`cursor-pointer transition-all ${
+                        productType === type.id 
+                          ? 'border-2 border-primary bg-primary/5' 
+                          : 'hover:border-primary/50'
+                      }`}
+                      onClick={() => setProductType(type.id)}
+                    >
+                      <CardContent className="p-4 text-center">
+                        <span className="text-3xl mb-2 block">{type.icon}</span>
+                        <p className="font-medium text-sm">{type.label}</p>
+                        {productType === type.id && (
+                          <Check className="h-5 w-5 text-primary mx-auto mt-2" />
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Summary */}
+            {step === 5 && (
+              <div className="p-4 space-y-4">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-3 flex items-center justify-center">
+                    <Check className="h-8 w-8 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-bold">Confirmar Entrega</h2>
+                  <p className="text-sm text-muted-foreground">Revise os dados antes de confirmar</p>
+                </div>
+
+                <Card>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Coleta</p>
+                        <p className="text-sm font-medium">{pickupAddress}</p>
+                      </div>
+                    </div>
+
+                    <div className="border-l-2 border-dashed border-muted ml-4 h-4" />
+
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                        <Navigation className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Entrega</p>
+                        <p className="text-sm font-medium">{deliveryAddress}</p>
+                        {recipientName && (
+                          <p className="text-xs text-muted-foreground">Para: {recipientName}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 mt-4">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-muted-foreground">Distância</p>
+                          <p className="font-medium">{distance.toFixed(1)} km</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Veículo</p>
+                          <p className="font-medium">{selectedCategory?.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Tipo</p>
+                          <p className="font-medium">{PRODUCT_TYPES.find(p => p.id === productType)?.label}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Seu saldo</p>
+                          <p className="font-medium">R$ {restaurant?.wallet_balance.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-2 border-primary bg-primary/5">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">Valor total</p>
+                    <p className="text-4xl font-bold text-primary">
+                      R$ {estimatedPrice.toFixed(2)}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {restaurant && restaurant.wallet_balance < estimatedPrice && (
+                  <Card className="border-destructive/50 bg-destructive/5">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+                      <div>
+                        <p className="font-medium text-destructive">Saldo insuficiente</p>
+                        <p className="text-sm text-muted-foreground">
+                          Adicione R$ {(estimatedPrice - restaurant.wallet_balance).toFixed(2)} ao seu saldo
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </main>
+
+          {/* Footer Button */}
+          <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+            {step < totalSteps ? (
+              <Button
+                size="xl"
+                className="w-full"
+                onClick={() => setStep(step + 1)}
+                disabled={!canProceed()}
+              >
+                Continuar
+                <ChevronRight className="h-5 w-5 ml-2" />
+              </Button>
+            ) : (
+              <Button
+                size="xl"
+                className="w-full"
+                onClick={handleSubmit}
+                disabled={submitting || (restaurant ? restaurant.wallet_balance < estimatedPrice : true)}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Criando...
+                  </>
+                ) : (
+                  <>
+                    Solicitar Entrega • R$ {estimatedPrice.toFixed(2)}
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </SidebarProvider>

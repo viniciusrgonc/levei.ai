@@ -16,16 +16,14 @@ import { useAuth } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
 
 const mainMenuItems = [
-  { title: 'Dashboard', url: '/restaurant/dashboard', icon: Home },
-  { title: 'Solicitar Entrega', url: '/restaurant/new-delivery', icon: Plus },
-  { title: 'Agendamento', url: '/restaurant/scheduling', icon: Calendar },
-  { title: 'Histórico de Entregas', url: '/restaurant/history', icon: History },
+  { title: 'Início', url: '/restaurant/dashboard', icon: Home },
+  { title: 'Nova Entrega', url: '/restaurant/new-delivery', icon: Plus },
+  { title: 'Histórico', url: '/restaurant/history', icon: History },
 ];
 
 const settingsMenuItems = [
-  { title: 'Carteira/Saldo', url: '/restaurant/wallet', icon: Wallet },
-  { title: 'Meus Dados', url: '/restaurant/profile', icon: User },
-  { title: 'Editar Dados Pessoais', url: '/restaurant/account', icon: UserCircle },
+  { title: 'Carteira', url: '/restaurant/wallet', icon: Wallet },
+  { title: 'Minha Conta', url: '/restaurant/profile', icon: User },
 ];
 
 export function RestaurantSidebar() {
