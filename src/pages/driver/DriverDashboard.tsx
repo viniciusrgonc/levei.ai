@@ -3,18 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { MapPin, Package, Clock, Navigation } from 'lucide-react';
+import { 
+  MapPin, 
+  Package, 
+  Clock, 
+  Navigation, 
+  Wallet, 
+  Star,
+  Bike,
+  TrendingUp,
+  Map as MapIcon
+} from 'lucide-react';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
-import { DriverDashboardSkeleton, DeliveryListSkeleton } from '@/components/skeletons';
+import { Skeleton } from '@/components/ui/skeleton';
+
 interface Driver {
   id: string;
   is_available: boolean;
@@ -22,17 +32,111 @@ interface Driver {
   license_plate: string;
   rating: number;
   total_deliveries: number;
+  earnings_balance: number;
 }
 
-interface Delivery {
-  id: string;
-  pickup_address: string;
-  delivery_address: string;
-  distance_km: number;
-  price: number;
-  description: string | null;
-  created_at: string;
-  distanceFromDriver?: number;
+// Skeleton loader para o dashboard
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-24 rounded-xl" />
+      </div>
+      <Skeleton className="h-20 rounded-xl" />
+      <Skeleton className="h-64 rounded-xl" />
+    </div>
+  );
+}
+
+// Empty state amigável
+function EmptyDeliveries({ onViewMap }: { onViewMap: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+        <Package className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold text-foreground mb-2">
+        Nenhuma entrega disponível
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+        Fique disponível e aguarde. Novas entregas aparecerão aqui automaticamente.
+      </p>
+      <Button variant="outline" onClick={onViewMap}>
+        <MapIcon className="w-4 h-4 mr-2" />
+        Ver Mapa
+      </Button>
+    </div>
+  );
+}
+
+// Card de entrega disponível
+function DeliveryCard({ 
+  delivery, 
+  onAccept, 
+  accepting 
+}: { 
+  delivery: any; 
+  onAccept: (id: string) => void;
+  accepting: boolean;
+}) {
+  return (
+    <Card className="overflow-hidden animate-fade-in">
+      <CardContent className="p-0">
+        {/* Header com valor destacado */}
+        <div className="bg-primary/5 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="font-normal">
+              <Navigation className="w-3 h-3 mr-1" />
+              {Number(delivery.distance_km).toFixed(1)} km
+            </Badge>
+            <Badge variant="secondary" className="font-normal">
+              <Clock className="w-3 h-3 mr-1" />
+              ~{Math.ceil(Number(delivery.distance_km) * 3)} min
+            </Badge>
+          </div>
+          <span className="text-xl font-bold text-primary">
+            R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+          </span>
+        </div>
+
+        {/* Endereços */}
+        <div className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">COLETA</p>
+              <p className="text-sm text-foreground truncate">{delivery.pickup_address}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
+              <p className="text-sm text-foreground truncate">{delivery.delivery_address}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Botão de ação principal */}
+        <div className="px-4 pb-4">
+          <Button 
+            onClick={() => onAccept(delivery.id)}
+            disabled={accepting}
+            className="w-full h-12 text-base font-semibold"
+            size="lg"
+          >
+            {accepting ? 'Aceitando...' : 'Aceitar Entrega'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function DriverDashboard() {
@@ -41,6 +145,8 @@ export default function DriverDashboard() {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [activeDelivery, setActiveDelivery] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [todayEarnings, setTodayEarnings] = useState(0);
   
   const {
     deliveries: availableDeliveries,
@@ -51,28 +157,13 @@ export default function DriverDashboard() {
     maxDistanceKm: 20,
   });
 
-  // Safety check to ensure deliveries is always an array
   const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
 
-  // Debug log
-  useEffect(() => {
-    console.log('📊 Dashboard Debug:', {
-      driverId: driver?.id,
-      isAvailable: driver?.is_available,
-      vehicleType: driver?.vehicle_type,
-      availableDeliveriesCount: safeDeliveries.length,
-      deliveriesIsArray: Array.isArray(safeDeliveries),
-      deliveries: safeDeliveries
-    });
-  }, [driver, safeDeliveries]);
-
-  // Hook de realtime para escutar mudanças nas entregas
+  // Realtime updates
   useRealtimeDeliveries({
     driverId: driver?.id,
     showNotifications: true,
-    onUpdate: (delivery) => {
-      console.log('Delivery updated in realtime:', delivery);
-      // Recarregar dados quando houver atualização
+    onUpdate: () => {
       fetchDriver();
       fetchActiveDelivery();
     },
@@ -82,16 +173,17 @@ export default function DriverDashboard() {
     if (user) {
       fetchDriver();
       fetchActiveDelivery();
+      fetchTodayEarnings();
     }
   }, [user]);
 
-  // Redirect to appropriate page if has active delivery
+  // Redirecionar para entrega ativa
   useEffect(() => {
     if (activeDelivery) {
       if (activeDelivery.status === 'accepted') {
-        navigate(`/driver/pickup/${activeDelivery.id}`);
+        navigate(`/driver/pickup/${activeDelivery.id}`, { replace: true });
       } else if (activeDelivery.status === 'picked_up') {
-        navigate(`/driver/delivery/${activeDelivery.id}`);
+        navigate(`/driver/delivery/${activeDelivery.id}`, { replace: true });
       }
     }
   }, [activeDelivery, navigate]);
@@ -132,6 +224,30 @@ export default function DriverDashboard() {
     }
   };
 
+  const fetchTodayEarnings = async () => {
+    const { data: driverData } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('user_id', user?.id)
+      .single();
+
+    if (driverData) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data } = await supabase
+        .from('transactions')
+        .select('driver_earnings')
+        .eq('driver_id', driverData.id)
+        .gte('created_at', today.toISOString());
+
+      if (data) {
+        const total = data.reduce((sum, t) => sum + (Number(t.driver_earnings) || 0), 0);
+        setTodayEarnings(total);
+      }
+    }
+  };
+
   const toggleAvailability = async (available: boolean) => {
     if (!driver) return;
 
@@ -149,54 +265,53 @@ export default function DriverDashboard() {
     } else {
       setDriver({ ...driver, is_available: available });
       toast({
-        title: available ? 'Você está disponível!' : 'Você está indisponível',
-        description: available ? 'Agora você pode receber entregas' : 'Você não receberá novas entregas'
+        title: available ? '✅ Você está disponível!' : '⏸️ Você está offline',
+        description: available ? 'Entregas aparecerão aqui' : 'Você não receberá novas entregas'
       });
     }
   };
 
   const acceptDelivery = async (deliveryId: string) => {
-    if (!driver?.id) {
-      console.error('acceptDelivery: driver.id is undefined');
-      return;
-    }
+    if (!driver?.id || accepting) return;
 
-    console.log('acceptDelivery called:', { deliveryId, driverId: driver.id });
-
+    setAccepting(true);
     try {
       const { data, error } = await supabase.functions.invoke('accept-delivery', {
-        body: {
-          delivery_id: deliveryId,
-          driver_id: driver.id
-        }
+        body: { delivery_id: deliveryId, driver_id: driver.id }
       });
 
       if (error) throw error;
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: '✅ Entrega aceita!',
-        description: 'Indo para a tela de coleta',
+        description: 'Vá até o ponto de coleta',
       });
       
-      // Navigate to pickup page
-      navigate(`/driver/pickup/${deliveryId}`);
+      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
     } catch (error) {
-      console.error('Error accepting delivery:', error);
       toast({
         title: 'Erro',
         description: error instanceof Error ? error.message : 'Não foi possível aceitar a entrega',
         variant: 'destructive',
       });
+    } finally {
+      setAccepting(false);
     }
   };
 
-  const completeDelivery = async () => {
-    // Not used - delivery completion happens in DeliveryInProgress page
+  // Status atual do entregador
+  const getStatusInfo = () => {
+    if (activeDelivery) {
+      return { label: 'Em entrega', color: 'bg-warning' };
+    }
+    if (driver?.is_available) {
+      return { label: 'Disponível', color: 'bg-success' };
+    }
+    return { label: 'Offline', color: 'bg-muted-foreground' };
   };
+
+  const status = getStatusInfo();
 
   if (loading) {
     return (
@@ -204,17 +319,15 @@ export default function DriverDashboard() {
         <div className="min-h-screen flex w-full">
           <DriverSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Levei</h1>
+            <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="text-primary-foreground" />
+                <h1 className="text-lg font-bold text-primary-foreground">Levei</h1>
               </div>
               <NotificationBell />
             </header>
-            <main className="flex-1 p-6 bg-background overflow-auto">
-              <div className="max-w-7xl mx-auto">
-                <DriverDashboardSkeleton />
-              </div>
+            <main className="flex-1 p-4 bg-background">
+              <DashboardSkeleton />
             </main>
           </div>
         </div>
@@ -222,160 +335,152 @@ export default function DriverDashboard() {
     );
   }
 
-  // Active delivery redirect is handled in useEffect above
-
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <DriverSidebar />
         <div className="flex-1 flex flex-col">
-            <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Levei</h1>
+          {/* Header compacto */}
+          <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary safe-top">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="text-primary-foreground" />
+              <div className="flex items-center gap-2">
+                <Bike className="w-5 h-5 text-primary-foreground" />
+                <h1 className="text-lg font-bold text-primary-foreground">Levei</h1>
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${status.color}`} />
+              <span className="text-xs text-primary-foreground/80">{status.label}</span>
               <NotificationBell />
-            </header>
+            </div>
+          </header>
 
-          <main className="flex-1 p-6 bg-background overflow-auto">
-            <div className="max-w-7xl mx-auto space-y-6">
-              {/* Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Status</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="availability">Disponível</Label>
-                      <Switch
-                        id="availability"
-                        checked={driver?.is_available || false}
-                        onCheckedChange={toggleAvailability}
-                      />
+          <main className="flex-1 p-4 bg-background overflow-auto safe-bottom">
+            <div className="max-w-lg mx-auto space-y-4">
+              
+              {/* KPIs - Ganhos e Entregas */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card className="kpi-card" onClick={() => navigate('/driver/wallet')}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-success" />
+                      </div>
                     </div>
+                    <p className="text-2xl font-bold text-foreground">
+                      R$ {todayEarnings.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Ganhos hoje</p>
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Avaliação</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {driver?.rating ? `⭐ ${Number(driver.rating).toFixed(1)}` : '—'}
+                <Card className="kpi-card" onClick={() => navigate('/driver/history')}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Package className="w-4 h-4 text-primary" />
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Entregas Realizadas</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{driver?.total_deliveries || 0}</div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {driver?.total_deliveries || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Entregas totais</p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Available Deliveries */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entregas Disponíveis</CardTitle>
-                  <CardDescription>
-                    {driver?.is_available
-                      ? 'Aceite uma entrega para começar'
-                      : 'Ative sua disponibilidade para ver entregas'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!driver?.is_available ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Ative sua disponibilidade para ver entregas disponíveis
+              {/* Toggle de disponibilidade - Grande e claro */}
+              <Card className={`transition-all ${driver?.is_available ? 'border-success/50 bg-success/5' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${driver?.is_available ? 'bg-success' : 'bg-muted'}`}>
+                        <Bike className={`w-5 h-5 ${driver?.is_available ? 'text-white' : 'text-muted-foreground'}`} />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {driver?.is_available ? 'Você está disponível' : 'Você está offline'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {driver?.is_available ? 'Recebendo entregas' : 'Ative para receber entregas'}
+                        </p>
+                      </div>
                     </div>
-                   ) : deliveriesLoading ? (
-                    <DeliveryListSkeleton count={2} />
-                   ) : safeDeliveries.length === 0 ? (
-                    <div className="text-center py-12">
-                      <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-muted-foreground font-medium mb-2">Nenhuma entrega disponível no momento</p>
-                      <p className="text-xs text-muted-foreground">Novas entregas aparecerão aqui automaticamente</p>
-                      <Button 
-                        onClick={() => navigate('/driver/map')} 
-                        variant="outline" 
-                        className="mt-4"
-                      >
-                        Ver Mapa de Entregas
-                      </Button>
-                    </div>
-                   ) : (
-                     <div className="space-y-4">
-                       {safeDeliveries.map((delivery, index) => (
-                        <Card 
-                          key={delivery.id}
-                          className="animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.01]"
-                          style={{ animationDelay: `${index * 100}ms` }}
-                        >
-                          <CardContent className="pt-6">
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="space-y-3 flex-1">
-                                <div className="flex items-start gap-2">
-                                  <Package className="h-4 w-4 text-primary mt-1 shrink-0" />
-                                  <div>
-                                    <p className="font-medium text-sm">Coleta</p>
-                                    <p className="text-sm text-muted-foreground">{delivery.pickup_address}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2">
-                                  <MapPin className="h-4 w-4 text-primary mt-1 shrink-0" />
-                                  <div>
-                                    <p className="font-medium text-sm">Entrega</p>
-                                    <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
-                                  </div>
-                                </div>
-                                {delivery.distanceFromDriver && (
-                                  <Badge variant="secondary" className="animate-scale-in">
-                                    <Navigation className="h-3 w-3 mr-1" />
-                                    {delivery.distanceFromDriver.toFixed(1)} km de você
-                                  </Badge>
-                                )}
-                                {delivery.description && (
-                                  <p className="text-sm text-muted-foreground italic">{delivery.description}</p>
-                                )}
-                              </div>
-                              <div className="text-right shrink-0 ml-4">
-                                <div className="text-2xl font-bold text-primary animate-pulse">
-                                  R$ {Number(delivery.price).toFixed(2)}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {Number(delivery.distance_km).toFixed(1)} km
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between pt-4 border-t">
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Clock className="h-4 w-4" />
-                                {new Date(delivery.created_at).toLocaleString('pt-BR', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </div>
-                              <Button 
-                                onClick={() => acceptDelivery(delivery.id)}
-                                className="transition-all duration-300 hover:scale-110 active:scale-95"
-                              >
-                                Aceitar Coleta
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                   )}
+                    <Switch
+                      checked={driver?.is_available || false}
+                      onCheckedChange={toggleAvailability}
+                      className="scale-125"
+                    />
+                  </div>
                 </CardContent>
               </Card>
+
+              {/* Avaliação e veículo */}
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-warning fill-warning" />
+                  <span className="text-sm font-medium">{driver?.rating ? Number(driver.rating).toFixed(1) : '—'}</span>
+                </div>
+                <Badge variant="secondary">
+                  {driver?.vehicle_type === 'motorcycle' ? 'Moto' : 
+                   driver?.vehicle_type === 'bicycle' ? 'Bicicleta' :
+                   driver?.vehicle_type === 'car' ? 'Carro' :
+                   driver?.vehicle_type === 'van' ? 'Van' : driver?.vehicle_type}
+                </Badge>
+              </div>
+
+              {/* Entregas disponíveis ou empty state */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="font-semibold text-foreground">Entregas Disponíveis</h2>
+                  {safeDeliveries.length > 0 && (
+                    <Badge variant="default">{safeDeliveries.length}</Badge>
+                  )}
+                </div>
+
+                {!driver?.is_available ? (
+                  <Card>
+                    <CardContent className="py-8 text-center">
+                      <p className="text-muted-foreground">
+                        Ative sua disponibilidade para ver entregas
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : deliveriesLoading ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-40 rounded-xl" />
+                    <Skeleton className="h-40 rounded-xl" />
+                  </div>
+                ) : safeDeliveries.length === 0 ? (
+                  <Card>
+                    <EmptyDeliveries onViewMap={() => navigate('/driver/map')} />
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {safeDeliveries.map((delivery) => (
+                      <DeliveryCard
+                        key={delivery.id}
+                        delivery={delivery}
+                        onAccept={acceptDelivery}
+                        accepting={accepting}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Acesso rápido ao mapa */}
+              {driver?.is_available && (
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => navigate('/driver/map')}
+                >
+                  <MapIcon className="w-4 h-4 mr-2" />
+                  Ver entregas no mapa
+                </Button>
+              )}
             </div>
           </main>
         </div>

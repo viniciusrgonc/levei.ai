@@ -3,43 +3,124 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, Filter } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Package, MapPin, Navigation, Clock, ArrowLeft, Bike } from 'lucide-react';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
-import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
-import { DeliveryCard } from '@/components/DeliveryCard';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
-import { DeliveryListSkeleton } from '@/components/skeletons';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from '@/hooks/use-toast';
 
 interface Driver {
   id: string;
   is_available: boolean;
 }
 
-const PRODUCT_FILTER_OPTIONS = [
-  { value: 'all', label: 'Todos' },
-  { value: 'Documentos', label: 'Documentos' },
-  { value: 'Produto Frágil', label: 'Frágil' },
-  { value: 'Eletrônicos', label: 'Eletrônicos' },
-  { value: 'Alimentos', label: 'Alimentos' },
-  { value: 'Medicamentos', label: 'Medicamentos' },
-  { value: 'Volumoso', label: 'Volumoso' },
-];
+// Empty state
+function EmptyState({ isAvailable, onGoToDashboard }: { isAvailable: boolean; onGoToDashboard: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
+        <Package className="w-10 h-10 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold text-foreground mb-2">
+        {isAvailable ? 'Nenhuma entrega disponível' : 'Você está offline'}
+      </h3>
+      <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+        {isAvailable 
+          ? 'Aguarde, novas entregas aparecerão automaticamente.'
+          : 'Ative sua disponibilidade para ver entregas.'}
+      </p>
+      <Button onClick={onGoToDashboard}>
+        Ir para o Início
+      </Button>
+    </div>
+  );
+}
+
+// Delivery card
+function DeliveryListCard({ 
+  delivery, 
+  onAccept, 
+  accepting 
+}: { 
+  delivery: any; 
+  onAccept: (id: string) => void;
+  accepting: boolean;
+}) {
+  return (
+    <Card className="overflow-hidden animate-fade-in">
+      <CardContent className="p-0">
+        {/* Header com valor */}
+        <div className="bg-primary/5 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="font-normal">
+              <Navigation className="w-3 h-3 mr-1" />
+              {Number(delivery.distance_km).toFixed(1)} km
+            </Badge>
+            <Badge variant="secondary" className="font-normal">
+              <Clock className="w-3 h-3 mr-1" />
+              ~{Math.ceil(Number(delivery.distance_km) * 3)} min
+            </Badge>
+          </div>
+          <span className="text-xl font-bold text-primary">
+            R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+          </span>
+        </div>
+
+        {/* Endereços */}
+        <div className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">COLETA</p>
+              <p className="text-sm text-foreground truncate">{delivery.pickup_address}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4 text-destructive" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
+              <p className="text-sm text-foreground truncate">{delivery.delivery_address}</p>
+            </div>
+          </div>
+
+          {delivery.product_type && (
+            <Badge variant="outline" className="text-xs">
+              {delivery.product_type}
+            </Badge>
+          )}
+        </div>
+
+        {/* Botão de ação */}
+        <div className="px-4 pb-4">
+          <Button 
+            onClick={() => onAccept(delivery.id)}
+            disabled={accepting}
+            className="w-full h-12 text-base font-semibold"
+            size="lg"
+          >
+            {accepting ? 'Aceitando...' : 'Aceitar Entrega'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AvailableDeliveries() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [productFilter, setProductFilter] = useState<string>('all');
+  const [accepting, setAccepting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const {
     deliveries: availableDeliveries,
@@ -50,16 +131,10 @@ export default function AvailableDeliveries() {
     maxDistanceKm: 20,
   });
 
-  const { acceptDelivery, loading: acceptingDelivery } = useAcceptDelivery({
-    onSuccess: (deliveryId) => {
-      navigate(`/driver/pickup/${deliveryId}`);
-    }
-  });
+  const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
 
   useEffect(() => {
-    if (user) {
-      fetchDriver();
-    }
+    if (user) fetchDriver();
   }, [user]);
 
   const fetchDriver = async () => {
@@ -72,122 +147,131 @@ export default function AvailableDeliveries() {
     if (!error && data) {
       setDriver(data);
     }
+    setLoading(false);
   };
 
-  const handleAcceptDelivery = async (deliveryId: string) => {
-    if (!driver?.id) return;
-    await acceptDelivery(deliveryId, driver.id);
+  const acceptDelivery = async (deliveryId: string) => {
+    if (!driver?.id || accepting) return;
+
+    setAccepting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('accept-delivery', {
+        body: { delivery_id: deliveryId, driver_id: driver.id }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: '✅ Entrega aceita!',
+        description: 'Vá até o ponto de coleta',
+      });
+      
+      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
+    } catch (error) {
+      toast({
+        title: 'Erro',
+        description: error instanceof Error ? error.message : 'Não foi possível aceitar a entrega',
+        variant: 'destructive',
+      });
+    } finally {
+      setAccepting(false);
+    }
   };
 
-  const openPickupLocation = (latitude: number, longitude: number) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
-    window.open(url, '_blank');
-  };
-
-  // Filter deliveries by product type
-  const filteredDeliveries = productFilter === 'all'
-    ? availableDeliveries
-    : availableDeliveries.filter(delivery => delivery.product_type === productFilter);
+  if (loading) {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full">
+          <DriverSidebar />
+          <div className="flex-1 flex flex-col">
+            <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary safe-top">
+              <div className="flex items-center gap-3">
+                <SidebarTrigger className="text-primary-foreground" />
+                <h1 className="text-lg font-bold text-primary-foreground">Entregas</h1>
+              </div>
+              <NotificationBell />
+            </header>
+            <main className="flex-1 p-4 bg-background">
+              <div className="space-y-3">
+                <Skeleton className="h-40 rounded-xl" />
+                <Skeleton className="h-40 rounded-xl" />
+                <Skeleton className="h-40 rounded-xl" />
+              </div>
+            </main>
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
 
   return (
     <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen flex w-full">
         <DriverSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-              <h1 className="text-xl font-bold text-primary-foreground">Entregas Disponíveis</h1>
+          {/* Header */}
+          <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary safe-top">
+            <div className="flex items-center gap-3">
+              <SidebarTrigger className="text-primary-foreground" />
+              <div className="flex items-center gap-2">
+                <Bike className="w-5 h-5 text-primary-foreground" />
+                <h1 className="text-lg font-bold text-primary-foreground">Entregas</h1>
+              </div>
             </div>
-            <NotificationBell />
+            <div className="flex items-center gap-2">
+              {safeDeliveries.length > 0 && (
+                <Badge variant="secondary">{safeDeliveries.length}</Badge>
+              )}
+              <NotificationBell />
+            </div>
           </header>
 
-          <main className="flex-1 p-6 bg-background overflow-auto">
-            <div className="max-w-4xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Entregas Disponíveis</CardTitle>
-                  <CardDescription>
-                    {driver?.is_available
-                      ? 'Aceite uma entrega para começar'
-                      : 'Ative sua disponibilidade no dashboard para ver entregas'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!driver?.is_available ? (
-                    <div className="text-center py-12">
-                      <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                      <p className="text-muted-foreground">
-                        Ative sua disponibilidade no dashboard para ver entregas disponíveis
-                      </p>
-                      <Button onClick={() => navigate('/driver/dashboard')} className="mt-4">
-                        Ir para Dashboard
-                      </Button>
-                    </div>
-                  ) : deliveriesLoading ? (
-                    <DeliveryListSkeleton count={3} />
-                  ) : (
-                    <>
-                      {/* Product Filter */}
-                      {availableDeliveries.length > 0 && (
-                        <div className="mb-4 flex items-center gap-2">
-                          <Filter className="h-4 w-4 text-muted-foreground" />
-                          <Select value={productFilter} onValueChange={setProductFilter}>
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue placeholder="Filtrar por tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {PRODUCT_FILTER_OPTIONS.map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
-                                  {option.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
+          <main className="flex-1 p-4 bg-background overflow-auto safe-bottom">
+            <div className="max-w-lg mx-auto space-y-4">
+              {/* Back button */}
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/driver/dashboard')}
+                className="mb-2"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Voltar
+              </Button>
 
-                      {filteredDeliveries.length === 0 ? (
-                        <div className="text-center py-12">
-                          <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                          <p className="text-muted-foreground">
-                            {productFilter !== 'all'
-                              ? 'Nenhuma entrega encontrada com este filtro'
-                              : 'Nenhuma entrega disponível no momento'}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-2">
-                            {productFilter !== 'all'
-                              ? 'Tente outro filtro ou aguarde novas entregas'
-                              : 'Aguarde novos pedidos ou ajuste seu raio de busca'}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-4">
-                          {filteredDeliveries.map((delivery) => (
-                            <DeliveryCard
-                              key={delivery.id}
-                              delivery={delivery}
-                              actionButton={
-                                <Button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAcceptDelivery(delivery.id);
-                                  }}
-                                  disabled={acceptingDelivery}
-                                  className="animate-pulse"
-                                >
-                                  {acceptingDelivery ? 'Aceitando...' : 'Aceitar Entrega'}
-                                </Button>
-                              }
-                              onNavigate={() => openPickupLocation(delivery.pickup_latitude, delivery.pickup_longitude)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              {/* Status */}
+              {driver?.is_available && safeDeliveries.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {safeDeliveries.length} {safeDeliveries.length === 1 ? 'entrega disponível' : 'entregas disponíveis'}
+                </p>
+              )}
+
+              {/* Content */}
+              {!driver?.is_available || safeDeliveries.length === 0 ? (
+                <Card>
+                  <EmptyState 
+                    isAvailable={driver?.is_available || false} 
+                    onGoToDashboard={() => navigate('/driver/dashboard')} 
+                  />
+                </Card>
+              ) : deliveriesLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-40 rounded-xl" />
+                  <Skeleton className="h-40 rounded-xl" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {safeDeliveries.map((delivery) => (
+                    <DeliveryListCard
+                      key={delivery.id}
+                      delivery={delivery}
+                      onAccept={acceptDelivery}
+                      accepting={accepting}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </main>
         </div>
