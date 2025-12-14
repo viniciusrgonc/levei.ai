@@ -207,7 +207,7 @@ export default function DriverDashboard() {
             <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
+                <h1 className="text-xl font-bold text-primary-foreground">Levei</h1>
               </div>
               <NotificationBell />
             </header>
@@ -232,7 +232,7 @@ export default function DriverDashboard() {
             <header className="h-16 border-b border-border flex items-center justify-between px-6 bg-primary">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Movvi</h1>
+                <h1 className="text-xl font-bold text-primary-foreground">Levei</h1>
               </div>
               <NotificationBell />
             </header>

@@ -105,9 +105,9 @@ export default function Auth() {
               <Bike className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Movvi</CardTitle>
+          <CardTitle className="text-2xl font-bold">Levei</CardTitle>
           <CardDescription>
-            Plataforma de entregas autônomas
+            Entregas sob demanda
           </CardDescription>
         </CardHeader>
         <CardContent>
