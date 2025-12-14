@@ -10,16 +10,16 @@ const Footer = () => {
               <Bike className="w-6 h-6 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Movvi
+              Levei
             </span>
           </div>
           
           <p className="text-muted-foreground max-w-md">
-            Conectando entregadores e solicitantes para entregas mais eficientes
+            Levei – entregas sob demanda
           </p>
           
           <div className="text-sm text-muted-foreground">
-            © 2025 Movvi. Todos os direitos reservados.
+            © 2025 Levei. Todos os direitos reservados.
           </div>
         </div>
       </div>

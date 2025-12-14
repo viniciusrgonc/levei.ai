@@ -392,7 +392,7 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
                 <div>
-                  <h1 className="text-xl font-bold text-primary-foreground">Movvi Admin</h1>
+                  <h1 className="text-xl font-bold text-primary-foreground">Levei Admin</h1>
                   <p className="text-xs text-primary-foreground/60">
                     Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}
                   </p>

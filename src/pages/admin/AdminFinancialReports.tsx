@@ -284,7 +284,7 @@ export default function AdminFinancialReports() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Relatório Financeiro - Movvi</title>
+        <title>Relatório Financeiro - Levei</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #111827; }
@@ -308,7 +308,7 @@ export default function AdminFinancialReports() {
       </head>
       <body>
         <div class="header">
-          <h1>Relatório Financeiro - Movvi</h1>
+          <h1>Relatório Financeiro - Levei</h1>
           <p>${getPeriodLabel()} | Gerado em ${format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
         </div>
         
@@ -358,7 +358,7 @@ export default function AdminFinancialReports() {
         </div>
 
         <div class="footer">
-          <p>Movvi - Plataforma de Entregas Autônomas</p>
+          <p>Levei – Entregas sob demanda</p>
         </div>
       </body>
       </html>

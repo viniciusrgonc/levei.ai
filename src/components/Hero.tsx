@@ -12,7 +12,7 @@ const Hero = () => {
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 border border-border rounded-lg px-4 py-2">
             <Bike className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-muted-foreground">Plataforma de Entregas Autônomas</span>
+            <span className="text-sm font-medium text-muted-foreground">Entregas sob demanda</span>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground">
