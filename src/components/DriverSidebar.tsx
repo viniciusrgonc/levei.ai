@@ -1,4 +1,5 @@
-import { Home, Map, Wallet, History, User, LogOut, Bike } from 'lucide-react';
+import { Home, Map, Wallet, History, User, LogOut } from 'lucide-react';
+import leveiLogo from '@/assets/levei-logo.png';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -39,11 +40,8 @@ export function DriverSidebar() {
       <SidebarContent className="border-r border-sidebar-border bg-sidebar">
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Bike className="w-4 h-4 text-primary-foreground" />
-            </div>
-            {!isCollapsed && <span className="font-bold text-foreground">Levei</span>}
+          <div className="flex items-center justify-center">
+            <img src={leveiLogo} alt="Levei.ai" className={isCollapsed ? 'h-8 w-auto' : 'h-10 w-auto'} />
           </div>
         </div>
 

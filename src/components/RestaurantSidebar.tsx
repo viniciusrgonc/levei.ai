@@ -1,4 +1,5 @@
-import { Home, Plus, History, User, LogOut, Calendar, Wallet, Settings, UserCircle } from 'lucide-react';
+import { Home, Plus, History, User, LogOut, Wallet } from 'lucide-react';
+import leveiLogo from '@/assets/levei-logo.png';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Sidebar,
@@ -41,6 +42,13 @@ export function RestaurantSidebar() {
   return (
     <Sidebar className={isCollapsed ? 'w-14' : 'w-60'} collapsible="icon">
       <SidebarContent className="border-r border-sidebar-border">
+        {/* Logo */}
+        <div className="p-4 border-b border-sidebar-border">
+          <div className="flex items-center justify-center">
+            <img src={leveiLogo} alt="Levei.ai" className={isCollapsed ? 'h-8 w-auto' : 'h-10 w-auto'} />
+          </div>
+        </div>
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3">
             Navegação

@@ -1,4 +1,5 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Shield, Tag, ShoppingBag, DollarSign, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3 } from 'lucide-react';
+import leveiLogo from '@/assets/levei-logo.png';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -78,17 +79,12 @@ export function AdminSidebar() {
   return (
     <Sidebar className={isCollapsed ? 'w-14' : 'w-60'} collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border py-4 px-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Shield className="h-5 w-5" />
-          </div>
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">Admin</span>
-              <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0">Acesso Total</Badge>
-            </div>
-          )}
+        <div className="flex items-center justify-center">
+          <img src={leveiLogo} alt="Levei.ai" className={isCollapsed ? 'h-8 w-auto' : 'h-10 w-auto'} />
         </div>
+        {!isCollapsed && (
+          <Badge variant="secondary" className="w-fit text-[10px] px-1.5 py-0 mt-2 mx-auto">Admin</Badge>
+        )}
       </SidebarHeader>
       <SidebarContent className="border-r border-sidebar-border">
         <SidebarGroup>
