@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper, MessageCircle } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
@@ -183,12 +183,26 @@ export default function DeliveryInProgress() {
   const callRecipient = () => {
     const phone = delivery?.recipient_phone;
     if (phone && phone.trim()) {
-      // Format phone for tel: protocol - remove spaces and special chars except +
       const formattedPhone = phone.replace(/[^\d+]/g, '');
       window.location.href = `tel:${formattedPhone}`;
     } else {
       toast({
         title: 'Telefone indisponível',
+        description: 'Número de telefone não cadastrado para este destinatário',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openWhatsApp = () => {
+    const phone = delivery?.recipient_phone;
+    if (phone && phone.trim()) {
+      // Remove all non-digits for wa.me (no + needed)
+      const formattedPhone = phone.replace(/\D/g, '');
+      window.open(`https://wa.me/${formattedPhone}`, '_blank');
+    } else {
+      toast({
+        title: 'WhatsApp indisponível',
         description: 'Número de telefone não cadastrado para este destinatário',
         variant: 'destructive',
       });
@@ -320,6 +334,15 @@ export default function DeliveryInProgress() {
                     >
                       <Phone className="w-3 h-3 mr-1" />
                       Ligar
+                    </Button>
+                    <Button 
+                      onClick={openWhatsApp} 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-6 px-2 text-xs text-green-600 hover:text-green-700"
+                    >
+                      <MessageCircle className="w-3 h-3 mr-1" />
+                      WhatsApp
                     </Button>
                   </div>
                 </div>
