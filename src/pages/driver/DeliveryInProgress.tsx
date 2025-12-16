@@ -181,8 +181,17 @@ export default function DeliveryInProgress() {
   };
 
   const callRecipient = () => {
-    if (delivery?.recipient_phone) {
-      window.open(`tel:${delivery.recipient_phone}`, '_self');
+    const phone = delivery?.recipient_phone;
+    if (phone && phone.trim()) {
+      // Format phone for tel: protocol - remove spaces and special chars except +
+      const formattedPhone = phone.replace(/[^\d+]/g, '');
+      window.location.href = `tel:${formattedPhone}`;
+    } else {
+      toast({
+        title: 'Telefone indisponível',
+        description: 'Número de telefone não cadastrado para este destinatário',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -296,27 +305,23 @@ export default function DeliveryInProgress() {
                   <p className="text-sm text-foreground">{delivery.delivery_address}</p>
                   
                   {/* Info do destinatário */}
-                  {(delivery.recipient_name || delivery.recipient_phone) && (
-                    <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
-                      {delivery.recipient_name && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <User className="w-3 h-3" />
-                          {delivery.recipient_name}
-                        </div>
-                      )}
-                      {delivery.recipient_phone && (
-                        <Button 
-                          onClick={callRecipient} 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                        >
-                          <Phone className="w-3 h-3 mr-1" />
-                          Ligar
-                        </Button>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border">
+                    {delivery.recipient_name && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        {delivery.recipient_name}
+                      </div>
+                    )}
+                    <Button 
+                      onClick={callRecipient} 
+                      variant="ghost" 
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                    >
+                      <Phone className="w-3 h-3 mr-1" />
+                      Ligar
+                    </Button>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-lg font-bold text-primary">
