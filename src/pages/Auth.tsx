@@ -102,35 +102,35 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-3 py-6 sm:p-4 safe-top safe-bottom">
       {/* Subtle background */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--primary)/0.03),transparent_60%)]" />
       
       <Card className="w-full max-w-md relative z-10 animate-fade-in">
-        <CardHeader className="space-y-4 text-center pb-2">
+        <CardHeader className="space-y-3 sm:space-y-4 text-center pb-2">
           <div className="flex justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shadow-md">
-              <Bike className="h-7 w-7 text-primary-foreground" />
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-primary flex items-center justify-center shadow-md">
+              <Bike className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
             </div>
           </div>
-          <div className="space-y-1">
-            <CardTitle className="text-2xl font-bold">Levei</CardTitle>
-            <CardDescription>
+          <div className="space-y-0.5 sm:space-y-1">
+            <CardTitle className="text-xl sm:text-2xl font-bold">Levei</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               Entregas sob demanda
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="pt-4">
+        <CardContent className="pt-3 sm:pt-4">
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Criar Conta</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-4 sm:mb-6">
+              <TabsTrigger value="signin" className="text-xs sm:text-sm">Entrar</TabsTrigger>
+              <TabsTrigger value="signup" className="text-xs sm:text-sm">Criar Conta</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="signin" className="space-y-4">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+            <TabsContent value="signin" className="space-y-3 sm:space-y-4">
+              <form onSubmit={handleSignIn} className="space-y-3 sm:space-y-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signin-email" className="text-xs sm:text-sm">Email</Label>
                   <Input
                     id="signin-email"
                     name="email"
@@ -139,10 +139,11 @@ export default function Auth() {
                     required
                     disabled={loading}
                     autoComplete="email"
+                    className="h-10 sm:h-11 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">Senha</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signin-password" className="text-xs sm:text-sm">Senha</Label>
                   <Input
                     id="signin-password"
                     name="password"
@@ -151,18 +152,19 @@ export default function Auth() {
                     required
                     disabled={loading}
                     autoComplete="current-password"
+                    className="h-10 sm:h-11 text-sm"
                   />
                 </div>
-                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" size="lg" loading={loading}>
                   Entrar
                 </Button>
               </form>
             </TabsContent>
 
-            <TabsContent value="signup" className="space-y-4">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Nome Completo</Label>
+            <TabsContent value="signup" className="space-y-3 sm:space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-3 sm:space-y-4">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signup-name" className="text-xs sm:text-sm">Nome Completo</Label>
                   <Input
                     id="signup-name"
                     name="fullName"
@@ -171,10 +173,11 @@ export default function Auth() {
                     required
                     disabled={loading}
                     autoComplete="name"
+                    className="h-10 sm:h-11 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-phone">Telefone</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signup-phone" className="text-xs sm:text-sm">Telefone</Label>
                   <Input
                     id="signup-phone"
                     name="phone"
@@ -183,10 +186,11 @@ export default function Auth() {
                     required
                     disabled={loading}
                     autoComplete="tel"
+                    className="h-10 sm:h-11 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signup-email" className="text-xs sm:text-sm">Email</Label>
                   <Input
                     id="signup-email"
                     name="email"
@@ -195,10 +199,11 @@ export default function Auth() {
                     required
                     disabled={loading}
                     autoComplete="email"
+                    className="h-10 sm:h-11 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Senha</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label htmlFor="signup-password" className="text-xs sm:text-sm">Senha</Label>
                   <Input
                     id="signup-password"
                     name="password"
@@ -208,12 +213,13 @@ export default function Auth() {
                     disabled={loading}
                     minLength={6}
                     autoComplete="new-password"
+                    className="h-10 sm:h-11 text-sm"
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">
                     Mínimo de 6 caracteres
                   </p>
                 </div>
-                <Button type="submit" className="w-full" size="lg" loading={loading}>
+                <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" size="lg" loading={loading}>
                   Criar Conta
                 </Button>
               </form>

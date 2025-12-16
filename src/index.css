@@ -283,6 +283,39 @@
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Mobile-first responsive containers */
+  .container-mobile {
+    @apply w-full px-3 sm:px-4 md:px-6;
+  }
+
+  /* Compact header for mobile */
+  .header-mobile {
+    @apply h-12 sm:h-14 md:h-16;
+  }
+
+  /* Mobile-first card padding */
+  .card-content-mobile {
+    @apply p-3 sm:p-4 md:p-5;
+  }
+
+  /* Mobile-first section spacing */
+  .section-mobile {
+    @apply py-4 sm:py-6 md:py-8;
+  }
+
+  /* Full width cards on mobile */
+  .card-full-mobile {
+    @apply rounded-none sm:rounded-xl border-x-0 sm:border-x;
+  }
 }
 
 /* Animações suaves */

@@ -122,19 +122,19 @@ export default function RestaurantDashboard() {
         <div className="min-h-screen flex w-full">
           <RestaurantSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="sticky top-0 z-10 h-16 border-b bg-primary">
-              <div className="flex h-full items-center justify-between px-4 md:px-6">
-                <div className="flex items-center gap-3">
+            <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
+              <div className="flex h-full items-center justify-between px-3 sm:px-4">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <SidebarTrigger className="text-primary-foreground" />
-                  <Skeleton className="h-6 w-32 bg-primary-foreground/20" />
+                  <Skeleton className="h-5 w-24 sm:h-6 sm:w-32 bg-primary-foreground/20" />
                 </div>
                 <NotificationBell />
               </div>
             </header>
-            <main className="flex-1 p-4 md:p-6 space-y-6">
-              <Skeleton className="h-14 w-full rounded-xl" />
-              <Skeleton className="h-24 w-full rounded-xl" />
-              <Skeleton className="h-48 w-full rounded-xl" />
+            <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+              <Skeleton className="h-12 sm:h-14 w-full rounded-lg sm:rounded-xl" />
+              <Skeleton className="h-20 sm:h-24 w-full rounded-lg sm:rounded-xl" />
+              <Skeleton className="h-40 sm:h-48 w-full rounded-lg sm:rounded-xl" />
             </main>
           </div>
         </div>
@@ -149,12 +149,12 @@ export default function RestaurantDashboard() {
       <div className="min-h-screen flex w-full bg-background">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="sticky top-0 z-10 h-16 border-b bg-primary">
-            <div className="flex h-full items-center justify-between px-4 md:px-6">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-lg font-bold text-primary-foreground truncate">
+          {/* Header - Compacto em mobile */}
+          <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
+            <div className="flex h-full items-center justify-between px-3 sm:px-4">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10 flex-shrink-0" />
+                <h1 className="text-sm sm:text-base md:text-lg font-bold text-primary-foreground truncate">
                   {restaurant.business_name}
                 </h1>
               </div>
@@ -162,14 +162,14 @@ export default function RestaurantDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-4 md:p-6 space-y-6 overflow-auto pb-24">
+          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-auto pb-20 sm:pb-24 safe-bottom">
             {/* CTA Principal */}
             <Button
               onClick={() => navigate('/restaurant/new-delivery')}
-              size="xl"
-              className="w-full gap-3 text-lg shadow-lg"
+              size="lg"
+              className="w-full gap-2 sm:gap-3 text-base sm:text-lg shadow-lg h-12 sm:h-14"
             >
-              <Plus className="h-6 w-6" />
+              <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
               Nova Entrega
             </Button>
 
@@ -178,17 +178,17 @@ export default function RestaurantDashboard() {
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate('/restaurant/wallet')}
             >
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Wallet className="h-6 w-6 text-primary" />
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Saldo disponível</p>
-                    <p className="text-2xl font-bold">R$ {restaurant.wallet_balance.toFixed(2)}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Saldo disponível</p>
+                    <p className="text-xl sm:text-2xl font-bold truncate">R$ {restaurant.wallet_balance.toFixed(2)}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="flex-shrink-0 text-xs sm:text-sm">
                   Adicionar
                 </Button>
               </CardContent>
@@ -196,12 +196,12 @@ export default function RestaurantDashboard() {
 
             {/* Entregas Ativas */}
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Em andamento
                   {activeDeliveries.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">
+                    <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
                       {activeDeliveries.length}
                     </Badge>
                   )}
@@ -210,22 +210,22 @@ export default function RestaurantDashboard() {
 
               {activeDeliveries.length === 0 ? (
                 <Card className="border-dashed">
-                  <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                      <Package className="h-8 w-8 text-muted-foreground" />
+                  <CardContent className="p-6 sm:p-8 text-center">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted mx-auto mb-3 sm:mb-4 flex items-center justify-center">
+                      <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="font-semibold mb-2">Nenhuma entrega ativa</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
+                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Nenhuma entrega ativa</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                       Clique em "Nova Entrega" para solicitar sua primeira entrega
                     </p>
-                    <Button onClick={() => navigate('/restaurant/new-delivery')} variant="outline">
+                    <Button onClick={() => navigate('/restaurant/new-delivery')} variant="outline" size="sm">
                       <Plus className="h-4 w-4 mr-2" />
                       Criar entrega
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {activeDeliveries.map((delivery) => {
                     const status = statusConfig[delivery.status] || statusConfig.pending;
                     return (
@@ -234,20 +234,20 @@ export default function RestaurantDashboard() {
                         className="cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
                         onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between gap-3">
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between gap-2 sm:gap-3">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xl">{status.icon}</span>
-                                <Badge className={`${status.color} border font-medium`}>
+                              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 flex-wrap">
+                                <span className="text-lg sm:text-xl">{status.icon}</span>
+                                <Badge className={`${status.color} border font-medium text-xs`}>
                                   {status.label}
                                 </Badge>
                               </div>
-                              <p className="font-medium truncate flex items-center gap-2">
-                                <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                {delivery.delivery_address}
+                              <p className="text-sm font-medium truncate flex items-center gap-1.5 sm:gap-2">
+                                <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
+                                <span className="truncate">{delivery.delivery_address}</span>
                               </p>
-                              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
                                 <span>{delivery.distance_km?.toFixed(1)} km</span>
                                 <span>•</span>
                                 <span>
@@ -259,29 +259,30 @@ export default function RestaurantDashboard() {
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <p className="text-xl font-bold text-primary">
+                              <p className="text-lg sm:text-xl font-bold text-primary">
                                 R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
                               </p>
-                              <div className="flex flex-col gap-1">
+                              <div className="flex flex-col gap-0.5 sm:gap-1 mt-1">
                                 <Button
                                   size="sm"
                                   variant="ghost"
+                                  className="h-8 text-xs sm:text-sm px-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/restaurant/delivery/${delivery.id}`);
                                   }}
                                 >
-                                  <Eye className="h-4 w-4 mr-1" />
+                                  <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
                                   Rastrear
                                 </Button>
                                 {delivery.status === 'pending' && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    className="h-8 text-xs sm:text-sm px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={(e) => handleOpenCancelModal(e, delivery.id)}
                                   >
-                                    <X className="h-4 w-4 mr-1" />
+                                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
                                     Cancelar
                                   </Button>
                                 )}

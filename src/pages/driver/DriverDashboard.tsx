@@ -38,13 +38,13 @@ interface Driver {
 // Skeleton loader para o dashboard
 function DashboardSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-24 rounded-xl" />
+    <div className="space-y-3 sm:space-y-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <Skeleton className="h-20 sm:h-24 rounded-lg sm:rounded-xl" />
+        <Skeleton className="h-20 sm:h-24 rounded-lg sm:rounded-xl" />
       </div>
-      <Skeleton className="h-20 rounded-xl" />
-      <Skeleton className="h-64 rounded-xl" />
+      <Skeleton className="h-16 sm:h-20 rounded-lg sm:rounded-xl" />
+      <Skeleton className="h-48 sm:h-64 rounded-lg sm:rounded-xl" />
     </div>
   );
 }
@@ -52,17 +52,17 @@ function DashboardSkeleton() {
 // Empty state amigável
 function EmptyDeliveries({ onViewMap }: { onViewMap: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
-        <Package className="w-10 h-10 text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-3 sm:px-4 text-center">
+      <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-3 sm:mb-4">
+        <Package className="w-7 h-7 sm:w-10 sm:h-10 text-muted-foreground" />
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">
+      <h3 className="text-base sm:text-lg font-semibold text-foreground mb-1.5 sm:mb-2">
         Nenhuma entrega disponível
       </h3>
-      <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-xs">
         Fique disponível e aguarde. Novas entregas aparecerão aqui automaticamente.
       </p>
-      <Button variant="outline" onClick={onViewMap}>
+      <Button variant="outline" size="sm" onClick={onViewMap}>
         <MapIcon className="w-4 h-4 mr-2" />
         Ver Mapa
       </Button>
@@ -84,51 +84,51 @@ function DeliveryCard({
     <Card className="overflow-hidden animate-fade-in">
       <CardContent className="p-0">
         {/* Header com valor destacado */}
-        <div className="bg-primary/5 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="font-normal">
+        <div className="bg-primary/5 px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Badge variant="secondary" className="font-normal text-xs">
               <Navigation className="w-3 h-3 mr-1" />
               {Number(delivery.distance_km).toFixed(1)} km
             </Badge>
-            <Badge variant="secondary" className="font-normal">
+            <Badge variant="secondary" className="font-normal text-xs">
               <Clock className="w-3 h-3 mr-1" />
               ~{Math.ceil(Number(delivery.distance_km) * 3)} min
             </Badge>
           </div>
-          <span className="text-xl font-bold text-primary">
+          <span className="text-lg sm:text-xl font-bold text-primary">
             R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
           </span>
         </div>
 
         {/* Endereços */}
-        <div className="p-4 space-y-3">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4 text-success" />
+        <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+              <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">COLETA</p>
-              <p className="text-sm text-foreground truncate">{delivery.pickup_address}</p>
+              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">COLETA</p>
+              <p className="text-xs sm:text-sm text-foreground truncate">{delivery.pickup_address}</p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
-              <MapPin className="w-4 h-4 text-destructive" />
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
-              <p className="text-sm text-foreground truncate">{delivery.delivery_address}</p>
+              <p className="text-[10px] sm:text-xs font-medium text-muted-foreground">ENTREGA</p>
+              <p className="text-xs sm:text-sm text-foreground truncate">{delivery.delivery_address}</p>
             </div>
           </div>
         </div>
 
         {/* Botão de ação principal */}
-        <div className="px-4 pb-4">
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4">
           <Button 
             onClick={() => onAccept(delivery.id)}
             disabled={accepting}
-            className="w-full h-12 text-base font-semibold"
+            className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold"
             size="lg"
           >
             {accepting ? 'Aceitando...' : 'Aceitar Entrega'}
@@ -319,14 +319,14 @@ export default function DriverDashboard() {
         <div className="min-h-screen flex w-full">
           <DriverSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary">
-              <div className="flex items-center gap-3">
+            <header className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <SidebarTrigger className="text-primary-foreground" />
-                <h1 className="text-lg font-bold text-primary-foreground">Levei</h1>
+                <h1 className="text-base sm:text-lg font-bold text-primary-foreground">Levei</h1>
               </div>
               <NotificationBell />
             </header>
-            <main className="flex-1 p-4 bg-background">
+            <main className="flex-1 p-3 sm:p-4 bg-background safe-bottom">
               <DashboardSkeleton />
             </main>
           </div>
@@ -341,68 +341,68 @@ export default function DriverDashboard() {
         <DriverSidebar />
         <div className="flex-1 flex flex-col">
           {/* Header compacto */}
-          <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-primary safe-top">
-            <div className="flex items-center gap-3">
+          <header className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top">
+            <div className="flex items-center gap-2 sm:gap-3">
               <SidebarTrigger className="text-primary-foreground" />
-              <div className="flex items-center gap-2">
-                <Bike className="w-5 h-5 text-primary-foreground" />
-                <h1 className="text-lg font-bold text-primary-foreground">Levei</h1>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Bike className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                <h1 className="text-base sm:text-lg font-bold text-primary-foreground">Levei</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <div className={`w-2 h-2 rounded-full ${status.color}`} />
-              <span className="text-xs text-primary-foreground/80">{status.label}</span>
+              <span className="text-[10px] sm:text-xs text-primary-foreground/80">{status.label}</span>
               <NotificationBell />
             </div>
           </header>
 
-          <main className="flex-1 p-4 bg-background overflow-auto safe-bottom">
-            <div className="max-w-lg mx-auto space-y-4">
+          <main className="flex-1 p-3 sm:p-4 bg-background overflow-auto safe-bottom">
+            <div className="max-w-lg mx-auto space-y-3 sm:space-y-4">
               
               {/* KPIs - Ganhos e Entregas */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <Card className="kpi-card" onClick={() => navigate('/driver/wallet')}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-success" />
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                        <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">
                       R$ {todayEarnings.toFixed(2)}
                     </p>
-                    <p className="text-xs text-muted-foreground">Ganhos hoje</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Ganhos hoje</p>
                   </CardContent>
                 </Card>
 
                 <Card className="kpi-card" onClick={() => navigate('/driver/history')}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Package className="w-4 h-4 text-primary" />
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Package className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
                       </div>
                     </div>
-                    <p className="text-2xl font-bold text-foreground">
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">
                       {driver?.total_deliveries || 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Entregas totais</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Entregas totais</p>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Toggle de disponibilidade - Grande e claro */}
               <Card className={`transition-all ${driver?.is_available ? 'border-success/50 bg-success/5' : ''}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${driver?.is_available ? 'bg-success' : 'bg-muted'}`}>
-                        <Bike className={`w-5 h-5 ${driver?.is_available ? 'text-white' : 'text-muted-foreground'}`} />
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${driver?.is_available ? 'bg-success' : 'bg-muted'}`}>
+                        <Bike className={`w-4 h-4 sm:w-5 sm:h-5 ${driver?.is_available ? 'text-white' : 'text-muted-foreground'}`} />
                       </div>
-                      <div>
-                        <p className="font-semibold text-foreground">
+                      <div className="min-w-0">
+                        <p className="text-sm sm:font-semibold text-foreground truncate">
                           {driver?.is_available ? 'Você está disponível' : 'Você está offline'}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           {driver?.is_available ? 'Recebendo entregas' : 'Ative para receber entregas'}
                         </p>
                       </div>
@@ -410,7 +410,7 @@ export default function DriverDashboard() {
                     <Switch
                       checked={driver?.is_available || false}
                       onCheckedChange={toggleAvailability}
-                      className="scale-125"
+                      className="scale-110 sm:scale-125 flex-shrink-0"
                     />
                   </div>
                 </CardContent>
@@ -418,11 +418,11 @@ export default function DriverDashboard() {
 
               {/* Avaliação e veículo */}
               <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-warning fill-warning" />
-                  <span className="text-sm font-medium">{driver?.rating ? Number(driver.rating).toFixed(1) : '—'}</span>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning fill-warning" />
+                  <span className="text-xs sm:text-sm font-medium">{driver?.rating ? Number(driver.rating).toFixed(1) : '—'}</span>
                 </div>
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs">
                   {driver?.vehicle_type === 'motorcycle' ? 'Moto' : 
                    driver?.vehicle_type === 'bicycle' ? 'Bicicleta' :
                    driver?.vehicle_type === 'car' ? 'Carro' :
@@ -431,33 +431,33 @@ export default function DriverDashboard() {
               </div>
 
               {/* Entregas disponíveis ou empty state */}
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <h2 className="font-semibold text-foreground">Entregas Disponíveis</h2>
+                  <h2 className="text-sm sm:font-semibold text-foreground">Entregas Disponíveis</h2>
                   {safeDeliveries.length > 0 && (
-                    <Badge variant="default">{safeDeliveries.length}</Badge>
+                    <Badge variant="default" className="text-xs">{safeDeliveries.length}</Badge>
                   )}
                 </div>
 
                 {!driver?.is_available ? (
                   <Card>
-                    <CardContent className="py-8 text-center">
-                      <p className="text-muted-foreground">
+                    <CardContent className="py-6 sm:py-8 text-center">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         Ative sua disponibilidade para ver entregas
                       </p>
                     </CardContent>
                   </Card>
                 ) : deliveriesLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-40 rounded-xl" />
-                    <Skeleton className="h-40 rounded-xl" />
+                  <div className="space-y-2 sm:space-y-3">
+                    <Skeleton className="h-32 sm:h-40 rounded-lg sm:rounded-xl" />
+                    <Skeleton className="h-32 sm:h-40 rounded-lg sm:rounded-xl" />
                   </div>
                 ) : safeDeliveries.length === 0 ? (
                   <Card>
                     <EmptyDeliveries onViewMap={() => navigate('/driver/map')} />
                   </Card>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {safeDeliveries.map((delivery) => (
                       <DeliveryCard
                         key={delivery.id}
