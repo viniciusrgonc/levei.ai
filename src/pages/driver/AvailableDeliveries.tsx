@@ -19,7 +19,7 @@ interface Driver {
 }
 
 // Empty state
-function EmptyState({ isAvailable, onGoToDashboard }: { isAvailable: boolean; onGoToDashboard: () => void }) {
+function EmptyState({ isAvailable, radiusKm, onGoToDashboard }: { isAvailable: boolean; radiusKm: number; onGoToDashboard: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -30,7 +30,7 @@ function EmptyState({ isAvailable, onGoToDashboard }: { isAvailable: boolean; on
       </h3>
       <p className="text-sm text-muted-foreground mb-6 max-w-xs">
         {isAvailable 
-          ? 'Aguarde, novas entregas aparecerão automaticamente.'
+          ? `Não há entregas em um raio de ${radiusKm} km da sua localização.`
           : 'Ative sua disponibilidade para ver entregas.'}
       </p>
       <Button onClick={onGoToDashboard}>
@@ -125,10 +125,10 @@ export default function AvailableDeliveries() {
   const {
     deliveries: availableDeliveries,
     loading: deliveriesLoading,
+    radiusKm,
   } = useNearbyDeliveries({
     driverId: driver?.id || '',
     isAvailable: driver?.is_available || false,
-    maxDistanceKm: 20,
   });
 
   const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
@@ -240,10 +240,12 @@ export default function AvailableDeliveries() {
                 Voltar
               </Button>
 
-              {/* Status */}
-              {driver?.is_available && safeDeliveries.length > 0 && (
+              {/* Status com raio */}
+              {driver?.is_available && (
                 <p className="text-sm text-muted-foreground">
-                  {safeDeliveries.length} {safeDeliveries.length === 1 ? 'entrega disponível' : 'entregas disponíveis'}
+                  {safeDeliveries.length > 0 
+                    ? `${safeDeliveries.length} ${safeDeliveries.length === 1 ? 'entrega disponível' : 'entregas disponíveis'} em um raio de ${radiusKm} km`
+                    : `Mostrando entregas em um raio de ${radiusKm} km`}
                 </p>
               )}
 
@@ -252,6 +254,7 @@ export default function AvailableDeliveries() {
                 <Card>
                   <EmptyState 
                     isAvailable={driver?.is_available || false} 
+                    radiusKm={radiusKm}
                     onGoToDashboard={() => navigate('/driver/dashboard')} 
                   />
                 </Card>

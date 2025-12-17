@@ -39,6 +39,7 @@ import AdminDeliveryCategories from "./pages/admin/AdminDeliveryCategories";
 import AdminProductSettings from "./pages/admin/AdminProductSettings";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
+import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -290,6 +291,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminFinancialReports />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/radius-settings"
+              element={
+                <AdminRoute>
+                  <AdminRadiusSettings />
                 </AdminRoute>
               }
             />
