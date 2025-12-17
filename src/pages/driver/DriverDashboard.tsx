@@ -50,7 +50,7 @@ function DashboardSkeleton() {
 }
 
 // Empty state amigável
-function EmptyDeliveries({ onViewMap }: { onViewMap: () => void }) {
+function EmptyDeliveries({ onViewMap, radiusKm }: { onViewMap: () => void; radiusKm: number }) {
   return (
     <div className="flex flex-col items-center justify-center py-8 sm:py-12 px-3 sm:px-4 text-center">
       <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-muted flex items-center justify-center mb-3 sm:mb-4">
@@ -60,7 +60,7 @@ function EmptyDeliveries({ onViewMap }: { onViewMap: () => void }) {
         Nenhuma entrega disponível
       </h3>
       <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6 max-w-xs">
-        Fique disponível e aguarde. Novas entregas aparecerão aqui automaticamente.
+        Não há entregas em um raio de {radiusKm} km. Aguarde, novas entregas aparecerão automaticamente.
       </p>
       <Button variant="outline" size="sm" onClick={onViewMap}>
         <MapIcon className="w-4 h-4 mr-2" />
@@ -151,10 +151,10 @@ export default function DriverDashboard() {
   const {
     deliveries: availableDeliveries,
     loading: deliveriesLoading,
+    radiusKm,
   } = useNearbyDeliveries({
     driverId: driver?.id || '',
     isAvailable: driver?.is_available || false,
-    maxDistanceKm: 20,
   });
 
   const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
@@ -433,7 +433,14 @@ export default function DriverDashboard() {
               {/* Entregas disponíveis ou empty state */}
               <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <h2 className="text-sm sm:font-semibold text-foreground">Entregas Disponíveis</h2>
+                  <div>
+                    <h2 className="text-sm sm:font-semibold text-foreground">Entregas Disponíveis</h2>
+                    {driver?.is_available && (
+                      <p className="text-[10px] sm:text-xs text-muted-foreground">
+                        Raio de {radiusKm} km
+                      </p>
+                    )}
+                  </div>
                   {safeDeliveries.length > 0 && (
                     <Badge variant="default" className="text-xs">{safeDeliveries.length}</Badge>
                   )}
@@ -454,7 +461,7 @@ export default function DriverDashboard() {
                   </div>
                 ) : safeDeliveries.length === 0 ? (
                   <Card>
-                    <EmptyDeliveries onViewMap={() => navigate('/driver/map')} />
+                    <EmptyDeliveries onViewMap={() => navigate('/driver/map')} radiusKm={radiusKm} />
                   </Card>
                 ) : (
                   <div className="space-y-2 sm:space-y-3">

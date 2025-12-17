@@ -40,7 +40,7 @@ function calculateDistance(
 interface UseNearbyDeliveriesProps {
   driverId: string;
   isAvailable: boolean;
-  maxDistanceKm?: number;
+  maxDistanceKm?: number; // Fallback if no setting found
 }
 
 export function useNearbyDeliveries({
@@ -54,17 +54,18 @@ export function useNearbyDeliveries({
     lat: number;
     lng: number;
   } | null>(null);
+  const [configuredRadius, setConfiguredRadius] = useState<number | null>(null);
 
   console.log('useNearbyDeliveries initialized:', {
     driverId,
     isAvailable,
     maxDistanceKm,
+    configuredRadius,
     currentDeliveriesCount: deliveries.length,
-    deliveriesIsArray: Array.isArray(deliveries),
-    loadingType: typeof loading
   });
 
-  const fetchDriverLocation = async () => {
+  // Fetch driver location and vehicle type
+  const fetchDriverInfo = async () => {
     const { data } = await supabase
       .from('drivers')
       .select('latitude, longitude, vehicle_type')
@@ -76,12 +77,29 @@ export function useNearbyDeliveries({
         lat: Number(data.latitude),
         lng: Number(data.longitude),
       });
+
+      // Fetch radius setting for this vehicle type
+      if (data.vehicle_type) {
+        const { data: radiusSetting } = await supabase
+          .from('delivery_radius_settings')
+          .select('max_radius_km')
+          .eq('vehicle_type', data.vehicle_type)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (radiusSetting?.max_radius_km) {
+          setConfiguredRadius(Number(radiusSetting.max_radius_km));
+        }
+      }
     }
   };
 
+  // Get effective radius (configured or fallback)
+  const effectiveRadius = configuredRadius ?? maxDistanceKm;
+
   const fetchDeliveries = async () => {
     setLoading(true);
-    console.log('🔍 Fetching deliveries for driver:', driverId);
+    console.log('🔍 Fetching deliveries for driver:', driverId, 'radius:', effectiveRadius);
     
     const { data, error } = await supabase
       .from('deliveries')
@@ -103,14 +121,13 @@ export function useNearbyDeliveries({
         ),
       }));
 
-      // Filter by max distance and sort by proximity
+      // Filter by effective radius and sort by proximity
       const nearbyDeliveries = deliveriesWithDistance
-        .filter((d) => d.distanceFromDriver! <= maxDistanceKm)
+        .filter((d) => d.distanceFromDriver! <= effectiveRadius)
         .sort((a, b) => a.distanceFromDriver! - b.distanceFromDriver!);
 
-      console.log('📍 Nearby deliveries:', nearbyDeliveries.length);
+      console.log('📍 Nearby deliveries:', nearbyDeliveries.length, 'within', effectiveRadius, 'km');
       
-      // Safety check before setting state
       if (!Array.isArray(nearbyDeliveries)) {
         console.error('nearbyDeliveries is not an array!', nearbyDeliveries);
         setDeliveries([]);
@@ -120,7 +137,6 @@ export function useNearbyDeliveries({
     } else if (data) {
       console.log('⚠️ No driver location, showing all deliveries');
       
-      // Safety check before setting state
       if (!Array.isArray(data)) {
         console.error('data is not an array!', data);
         setDeliveries([]);
@@ -132,8 +148,8 @@ export function useNearbyDeliveries({
   };
 
   useEffect(() => {
-    if (isAvailable) {
-      fetchDriverLocation();
+    if (isAvailable && driverId) {
+      fetchDriverInfo();
     }
   }, [driverId, isAvailable]);
 
@@ -161,28 +177,20 @@ export function useNearbyDeliveries({
             console.log('[NearbyDeliveries] 🔄 Delivery change detected:', {
               event: payload.eventType,
               id: (payload.new as any)?.id || (payload.old as any)?.id,
-              status: (payload.new as any)?.status || (payload.old as any)?.status,
-              timestamp: new Date().toISOString(),
             });
 
-            // Debounce refetch to avoid excessive calls
+            // Debounce refetch
             if (debounceTimer) {
               clearTimeout(debounceTimer);
             }
             
             debounceTimer = setTimeout(() => {
-              console.log('[NearbyDeliveries] Refetching deliveries after change');
               fetchDeliveries();
             }, 500);
           }
         )
         .subscribe((status, error) => {
-          console.log('[NearbyDeliveries] Subscription status:', {
-            status,
-            error,
-            channelName,
-            timestamp: new Date().toISOString(),
-          });
+          console.log('[NearbyDeliveries] Subscription status:', status, error);
         });
 
       return () => {
@@ -193,15 +201,14 @@ export function useNearbyDeliveries({
         supabase.removeChannel(channel);
       };
     } else if (isAvailable) {
-      // If available but no location yet, just set loading to false
-      console.log('[NearbyDeliveries] Available but no location yet');
       setLoading(false);
     }
-  }, [isAvailable, driverLocation]);
+  }, [isAvailable, driverLocation, effectiveRadius]);
 
   return { 
     deliveries: Array.isArray(deliveries) ? deliveries : [], 
     loading: typeof loading === 'boolean' ? loading : false, 
-    driverLocation 
+    driverLocation,
+    radiusKm: effectiveRadius,
   };
 }

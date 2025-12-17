@@ -149,6 +149,33 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_radius_settings: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_radius_km: number
+          updated_at: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_radius_km?: number
+          updated_at?: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_radius_km?: number
+          updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Relationships: []
+      }
       disputes: {
         Row: {
           created_at: string
