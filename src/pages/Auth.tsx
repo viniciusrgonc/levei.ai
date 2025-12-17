@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Bike } from 'lucide-react';
+import leveiLogo from '@/assets/levei-logo.png';
 
 export default function Auth() {
   const { signIn, signUp, user } = useAuth();
@@ -19,9 +19,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse-soft">
-            <Bike className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <img src={leveiLogo} alt="Levei.ai" className="h-16 w-auto animate-pulse-soft" />
           <p className="text-sm text-muted-foreground">Carregando...</p>
         </div>
       </div>
@@ -109,12 +107,9 @@ export default function Auth() {
       <Card className="w-full max-w-md relative z-10 animate-fade-in">
         <CardHeader className="space-y-3 sm:space-y-4 text-center pb-2">
           <div className="flex justify-center">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-primary flex items-center justify-center shadow-md">
-              <Bike className="h-6 w-6 sm:h-7 sm:w-7 text-primary-foreground" />
-            </div>
+            <img src={leveiLogo} alt="Levei.ai" className="h-14 sm:h-16 w-auto" />
           </div>
           <div className="space-y-0.5 sm:space-y-1">
-            <CardTitle className="text-xl sm:text-2xl font-bold">Levei</CardTitle>
             <CardDescription className="text-xs sm:text-sm">
               Entregas sob demanda
             </CardDescription>
