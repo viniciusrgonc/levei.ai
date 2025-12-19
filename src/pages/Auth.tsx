@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { PasswordStrengthIndicator, validatePassword } from '@/components/PasswordStrengthIndicator';
 import leveiLogo from '@/assets/levei-logo.png';
 
 export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [signupPassword, setSignupPassword] = useState('');
   const { loading: redirecting } = useAuthRedirect();
 
   // Show loading while checking auth state and redirecting
@@ -69,11 +71,12 @@ export default function Auth() {
     const fullName = formData.get('fullName') as string;
     const phone = formData.get('phone') as string;
 
-    if (password.length < 6) {
+    const { isValid, errors } = validatePassword(password);
+    if (!isValid) {
       toast({
         variant: 'destructive',
         title: 'Senha inválida',
-        description: 'A senha deve ter no mínimo 6 caracteres'
+        description: `A senha precisa de: ${errors.slice(0, 2).join(', ')}${errors.length > 2 ? '...' : ''}`
       });
       setLoading(false);
       return;
@@ -206,13 +209,13 @@ export default function Auth() {
                     placeholder="••••••••"
                     required
                     disabled={loading}
-                    minLength={6}
+                    minLength={8}
                     autoComplete="new-password"
                     className="h-10 sm:h-11 text-sm"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
                   />
-                  <p className="text-[10px] sm:text-xs text-muted-foreground">
-                    Mínimo de 6 caracteres
-                  </p>
+                  <PasswordStrengthIndicator password={signupPassword} />
                 </div>
                 <Button type="submit" className="w-full h-11 sm:h-12 text-sm sm:text-base" size="lg" loading={loading}>
                   Criar Conta
