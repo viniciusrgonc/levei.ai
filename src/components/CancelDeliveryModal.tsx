@@ -32,20 +32,21 @@ export function CancelDeliveryModal({
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('deliveries')
-        .update({
-          status: 'cancelled',
-          cancelled_at: new Date().toISOString(),
-        })
-        .eq('id', deliveryId)
-        .eq('status', 'pending'); // Safety check - only cancel if still pending
+      // Use the refund function to handle escrow refund
+      const { data: rawResult, error } = await supabase
+        .rpc('refund_delivery_funds', { p_delivery_id: deliveryId });
 
       if (error) throw error;
+      
+      const result = rawResult as { success: boolean; error?: string; refunded_amount?: number } | null;
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erro ao cancelar entrega');
+      }
 
       toast({
         title: 'Entrega cancelada',
-        description: 'Sua entrega foi cancelada com sucesso.',
+        description: `Seu saldo de R$ ${result.refunded_amount?.toFixed(2)} foi estornado.`,
       });
 
       onCancelled();
@@ -54,7 +55,7 @@ export function CancelDeliveryModal({
       toast({
         variant: 'destructive',
         title: 'Erro ao cancelar',
-        description: 'Não foi possível cancelar a entrega. Tente novamente.',
+        description: error.message || 'Não foi possível cancelar a entrega. Tente novamente.',
       });
     } finally {
       setIsLoading(false);

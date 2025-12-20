@@ -34,6 +34,7 @@ interface FinancialStats {
   totalEntregas: number;
   ticketMedio: number;
   crescimentoReceita: number;
+  totalAcumuladoPlataforma: number; // Total accumulated platform fees from platform_fees table
 }
 
 const CHART_COLORS = {
@@ -57,6 +58,7 @@ export default function AdminFinancialReports() {
     totalEntregas: 0,
     ticketMedio: 0,
     crescimentoReceita: 0,
+    totalAcumuladoPlataforma: 0,
   });
 
   const fetchFinancialData = async () => {
@@ -120,6 +122,13 @@ export default function AdminFinancialReports() {
         ? ((totalReceita - previousTotalReceita) / previousTotalReceita) * 100 
         : 0;
 
+      // Fetch total accumulated platform fees from platform_fees table
+      const { data: platformFees } = await supabase
+        .from('platform_fees')
+        .select('amount');
+      
+      const totalAcumuladoPlataforma = platformFees?.reduce((sum, pf) => sum + (pf.amount || 0), 0) || 0;
+
       setStats({
         totalReceita,
         totalTaxaPlataforma,
@@ -127,6 +136,7 @@ export default function AdminFinancialReports() {
         totalEntregas,
         ticketMedio,
         crescimentoReceita,
+        totalAcumuladoPlataforma,
       });
 
       // Preparar dados para gráficos
@@ -449,7 +459,26 @@ export default function AdminFinancialReports() {
             ) : (
               <>
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                  {/* Total Acumulado da Plataforma - Destaque */}
+                  <Card className="border-2 border-primary bg-gradient-to-br from-primary/10 to-primary/5">
+                    <CardContent className="p-6">
+                      {loading ? (
+                        <Skeleton className="h-20 w-full" />
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Total Acumulado Plataforma</p>
+                            <p className="text-2xl font-bold text-primary">{formatCurrency(stats.totalAcumuladoPlataforma)}</p>
+                            <p className="text-sm text-muted-foreground">Receita total histórica</p>
+                          </div>
+                          <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+                            <DollarSign className="h-6 w-6 text-primary" />
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                   <Card>
                     <CardContent className="p-6">
                       {loading ? (
