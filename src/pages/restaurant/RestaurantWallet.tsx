@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { ArrowLeft, ArrowUpCircle, ArrowDownCircle, Wallet, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowUpCircle, ArrowDownCircle, Wallet, Plus, Loader2, Lock } from 'lucide-react';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ export default function RestaurantWallet() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
+  const [blockedBalance, setBlockedBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [addAmount, setAddAmount] = useState('');
@@ -55,7 +56,7 @@ export default function RestaurantWallet() {
 
       const { data: restaurant, error: restaurantError } = await supabase
         .from('restaurants')
-        .select('id, wallet_balance')
+        .select('id, wallet_balance, blocked_balance')
         .eq('user_id', user.id)
         .single();
 
@@ -63,6 +64,7 @@ export default function RestaurantWallet() {
 
       setRestaurantId(restaurant.id);
       setBalance(restaurant.wallet_balance || 0);
+      setBlockedBalance(restaurant.blocked_balance || 0);
 
       const { data: transactionsData } = await supabase
         .from('transactions')
@@ -132,21 +134,38 @@ export default function RestaurantWallet() {
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 space-y-6">
-            {/* Balance Card */}
-            <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <Wallet className="h-6 w-6" />
-                  <span className="text-sm opacity-80">Saldo Disponível</span>
-                </div>
-                <p className="text-4xl font-bold">
-                  R$ {balance.toFixed(2)}
-                </p>
-                <p className="text-sm opacity-70 mt-2">
-                  Disponível para pagamento de entregas
-                </p>
-              </CardContent>
-            </Card>
+            {/* Balance Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Wallet className="h-6 w-6" />
+                    <span className="text-sm opacity-80">Saldo Disponível</span>
+                  </div>
+                  <p className="text-4xl font-bold">
+                    R$ {balance.toFixed(2)}
+                  </p>
+                  <p className="text-sm opacity-70 mt-2">
+                    Disponível para novas entregas
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <Lock className="h-6 w-6" />
+                    <span className="text-sm opacity-80">Saldo Bloqueado</span>
+                  </div>
+                  <p className="text-4xl font-bold">
+                    R$ {blockedBalance.toFixed(2)}
+                  </p>
+                  <p className="text-sm opacity-70 mt-2">
+                    Em entregas em andamento
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Add Funds */}
             <Card>

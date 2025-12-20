@@ -1,8 +1,8 @@
-# 💰 Sistema de Carteiras e Transações - Movvi
+# 💰 Sistema de Carteiras e Transações - Movvi (com Escrow)
 
 ## Implementação Completa ✅
 
-Sistema de wallets com lógica 80/20 (motorista/plataforma) totalmente atômico e com logs detalhados.
+Sistema de wallets com **escrow interno (saldo bloqueado)** e lógica 80/20 (motorista/plataforma) totalmente atômico.
 
 ---
 
@@ -11,359 +11,236 @@ Sistema de wallets com lógica 80/20 (motorista/plataforma) totalmente atômico 
 ### Tabelas Principais
 
 #### 1. **restaurants**
-- `wallet_balance` (NUMERIC): Saldo disponível para pagar entregas
-- Atualizado atomicamente na conclusão da entrega
+- `wallet_balance` (NUMERIC): Saldo disponível para novas entregas
+- `blocked_balance` (NUMERIC): Saldo bloqueado em entregas em andamento
+- O total do cliente é: `wallet_balance + blocked_balance`
 
 #### 2. **drivers**
-- `earnings_balance` (NUMERIC): Ganhos acumulados (80% das entregas)
-- Creditado automaticamente ao finalizar entrega
+- `earnings_balance` (NUMERIC): Ganhos disponíveis (80% das entregas concluídas)
+- `pending_balance` (NUMERIC): Ganhos pendentes (entregas em andamento)
 
 #### 3. **transactions**
 - Registro completo de todas as movimentações financeiras
 - Campos: `amount`, `type`, `driver_earnings`, `platform_fee`, `description`
-- Tipos (enum): `delivery_payment`, `platform_fee`, `withdrawal`
+- Tipos (enum): `delivery_payment`, `platform_fee`, `withdrawal`, `escrow_block`, `escrow_release`, `escrow_refund`
+
+#### 4. **platform_fees** (NOVO)
+- Tabela dedicada para rastrear taxas acumuladas da plataforma
+- Campos: `id`, `delivery_id`, `amount`, `created_at`
+- Permite visualização do total acumulado no painel admin
+
+#### 5. **deliveries.financial_status** (NOVO)
+- Enum: `blocked`, `refunded`, `transferring`, `paid`
+- Rastreia o estado financeiro de cada entrega
 
 ---
 
-## 🔄 Fluxo de Transação Atômica
+## 🔄 Fluxo Financeiro com Escrow
 
-### Função DB: `finalize_delivery_transaction`
-
-**Localização:** Migration no Supabase
-
-**Parâmetros:**
-- `p_delivery_id` (UUID): ID da entrega
-- `p_driver_id` (UUID): ID do motorista
-
-**Processo (ATÔMICO):**
-
-```
-1. LOCK na entrega (FOR UPDATE) - evita race conditions
-2. Validações:
-   ✓ Entrega existe?
-   ✓ Status = 'picked_up'?
-   ✓ Motorista correto?
-   ✓ Restaurante tem saldo suficiente?
-
-3. Cálculos:
-   - Taxa plataforma: 20% do valor ajustado
-   - Ganho motorista: 80% do valor ajustado
-
-4. LOCKS nos wallets:
-   - LOCK no wallet do restaurante
-   - LOCK no wallet do motorista
-
-5. Atualizações (TODAS ou NENHUMA):
-   a) Deduzir do restaurante
-   b) Creditar motorista (80%)
-   c) Atualizar status da entrega para 'delivered'
-   d) Criar 3 transações:
-      - Débito do restaurante (-100%)
-      - Crédito do motorista (+80%)
-      - Taxa da plataforma (+20%)
-
-6. Retorno detalhado com saldos before/after
-```
-
-**Em caso de erro:** ROLLBACK automático - nada é alterado
+### Estados Financeiros:
+1. **blocked**: Valor bloqueado do saldo do solicitante ao criar entrega
+2. **refunded**: Valor estornado ao solicitante após cancelamento
+3. **transferring**: Em processo de transferência (uso futuro)
+4. **paid**: Valor liberado ao entregador após conclusão
 
 ---
 
-## 📡 Edge Functions
+## 📋 Regras de Negócio
 
-### 1. `complete-delivery` ✅
-
-**Endpoint:** `https://[project].supabase.co/functions/v1/complete-delivery`
-
-**Método:** POST
-
-**Body:**
-```json
-{
-  "delivery_id": "uuid",
-  "driver_id": "uuid"
-}
+### 1. Criação da Entrega
 ```
+- Valor total é BLOQUEADO no saldo do solicitante
+- NÃO é repassado ao entregador ainda
+- wallet_balance diminui
+- blocked_balance aumenta
+- financial_status = 'blocked'
+- Transação tipo 'escrow_block' é registrada
+```
+
+### 2. Cancelamento (antes da coleta)
+```
+- Se status = 'pending' ou 'accepted':
+  - Valor bloqueado retorna 100% ao saldo disponível
+  - Nenhuma taxa aplicada
+  - blocked_balance diminui
+  - wallet_balance aumenta
+  - financial_status = 'refunded'
+  - Transação tipo 'escrow_refund' é registrada
+```
+
+### 3. Durante a Coleta/Entrega
+```
+- Valor permanece bloqueado
+- Nenhuma movimentação financeira
+- financial_status continua 'blocked'
+```
+
+### 4. Conclusão da Entrega
+```
+- Após confirmação de entrega:
+  - 80% do valor vai para earnings_balance do motorista
+  - 20% é registrado como taxa da plataforma
+  - blocked_balance do restaurante é zerado
+  - financial_status = 'paid'
+  - 3 transações criadas:
+    1. escrow_release (débito final do restaurante)
+    2. delivery_payment (crédito do motorista 80%)
+    3. platform_fee (taxa da plataforma 20%)
+  - Registro em platform_fees para total acumulado
+```
+
+---
+
+## 🔧 Funções de Banco de Dados
+
+### 1. `block_delivery_funds(p_restaurant_id, p_delivery_id, p_amount)`
+Bloqueia o valor no momento da criação da entrega.
 
 **Processo:**
-1. Valida autenticação
-2. Verifica ownership do motorista
-3. Chama `finalize_delivery_transaction` (atômica)
-4. Envia notificação ao restaurante
-5. Retorna detalhes da transação
+1. Lock no restaurante
+2. Verifica saldo disponível
+3. Move de wallet_balance para blocked_balance
+4. Atualiza financial_status para 'blocked'
+5. Cria transação tipo 'escrow_block'
 
-**Logs detalhados:**
-```
-[Complete-Delivery] {request-id} - New request received
-[Complete-Delivery] {request-id} - User authenticated
-[Complete-Delivery] {request-id} - Driver verified
-[Complete-Delivery] {request-id} - Calling finalize_delivery_transaction
-[Complete-Delivery] {request-id} - ✅ Transaction completed successfully
-  - Total Amount: R$XX.XX
-  - Driver Earnings (80%): R$XX.XX
-  - Platform Fee (20%): R$XX.XX
-  - Restaurant Balance: R$XX.XX → R$XX.XX
-  - Driver Balance: R$XX.XX → R$XX.XX
-```
-
-### 2. `add_restaurant_funds` (DB Function) ✅
-
-**Uso via RPC:**
-```typescript
-const { data } = await supabase.rpc('add_restaurant_funds', {
-  p_restaurant_id: 'uuid',
-  p_amount: 100.00
-});
-```
+### 2. `refund_delivery_funds(p_delivery_id)`
+Estorna o valor em caso de cancelamento.
 
 **Processo:**
-1. Adiciona saldo ao wallet do restaurante
-2. Cria transação de tipo `delivery_payment` (recarga)
-3. Retorna novo saldo
+1. Lock na entrega
+2. Verifica se status permite cancelamento (pending/accepted)
+3. Verifica se financial_status = 'blocked'
+4. Move de blocked_balance de volta para wallet_balance
+5. Atualiza status para 'cancelled', financial_status para 'refunded'
+6. Cria transação tipo 'escrow_refund'
+
+### 3. `finalize_delivery_transaction(p_delivery_id, p_driver_id)`
+Libera o valor após conclusão da entrega.
+
+**Processo:**
+1. Lock na entrega
+2. Validações (status, motorista, financial_status)
+3. Calcula 80/20
+4. Remove de blocked_balance do restaurante
+5. Adiciona em earnings_balance do motorista
+6. Atualiza status para 'delivered', financial_status para 'paid'
+7. Insere em platform_fees
+8. Cria 3 transações
 
 ---
 
-## 💳 Interfaces Implementadas
+## 💳 Interfaces Atualizadas
 
 ### 1. **RestaurantWallet** (`/restaurant/wallet`) ✅
 
 **Funcionalidades:**
-- Exibe saldo disponível em card destacado
+- **Saldo Disponível** (card verde): wallet_balance
+- **Saldo Bloqueado** (card âmbar): blocked_balance - em entregas em andamento
 - Formulário para adicionar saldo
-- Histórico de transações (últimas 20)
-- Diferenciação visual: verde (créditos) / vermelho (débitos)
-
-**Hook usado:** `useAddFunds`
+- Histórico de transações com tipos de escrow
 
 ### 2. **DriverWallet** (`/driver/wallet`) ✅
 
 **Funcionalidades:**
-- Exibe saldo de ganhos (earnings_balance)
-- Estatísticas: total de ganhos, entregas pagas
-- Histórico detalhado com breakdown 80/20
-- Mostra: valor total, quanto recebeu (80%), taxa (20%)
+- **Saldo Disponível**: earnings_balance
+- **Saldo Pendente**: pending_balance (entregas em andamento)
+- Total de ganhos
+- Histórico detalhado
 
-### 3. **AdminTransactions** (`/admin/transactions`) ✅ NOVO
+### 3. **AdminFinancialReports** (`/admin/financial-reports`) ✅
 
 **Funcionalidades:**
-- Dashboard com 4 cards de estatísticas:
-  - Total de transações
-  - Total de taxas da plataforma (20%)
-  - Total pago aos motoristas (80%)
-  - Total de pagamentos
-- Filtro por tipo de transação
-- Lista completa de transações com detalhes
-- Badges coloridos por tipo
-- Breakdown de valores em cada transação
-
-**Filtros disponíveis:**
-- Todas
-- Pagamentos (delivery_payment)
-- Taxas (platform_fee)
-- Saques (withdrawal)
+- **Total Acumulado da Plataforma**: soma de todos os registros em platform_fees
+- Receita por período
+- Taxa da plataforma (20%)
+- Pagamentos a entregadores (80%)
+- Gráficos e exportação
 
 ---
 
 ## 🔐 Segurança
 
 ### RLS Policies
+- **platform_fees**: Apenas admins podem visualizar
+- **transactions**: Admins veem todas, motoristas veem as suas
+- **restaurants/drivers**: Usuários veem apenas seus próprios dados
 
-**transactions table:**
-- Admins: podem ver TODAS as transações
-- Motoristas: podem ver apenas SUAS transações
-- Restaurantes: implícito via queries diretas
-
-### Functions com SECURITY DEFINER:
-- `finalize_delivery_transaction`: Executa com privilégios elevados
-- `add_restaurant_funds`: Executa com privilégios elevados
-- Ambas usam `SET search_path = 'public'` para segurança
-
-### Proteções Implementadas:
-- ✅ Validação de ownership (motorista pertence ao usuário)
-- ✅ Verificação de saldo antes de processar
-- ✅ Transações atômicas (todas ou nenhuma)
-- ✅ Locks para evitar race conditions
-- ✅ Rollback automático em caso de erro
+### Functions SECURITY DEFINER
+- Todas as funções de escrow executam com privilégios elevados
+- Usam `SET search_path = 'public'`
+- Validam ownership antes de processar
 
 ---
 
-## 🧪 Como Testar
+## 🧪 Fluxo de Teste
 
-### 1. Adicionar Saldo ao Restaurante
-```typescript
-// Via interface ou programaticamente
-await supabase.rpc('add_restaurant_funds', {
-  p_restaurant_id: 'restaurant-uuid',
-  p_amount: 100.00
-});
-
-// Verificar no wallet do restaurante
-// Deve aparecer: +R$ 100.00 - "Recarga de saldo na carteira"
+### 1. Restaurante adiciona R$ 100
+```
+wallet_balance: R$ 100
+blocked_balance: R$ 0
 ```
 
-### 2. Criar e Finalizar Entrega
-```typescript
-// 1. Restaurante cria entrega (price_adjusted = R$ 50.00)
-// 2. Motorista aceita
-// 3. Motorista coleta
-// 4. Motorista finaliza
-
-await supabase.functions.invoke('complete-delivery', {
-  body: {
-    delivery_id: 'delivery-uuid',
-    driver_id: 'driver-uuid'
-  }
-});
-
-// Resultados esperados:
-// - Restaurante: -R$ 50.00
-// - Motorista: +R$ 40.00 (80%)
-// - Plataforma: +R$ 10.00 (20%)
-// - 3 transações criadas
+### 2. Cria entrega de R$ 30
+```
+wallet_balance: R$ 70 (-30)
+blocked_balance: R$ 30 (+30)
+financial_status: 'blocked'
 ```
 
-### 3. Verificar no Admin
+### 3a. Se CANCELAR (antes da coleta):
 ```
-/admin/transactions
+wallet_balance: R$ 100 (+30 estornado)
+blocked_balance: R$ 0 (-30)
+financial_status: 'refunded'
+```
 
-Stats esperados:
-- Total Transações: 4 (1 recarga + 3 da entrega)
-- Taxas: R$ 10.00
-- Motoristas: R$ 40.00
-- Pagamentos: R$ 50.00
+### 3b. Se CONCLUIR entrega:
+```
+wallet_balance: R$ 70 (inalterado)
+blocked_balance: R$ 0 (-30)
+financial_status: 'paid'
+
+Motorista earnings_balance: +R$ 24 (80%)
+platform_fees total: +R$ 6 (20%)
 ```
 
 ---
 
-## 📊 Estrutura de Transações
+## 📊 Tipos de Transação
 
-### Ao Adicionar Saldo (Restaurante)
-```json
-{
-  "restaurant_id": "uuid",
-  "amount": 100.00,
-  "type": "delivery_payment",
-  "description": "Recarga de saldo na carteira",
-  "driver_earnings": null,
-  "platform_fee": null
-}
-```
-
-### Ao Finalizar Entrega (3 transações criadas)
-
-**1. Débito do Restaurante:**
-```json
-{
-  "restaurant_id": "uuid",
-  "delivery_id": "uuid",
-  "amount": -50.00,
-  "type": "delivery_payment",
-  "description": "Pagamento de entrega #uuid",
-  "driver_earnings": null,
-  "platform_fee": null
-}
-```
-
-**2. Crédito do Motorista (80%):**
-```json
-{
-  "driver_id": "uuid",
-  "delivery_id": "uuid",
-  "amount": 40.00,
-  "driver_earnings": 40.00,
-  "type": "delivery_payment",
-  "description": "Recebimento de entrega (80%)",
-  "platform_fee": null
-}
-```
-
-**3. Taxa da Plataforma (20%):**
-```json
-{
-  "delivery_id": "uuid",
-  "amount": 10.00,
-  "platform_fee": 10.00,
-  "type": "platform_fee",
-  "description": "Taxa da plataforma (20%)",
-  "driver_earnings": null
-}
-```
-
----
-
-## 🚨 Tratamento de Erros
-
-### Saldo Insuficiente
-```json
-{
-  "success": false,
-  "error": "Restaurante não possui saldo suficiente",
-  "required": 50.00,
-  "available": 30.00
-}
-```
-
-**O que acontece:**
-- Nenhuma alteração é feita
-- Frontend exibe erro ao usuário
-- Restaurante precisa adicionar fundos
-
-### Status Incorreto
-```json
-{
-  "success": false,
-  "error": "Entrega não está no status correto para conclusão"
-}
-```
-
-### Ownership Inválido
-```json
-{
-  "success": false,
-  "error": "Entrega não está atribuída a este motorista"
-}
-```
-
----
-
-## 📈 Melhorias Futuras
-
-- [ ] Sistema de saques para motoristas
-- [ ] Integração com gateway de pagamento (Stripe/Mercado Pago)
-- [ ] Reembolsos automáticos em caso de cancelamento
-- [ ] Relatórios financeiros exportáveis (PDF/CSV)
-- [ ] Dashboard de receitas para admin
-- [ ] Histórico de saldos ao longo do tempo (gráficos)
-- [ ] Alertas de saldo baixo para restaurantes
-- [ ] Comissões variáveis por categoria/distância
+| Tipo | Descrição |
+|------|-----------|
+| `escrow_block` | Bloqueio de valor na criação da entrega |
+| `escrow_refund` | Estorno por cancelamento |
+| `escrow_release` | Liberação do escrow na conclusão |
+| `delivery_payment` | Pagamento ao motorista (80%) |
+| `platform_fee` | Taxa da plataforma (20%) |
+| `withdrawal` | Saque (futuro) |
 
 ---
 
 ## ✅ Checklist de Implementação
 
 ### Database ✅
-- [x] Função `finalize_delivery_transaction` (atômica)
-- [x] Função `add_restaurant_funds` corrigida
-- [x] Enums corretos nas transactions
+- [x] Enum `financial_status` criado
+- [x] Campo `blocked_balance` em restaurants
+- [x] Campo `pending_balance` em drivers
+- [x] Campo `financial_status` em deliveries
+- [x] Tabela `platform_fees` criada
+- [x] Novos tipos em `transaction_type` enum
+- [x] Função `block_delivery_funds`
+- [x] Função `refund_delivery_funds`
+- [x] Função `finalize_delivery_transaction` atualizada
 - [x] RLS policies configuradas
-- [x] Logs em todas as operações
-
-### Edge Functions ✅
-- [x] `complete-delivery` usando função atômica
-- [x] Validações de ownership e saldo
-- [x] Logs detalhados com request-id
-- [x] Notificações ao restaurante
-- [x] Tratamento de erros
 
 ### Frontend ✅
-- [x] RestaurantWallet com adicionar saldo
-- [x] DriverWallet com histórico detalhado
-- [x] AdminTransactions com stats e filtros
-- [x] Hooks useAddFunds
-- [x] Rota `/admin/transactions` adicionada
-- [x] Menu admin atualizado
+- [x] RestaurantWallet mostra saldo disponível e bloqueado
+- [x] DriverWallet mostra saldo disponível e pendente
+- [x] NewDelivery bloqueia fundos via RPC
+- [x] CancelDeliveryModal usa refund_delivery_funds
+- [x] AdminFinancialReports mostra total acumulado plataforma
 
 ---
 
-**Status:** ✅ Sistema completo e funcional
-**Última atualização:** 2025-11-29
+**Status:** ✅ Sistema de Escrow completo e funcional
+**Última atualização:** 2025-12-20

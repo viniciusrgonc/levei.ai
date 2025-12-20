@@ -24,6 +24,7 @@ export default function DriverWallet() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [balance, setBalance] = useState(0);
+  const [pendingBalance, setPendingBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalEarnings, setTotalEarnings] = useState(0);
@@ -42,12 +43,13 @@ export default function DriverWallet() {
     try {
       const { data: driver } = await supabase
         .from('drivers')
-        .select('id, earnings_balance')
+        .select('id, earnings_balance, pending_balance')
         .eq('user_id', user.id)
         .single();
 
       if (driver) {
         setBalance(driver.earnings_balance || 0);
+        setPendingBalance(driver.pending_balance || 0);
 
         const { data: transactionsData } = await supabase
           .from('transactions')
@@ -129,7 +131,7 @@ export default function DriverWallet() {
               </Card>
 
               {/* Estatísticas */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Card className="kpi-card">
                   <CardContent className="p-4">
                     <p className="text-xs text-muted-foreground">Total Ganho</p>
@@ -138,7 +140,13 @@ export default function DriverWallet() {
                 </Card>
                 <Card className="kpi-card">
                   <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground">Entregas Pagas</p>
+                    <p className="text-xs text-muted-foreground">Pendente</p>
+                    <p className="text-xl font-bold text-amber-500">R$ {pendingBalance.toFixed(2)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="kpi-card">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-muted-foreground">Entregas</p>
                     <p className="text-xl font-bold">{transactions.length}</p>
                   </CardContent>
                 </Card>

@@ -27,6 +27,9 @@ export type Database = {
           description: string | null
           distance_km: number
           driver_id: string | null
+          financial_status:
+            | Database["public"]["Enums"]["financial_status"]
+            | null
           id: string
           picked_up_at: string | null
           pickup_address: string
@@ -56,6 +59,9 @@ export type Database = {
           description?: string | null
           distance_km: number
           driver_id?: string | null
+          financial_status?:
+            | Database["public"]["Enums"]["financial_status"]
+            | null
           id?: string
           picked_up_at?: string | null
           pickup_address: string
@@ -85,6 +91,9 @@ export type Database = {
           description?: string | null
           distance_km?: number
           driver_id?: string | null
+          financial_status?:
+            | Database["public"]["Enums"]["financial_status"]
+            | null
           id?: string
           picked_up_at?: string | null
           pickup_address?: string
@@ -277,6 +286,7 @@ export type Database = {
           latitude: number | null
           license_plate: string | null
           longitude: number | null
+          pending_balance: number
           rating: number | null
           total_deliveries: number | null
           updated_at: string
@@ -294,6 +304,7 @@ export type Database = {
           latitude?: number | null
           license_plate?: string | null
           longitude?: number | null
+          pending_balance?: number
           rating?: number | null
           total_deliveries?: number | null
           updated_at?: string
@@ -311,6 +322,7 @@ export type Database = {
           latitude?: number | null
           license_plate?: string | null
           longitude?: number | null
+          pending_balance?: number
           rating?: number | null
           total_deliveries?: number | null
           updated_at?: string
@@ -353,6 +365,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_fees: {
+        Row: {
+          amount: number
+          created_at: string
+          delivery_id: string | null
+          id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          delivery_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_fees_delivery_id_fkey"
             columns: ["delivery_id"]
             isOneToOne: false
             referencedRelation: "deliveries"
@@ -485,6 +526,7 @@ export type Database = {
       restaurants: {
         Row: {
           address: string
+          blocked_balance: number
           business_name: string
           cnpj: string | null
           created_at: string
@@ -501,6 +543,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          blocked_balance?: number
           business_name: string
           cnpj?: string | null
           created_at?: string
@@ -517,6 +560,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          blocked_balance?: number
           business_name?: string
           cnpj?: string | null
           created_at?: string
@@ -628,6 +672,14 @@ export type Database = {
         Args: { p_amount: number; p_restaurant_id: string }
         Returns: Json
       }
+      block_delivery_funds: {
+        Args: {
+          p_amount: number
+          p_delivery_id: string
+          p_restaurant_id: string
+        }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           p_delivery_id?: string
@@ -649,6 +701,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      refund_delivery_funds: { Args: { p_delivery_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "restaurant" | "driver"
@@ -660,7 +713,14 @@ export type Database = {
         | "delivering"
         | "delivered"
         | "cancelled"
-      transaction_type: "delivery_payment" | "withdrawal" | "platform_fee"
+      financial_status: "blocked" | "refunded" | "transferring" | "paid"
+      transaction_type:
+        | "delivery_payment"
+        | "withdrawal"
+        | "platform_fee"
+        | "escrow_block"
+        | "escrow_release"
+        | "escrow_refund"
       vehicle_type:
         | "motorcycle"
         | "bicycle"
@@ -805,7 +865,15 @@ export const Constants = {
         "delivered",
         "cancelled",
       ],
-      transaction_type: ["delivery_payment", "withdrawal", "platform_fee"],
+      financial_status: ["blocked", "refunded", "transferring", "paid"],
+      transaction_type: [
+        "delivery_payment",
+        "withdrawal",
+        "platform_fee",
+        "escrow_block",
+        "escrow_release",
+        "escrow_refund",
+      ],
       vehicle_type: [
         "motorcycle",
         "bicycle",

@@ -39,6 +39,7 @@ type Restaurant = {
   latitude: number;
   longitude: number;
   wallet_balance: number;
+  blocked_balance: number;
 };
 
 export default function NewDelivery() {
@@ -107,7 +108,7 @@ export default function NewDelivery() {
 
     const { data, error } = await supabase
       .from('restaurants')
-      .select('id, business_name, address, latitude, longitude, wallet_balance')
+      .select('id, business_name, address, latitude, longitude, wallet_balance, blocked_balance')
       .eq('user_id', user.id)
       .single();
 
@@ -184,6 +185,7 @@ export default function NewDelivery() {
     try {
       const vehicleType = categoryToVehicleType[selectedCategory.name] || 'motorcycle';
 
+      // Create delivery first
       const { data, error } = await supabase
         .from('deliveries')
         .insert([{
@@ -208,9 +210,25 @@ export default function NewDelivery() {
 
       if (error) throw error;
 
+      // Block funds in escrow
+      const { data: blockResult, error: blockError } = await supabase
+        .rpc('block_delivery_funds', {
+          p_restaurant_id: restaurant.id,
+          p_delivery_id: data.id,
+          p_amount: estimatedPrice
+        });
+
+      const result = blockResult as { success: boolean; error?: string } | null;
+
+      if (blockError || !result?.success) {
+        // Rollback delivery creation
+        await supabase.from('deliveries').delete().eq('id', data.id);
+        throw new Error(result?.error || 'Erro ao bloquear fundos');
+      }
+
       toast({
         title: '✅ Entrega criada!',
-        description: 'Aguardando entregador aceitar'
+        description: `R$ ${estimatedPrice.toFixed(2)} bloqueado. Aguardando entregador aceitar.`
       });
       
       navigate(`/restaurant/delivery/${data.id}`);
