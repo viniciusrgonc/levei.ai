@@ -40,6 +40,7 @@ import AdminProductSettings from "./pages/admin/AdminProductSettings";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
 import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
+import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -299,6 +300,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminRadiusSettings />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/batch-settings"
+              element={
+                <AdminRoute>
+                  <AdminBatchSettings />
                 </AdminRoute>
               }
             />
