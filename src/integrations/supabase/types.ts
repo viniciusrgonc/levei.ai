@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_delivery_settings: {
+        Row: {
+          additional_delivery_base_price: number
+          additional_delivery_price_per_km: number
+          created_at: string
+          id: string
+          is_active: boolean
+          max_deliveries: number
+          time_window_minutes: number
+          updated_at: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Insert: {
+          additional_delivery_base_price?: number
+          additional_delivery_price_per_km?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_deliveries?: number
+          time_window_minutes?: number
+          updated_at?: string
+          vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Update: {
+          additional_delivery_base_price?: number
+          additional_delivery_price_per_km?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_deliveries?: number
+          time_window_minutes?: number
+          updated_at?: string
+          vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Relationships: []
+      }
       deliveries: {
         Row: {
           accepted_at: string | null
@@ -31,6 +67,8 @@ export type Database = {
             | Database["public"]["Enums"]["financial_status"]
             | null
           id: string
+          is_additional_delivery: boolean | null
+          parent_delivery_id: string | null
           picked_up_at: string | null
           pickup_address: string
           pickup_latitude: number
@@ -63,6 +101,8 @@ export type Database = {
             | Database["public"]["Enums"]["financial_status"]
             | null
           id?: string
+          is_additional_delivery?: boolean | null
+          parent_delivery_id?: string | null
           picked_up_at?: string | null
           pickup_address: string
           pickup_latitude: number
@@ -95,6 +135,8 @@ export type Database = {
             | Database["public"]["Enums"]["financial_status"]
             | null
           id?: string
+          is_additional_delivery?: boolean | null
+          parent_delivery_id?: string | null
           picked_up_at?: string | null
           pickup_address?: string
           pickup_latitude?: number
@@ -117,6 +159,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deliveries_parent_delivery_id_fkey"
+            columns: ["parent_delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
             referencedColumns: ["id"]
           },
           {
@@ -680,8 +729,19 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_additional_delivery_price: {
+        Args: {
+          p_distance_km: number
+          p_vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Returns: number
+      }
       calculate_cancellation_penalty: {
         Args: { p_delivery_id: string }
+        Returns: Json
+      }
+      check_driver_available_for_batch: {
+        Args: { p_driver_id: string; p_restaurant_id: string }
         Returns: Json
       }
       create_notification: {

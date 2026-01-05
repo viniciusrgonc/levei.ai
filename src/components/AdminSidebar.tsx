@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers } from 'lucide-react';
 import leveiLogo from '@/assets/levei-logo.png';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -60,6 +60,11 @@ const menuItems = [
     title: 'Raio de Entregas',
     url: '/admin/radius-settings',
     icon: MapPin,
+  },
+  {
+    title: 'Múltiplas Entregas',
+    url: '/admin/batch-settings',
+    icon: Layers,
   },
   {
     title: 'Disputas',

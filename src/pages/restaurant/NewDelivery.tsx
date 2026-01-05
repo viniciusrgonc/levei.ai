@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, MapPin, Navigation, Package, Check, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, Package, Check, ChevronRight, Loader2, AlertCircle, Layers } from 'lucide-react';
 import LocationPicker from '@/components/LocationPicker';
 import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 
 const PRODUCT_TYPES = [
   { id: 'documento', label: 'Documento', icon: '📄' },
@@ -42,9 +43,19 @@ type Restaurant = {
   blocked_balance: number;
 };
 
+interface ParentDeliveryInfo {
+  id: string;
+  driver_id: string;
+  base_price: number;
+  price_per_km: number;
+  vehicle_type: string;
+}
+
 export default function NewDelivery() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const parentDeliveryId = searchParams.get('parent');
   
   // Wizard step
   const [step, setStep] = useState(1);
@@ -54,6 +65,10 @@ export default function NewDelivery() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  
+  // Parent delivery info for batch
+  const [parentDelivery, setParentDelivery] = useState<ParentDeliveryInfo | null>(null);
+  const [isAdditionalDelivery, setIsAdditionalDelivery] = useState(false);
   
   // Step 1: Pickup
   const [pickupAddress, setPickupAddress] = useState('');
@@ -83,6 +98,13 @@ export default function NewDelivery() {
     fetchProductSettings();
   }, [user]);
 
+  // Fetch parent delivery info if this is an additional delivery
+  useEffect(() => {
+    if (parentDeliveryId && restaurant) {
+      fetchParentDelivery();
+    }
+  }, [parentDeliveryId, restaurant]);
+
   useEffect(() => {
     if (pickupLat && pickupLng && deliveryLat && deliveryLng) {
       const dist = calculateDistance(pickupLat, pickupLng, deliveryLat, deliveryLng);
@@ -91,8 +113,17 @@ export default function NewDelivery() {
   }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
 
   useEffect(() => {
-    if (distance > 0 && selectedCategory) {
-      let price = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+    if (distance > 0) {
+      let price: number;
+      
+      if (isAdditionalDelivery && parentDelivery) {
+        // Use special pricing for additional deliveries
+        price = parentDelivery.base_price + (distance * parentDelivery.price_per_km);
+      } else if (selectedCategory) {
+        price = selectedCategory.base_price + (distance * selectedCategory.price_per_km);
+      } else {
+        return;
+      }
       
       // Apply product type surcharge
       if (productType && productSettings[productType]) {
@@ -101,7 +132,7 @@ export default function NewDelivery() {
       
       setEstimatedPrice(price);
     }
-  }, [distance, selectedCategory, productType, productSettings]);
+  }, [distance, selectedCategory, productType, productSettings, isAdditionalDelivery, parentDelivery]);
 
   const fetchRestaurant = async () => {
     if (!user) return;
@@ -122,6 +153,49 @@ export default function NewDelivery() {
     setPickupLat(data.latitude);
     setPickupLng(data.longitude);
     setLoading(false);
+  };
+
+  const fetchParentDelivery = async () => {
+    if (!parentDeliveryId || !restaurant) return;
+
+    const { data: deliveryData, error } = await supabase
+      .from('deliveries')
+      .select('id, driver_id, vehicle_category')
+      .eq('id', parentDeliveryId)
+      .eq('restaurant_id', restaurant.id)
+      .eq('status', 'picking_up')
+      .single();
+
+    if (error || !deliveryData || !deliveryData.driver_id) {
+      toast({
+        variant: 'destructive',
+        title: 'Entregador não disponível',
+        description: 'A janela de tempo para adicionar entregas expirou.'
+      });
+      navigate('/restaurant/dashboard');
+      return;
+    }
+
+    // Get batch settings for this vehicle type
+    const { data: settings } = await supabase
+      .from('batch_delivery_settings')
+      .select('additional_delivery_base_price, additional_delivery_price_per_km')
+      .eq('vehicle_type', deliveryData.vehicle_category)
+      .eq('is_active', true)
+      .single();
+
+    if (settings) {
+      setParentDelivery({
+        id: deliveryData.id,
+        driver_id: deliveryData.driver_id,
+        base_price: Number(settings.additional_delivery_base_price),
+        price_per_km: Number(settings.additional_delivery_price_per_km),
+        vehicle_type: deliveryData.vehicle_category || 'motorcycle'
+      });
+      setIsAdditionalDelivery(true);
+      // Skip to step 2 (delivery location) since pickup is fixed
+      setStep(2);
+    }
   };
 
   const fetchProductSettings = async () => {
@@ -155,7 +229,8 @@ export default function NewDelivery() {
       case 2:
         return deliveryLat && deliveryLng && deliveryAddress;
       case 3:
-        return selectedCategory !== null;
+        // Skip vehicle selection for additional deliveries
+        return isAdditionalDelivery || selectedCategory !== null;
       case 4:
         return productType !== '';
       case 5:
@@ -165,8 +240,45 @@ export default function NewDelivery() {
     }
   };
 
+  const handleNextStep = () => {
+    let nextStep = step + 1;
+    
+    // Skip step 3 (vehicle selection) for additional deliveries
+    if (isAdditionalDelivery && nextStep === 3) {
+      nextStep = 4;
+    }
+    
+    setStep(nextStep);
+  };
+
+  const handlePrevStep = () => {
+    let prevStep = step - 1;
+    
+    // Skip step 3 (vehicle selection) for additional deliveries
+    if (isAdditionalDelivery && prevStep === 3) {
+      prevStep = 2;
+    }
+    
+    // Skip step 1 for additional deliveries (pickup is fixed)
+    if (isAdditionalDelivery && prevStep === 1) {
+      navigate('/restaurant/dashboard');
+      return;
+    }
+    
+    if (prevStep < 1) {
+      navigate('/restaurant/dashboard');
+    } else {
+      setStep(prevStep);
+    }
+  };
+
   const handleSubmit = async () => {
-    if (!restaurant || !pickupLat || !pickupLng || !deliveryLat || !deliveryLng || !selectedCategory) {
+    if (!restaurant || !pickupLat || !pickupLng || !deliveryLat || !deliveryLng) {
+      return;
+    }
+
+    // For regular deliveries, require selected category
+    if (!isAdditionalDelivery && !selectedCategory) {
       return;
     }
 
@@ -183,9 +295,15 @@ export default function NewDelivery() {
     setSubmitting(true);
 
     try {
-      const vehicleType = categoryToVehicleType[selectedCategory.name] || 'motorcycle';
+      const vehicleType = isAdditionalDelivery 
+        ? parentDelivery?.vehicle_type 
+        : (categoryToVehicleType[selectedCategory!.name] || 'motorcycle');
 
-      // Create delivery first
+      const basePrice = isAdditionalDelivery 
+        ? parentDelivery!.base_price + (distance * parentDelivery!.price_per_km)
+        : selectedCategory!.base_price + (distance * selectedCategory!.price_per_km);
+
+      // Create delivery
       const { data, error } = await supabase
         .from('deliveries')
         .insert([{
@@ -199,11 +317,15 @@ export default function NewDelivery() {
           recipient_name: recipientName || null,
           recipient_phone: recipientPhone || null,
           distance_km: distance,
-          price: selectedCategory.base_price + (distance * selectedCategory.price_per_km),
+          price: basePrice,
           price_adjusted: estimatedPrice,
           vehicle_category: vehicleType as any,
           product_type: productType,
-          status: 'pending'
+          status: isAdditionalDelivery ? 'accepted' : 'pending',
+          driver_id: isAdditionalDelivery ? parentDelivery?.driver_id : null,
+          is_additional_delivery: isAdditionalDelivery,
+          parent_delivery_id: isAdditionalDelivery ? parentDelivery?.id : null,
+          accepted_at: isAdditionalDelivery ? new Date().toISOString() : null
         }])
         .select()
         .single();
@@ -227,8 +349,10 @@ export default function NewDelivery() {
       }
 
       toast({
-        title: '✅ Entrega criada!',
-        description: `R$ ${estimatedPrice.toFixed(2)} bloqueado. Aguardando entregador aceitar.`
+        title: isAdditionalDelivery ? '✅ Entrega adicionada à rota!' : '✅ Entrega criada!',
+        description: isAdditionalDelivery 
+          ? `R$ ${estimatedPrice.toFixed(2)} bloqueado. Entrega adicionada ao entregador ativo.`
+          : `R$ ${estimatedPrice.toFixed(2)} bloqueado. Aguardando entregador aceitar.`
       });
       
       navigate(`/restaurant/delivery/${data.id}`);
@@ -267,12 +391,20 @@ export default function NewDelivery() {
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => step > 1 ? setStep(step - 1) : navigate('/restaurant/dashboard')}
+              onClick={handlePrevStep}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex-1">
-              <h1 className="font-semibold">Nova Entrega</h1>
+              <h1 className="font-semibold flex items-center gap-2">
+                {isAdditionalDelivery && (
+                  <Badge variant="secondary" className="bg-success/10 text-success">
+                    <Layers className="w-3 h-3 mr-1" />
+                    Adicional
+                  </Badge>
+                )}
+                Nova Entrega
+              </h1>
               <p className="text-xs text-muted-foreground">Etapa {step} de {totalSteps}</p>
             </div>
             {/* Progress */}
@@ -289,8 +421,8 @@ export default function NewDelivery() {
           </header>
 
           <main className="flex-1 overflow-auto">
-            {/* Step 1: Pickup Location */}
-            {step === 1 && (
+            {/* Step 1: Pickup Location - Skip for additional deliveries */}
+            {step === 1 && !isAdditionalDelivery && (
               <div className="p-4 space-y-4">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-3 flex items-center justify-center">
@@ -378,8 +510,8 @@ export default function NewDelivery() {
               </div>
             )}
 
-            {/* Step 3: Vehicle Category */}
-            {step === 3 && (
+            {/* Step 3: Vehicle Category - Skip for additional deliveries */}
+            {step === 3 && !isAdditionalDelivery && (
               <div className="p-4 space-y-4">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-3 flex items-center justify-center">
@@ -491,11 +623,18 @@ export default function NewDelivery() {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Veículo</p>
-                          <p className="font-medium">{selectedCategory?.name}</p>
+                          <p className="font-medium">
+                            {isAdditionalDelivery ? parentDelivery?.vehicle_type : selectedCategory?.name}
+                          </p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Tipo</p>
-                          <p className="font-medium">{PRODUCT_TYPES.find(p => p.id === productType)?.label}</p>
+                          <div className="flex items-center gap-1">
+                            <p className="font-medium">{PRODUCT_TYPES.find(p => p.id === productType)?.label}</p>
+                            {isAdditionalDelivery && (
+                              <Badge variant="secondary" className="text-xs">Adicional</Badge>
+                            )}
+                          </div>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Seu saldo</p>
@@ -538,7 +677,7 @@ export default function NewDelivery() {
               <Button
                 size="xl"
                 className="w-full"
-                onClick={() => setStep(step + 1)}
+                onClick={handleNextStep}
                 disabled={!canProceed()}
               >
                 Continuar

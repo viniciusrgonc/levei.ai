@@ -5,14 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, Loader2, X } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, X } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { useActiveDriver } from '@/hooks/useActiveDriver';
+import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
 
 type Restaurant = {
   id: string;
@@ -61,6 +62,8 @@ export default function RestaurantDashboard() {
     setSelectedDeliveryId(null);
     fetchDeliveries();
   };
+
+  const { activeDriver } = useActiveDriver(restaurant?.id);
 
   useRealtimeDeliveries({
     restaurantId: restaurant?.id,
@@ -163,6 +166,19 @@ export default function RestaurantDashboard() {
           </header>
 
           <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-auto pb-20 sm:pb-24 safe-bottom">
+            {/* Banner de Entregador Ativo */}
+            {activeDriver && activeDriver.available && (
+              <ActiveDriverBanner
+                driverId={activeDriver.driver_id!}
+                parentDeliveryId={activeDriver.parent_delivery_id!}
+                currentCount={activeDriver.current_count!}
+                maxCount={activeDriver.max_count!}
+                timeRemainingMinutes={activeDriver.time_remaining_minutes!}
+                basePrice={activeDriver.base_price!}
+                pricePerKm={activeDriver.price_per_km!}
+              />
+            )}
+
             {/* CTA Principal */}
             <Button
               onClick={() => navigate('/restaurant/new-delivery')}
