@@ -680,6 +680,10 @@ export type Database = {
         }
         Returns: Json
       }
+      calculate_cancellation_penalty: {
+        Args: { p_delivery_id: string }
+        Returns: Json
+      }
       create_notification: {
         Args: {
           p_delivery_id?: string
