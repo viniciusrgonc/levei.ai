@@ -53,6 +53,7 @@ export type Database = {
       deliveries: {
         Row: {
           accepted_at: string | null
+          cancellation_reason: string | null
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
@@ -88,6 +89,7 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -123,6 +125,7 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
@@ -772,7 +775,12 @@ export type Database = {
         }
         Returns: boolean
       }
-      refund_delivery_funds: { Args: { p_delivery_id: string }; Returns: Json }
+      refund_delivery_funds:
+        | { Args: { p_delivery_id: string }; Returns: Json }
+        | {
+            Args: { p_cancellation_reason?: string; p_delivery_id: string }
+            Returns: Json
+          }
     }
     Enums: {
       app_role: "admin" | "restaurant" | "driver"
