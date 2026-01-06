@@ -11,8 +11,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, AlertTriangle, DollarSign, Percent, RefreshCw } from 'lucide-react';
+import { Loader2, AlertTriangle, DollarSign, Percent, RefreshCw, Package, Link2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 interface CancelDeliveryModalProps {
   deliveryId: string;
@@ -32,6 +35,9 @@ interface PenaltyInfo {
   driver_share: number;
   platform_share: number;
   status: string;
+  is_additional?: boolean;
+  child_deliveries_count?: number;
+  error?: string;
 }
 
 export function CancelDeliveryModal({
@@ -43,6 +49,7 @@ export function CancelDeliveryModal({
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingPenalty, setIsFetchingPenalty] = useState(false);
   const [penaltyInfo, setPenaltyInfo] = useState<PenaltyInfo | null>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   useEffect(() => {
     if (open && deliveryId) {
@@ -75,7 +82,10 @@ export function CancelDeliveryModal({
 
     try {
       const { data: rawResult, error } = await supabase
-        .rpc('refund_delivery_funds', { p_delivery_id: deliveryId });
+        .rpc('refund_delivery_funds', { 
+          p_delivery_id: deliveryId,
+          p_cancellation_reason: cancellationReason || 'Cancelado pelo solicitante'
+        });
 
       if (error) throw error;
       
@@ -124,13 +134,22 @@ export function CancelDeliveryModal({
     switch (penaltyInfo.status) {
       case 'pending': return 'Aguardando entregador';
       case 'accepted': return 'Entregador aceitou';
-      case 'picked_up': return 'Coleta iniciada';
+      case 'picking_up': return 'Entregador a caminho';
+      case 'picked_up': return 'Coleta realizada';
+      case 'delivering': return 'Em rota de entrega';
       default: return penaltyInfo.status;
     }
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      setCancellationReason('');
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <div className="flex items-center gap-3">
@@ -150,12 +169,33 @@ export function CancelDeliveryModal({
           </div>
         ) : penaltyInfo ? (
           <div className="space-y-4">
-            {/* Status atual */}
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground">Status atual</p>
-              <p className="font-medium">{getStatusLabel()}</p>
-              <p className={`text-sm ${getPenaltyColor()}`}>{penaltyInfo.message}</p>
-            </div>
+            {/* Não pode cancelar */}
+            {!penaltyInfo.can_cancel ? (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <p className="text-destructive font-medium flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  {penaltyInfo.message}
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Tipo de entrega */}
+                <div className="flex items-center gap-2">
+                  <Package className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">
+                    {penaltyInfo.is_additional ? 'Entrega Adicional' : 'Entrega Principal'}
+                  </span>
+                  {penaltyInfo.is_additional && (
+                    <Badge variant="outline" className="text-xs">Batch</Badge>
+                  )}
+                </div>
+
+                {/* Status atual */}
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground">Status atual</p>
+                  <p className="font-medium">{getStatusLabel()}</p>
+                  <p className={`text-sm ${getPenaltyColor()}`}>{penaltyInfo.message}</p>
+                </div>
 
             {/* Breakdown financeiro */}
             <div className="space-y-3">
@@ -192,28 +232,38 @@ export function CancelDeliveryModal({
               </div>
             </div>
 
-            {/* Distribuição da multa */}
-            {penaltyInfo.penalty_amount > 0 && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-3 text-xs">
-                <p className="font-medium text-amber-800 dark:text-amber-400 mb-1">
-                  Distribuição da multa:
-                </p>
-                <ul className="space-y-0.5 text-amber-700 dark:text-amber-500">
-                  {penaltyInfo.driver_share > 0 && (
-                    <li>• Entregador: R$ {penaltyInfo.driver_share.toFixed(2)}</li>
-                  )}
-                  {penaltyInfo.platform_share > 0 && (
-                    <li>• Plataforma: R$ {penaltyInfo.platform_share.toFixed(2)}</li>
-                  )}
-                </ul>
-              </div>
-            )}
+                {/* Aviso sobre entregas vinculadas */}
+                {(penaltyInfo.child_deliveries_count ?? 0) > 0 && (
+                  <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 rounded-lg p-3">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-400 flex items-center gap-2">
+                      <Link2 className="w-4 h-4" />
+                      <strong>{penaltyInfo.child_deliveries_count}</strong> entrega(s) adicional(is) também será(ão) cancelada(s) automaticamente
+                    </p>
+                  </div>
+                )}
 
-            <AlertDialogDescription className="text-left pt-2">
-              {penaltyInfo.penalty_amount > 0 
-                ? 'Ao confirmar, a multa será aplicada e o restante será estornado ao seu saldo.'
-                : 'Ao confirmar, o valor total será estornado ao seu saldo. Esta ação não pode ser desfeita.'}
-            </AlertDialogDescription>
+                {/* Campo de motivo */}
+                <div className="space-y-2">
+                  <Label htmlFor="cancellation-reason" className="text-sm">
+                    Motivo do cancelamento (opcional)
+                  </Label>
+                  <Textarea
+                    id="cancellation-reason"
+                    placeholder="Informe o motivo do cancelamento..."
+                    value={cancellationReason}
+                    onChange={(e) => setCancellationReason(e.target.value)}
+                    rows={2}
+                    className="resize-none"
+                  />
+                </div>
+
+                <AlertDialogDescription className="text-left pt-2">
+                  {penaltyInfo.penalty_amount > 0 
+                    ? 'Ao confirmar, a multa será aplicada e o restante será estornado ao seu saldo.'
+                    : 'Ao confirmar, o valor total será estornado ao seu saldo. Esta ação não pode ser desfeita.'}
+                </AlertDialogDescription>
+              </>
+            )}
           </div>
         ) : (
           <AlertDialogDescription className="text-left pt-2">
