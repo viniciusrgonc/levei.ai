@@ -60,6 +60,7 @@ export type Database = {
           delivery_latitude: number
           delivery_longitude: number
           delivery_photo_url: string | null
+          delivery_sequence: number | null
           description: string | null
           distance_km: number
           driver_id: string | null
@@ -94,6 +95,7 @@ export type Database = {
           delivery_latitude: number
           delivery_longitude: number
           delivery_photo_url?: string | null
+          delivery_sequence?: number | null
           description?: string | null
           distance_km: number
           driver_id?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           delivery_latitude?: number
           delivery_longitude?: number
           delivery_photo_url?: string | null
+          delivery_sequence?: number | null
           description?: string | null
           distance_km?: number
           driver_id?: string | null
@@ -757,6 +760,10 @@ export type Database = {
       finalize_delivery_transaction: {
         Args: { p_delivery_id: string; p_driver_id: string }
         Returns: Json
+      }
+      get_next_delivery_sequence: {
+        Args: { p_parent_delivery_id: string }
+        Returns: number
       }
       has_role: {
         Args: {

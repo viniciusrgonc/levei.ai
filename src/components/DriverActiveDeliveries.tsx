@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, ChevronRight } from 'lucide-react';
+import { MapPin, Navigation, ChevronRight, Lock } from 'lucide-react';
 import { getStatusConfig, DeliveryStatus } from '@/lib/deliveryStatus';
 
 interface Delivery {
@@ -16,6 +16,8 @@ interface Delivery {
   distance_km: number;
   product_type: string | null;
   is_additional_delivery: boolean;
+  delivery_sequence: number;
+  parent_delivery_id: string | null;
 }
 
 interface DriverActiveDeliveriesProps {
@@ -33,10 +35,10 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
     const fetchDeliveries = async () => {
       const { data, error } = await supabase
         .from('deliveries')
-        .select('id, status, pickup_address, delivery_address, price_adjusted, distance_km, product_type, is_additional_delivery')
+        .select('id, status, pickup_address, delivery_address, price_adjusted, distance_km, product_type, is_additional_delivery, delivery_sequence, parent_delivery_id')
         .eq('driver_id', driverId)
         .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering'])
-        .order('created_at', { ascending: true });
+        .order('delivery_sequence', { ascending: true });
 
       if (!error && data) {
         setDeliveries(data);
@@ -78,18 +80,37 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
     }
   };
 
+  // Get next delivery based on sequence (lowest sequence that is not delivered)
   const getNextDelivery = () => {
-    // Priority: picking_up > accepted > picked_up
-    const pickingUp = deliveries.find(d => d.status === 'picking_up');
-    if (pickingUp) return pickingUp;
-    
-    const accepted = deliveries.find(d => d.status === 'accepted');
-    if (accepted) return accepted;
-    
-    return deliveries.find(d => d.status === 'picked_up');
+    // Sort by sequence and find first non-delivered
+    const sorted = [...deliveries].sort((a, b) => a.delivery_sequence - b.delivery_sequence);
+    return sorted.find(d => d.status !== 'delivered');
   };
 
   const nextDelivery = getNextDelivery();
+  const totalDeliveries = deliveries.length;
+
+  // Check if a delivery can be worked on (previous ones must be picked up or delivered)
+  const canWorkOnDelivery = (delivery: Delivery) => {
+    if (delivery.delivery_sequence === 1) return true;
+    
+    // Check all deliveries with lower sequence
+    const previousDeliveries = deliveries.filter(d => d.delivery_sequence < delivery.delivery_sequence);
+    
+    // For pickup phase: all previous must be at least picked_up
+    if (delivery.status === 'accepted' || delivery.status === 'picking_up') {
+      return previousDeliveries.every(d => 
+        d.status === 'picked_up' || d.status === 'delivering' || d.status === 'delivered'
+      );
+    }
+    
+    // For delivery phase: all previous must be delivered
+    if (delivery.status === 'picked_up' || delivery.status === 'delivering') {
+      return previousDeliveries.every(d => d.status === 'delivered');
+    }
+    
+    return true;
+  };
 
   return (
     <Card>
@@ -100,27 +121,35 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {deliveries.map((delivery, index) => {
+        {deliveries
+          .sort((a, b) => a.delivery_sequence - b.delivery_sequence)
+          .map((delivery) => {
           const statusInfo = getStatusConfig(delivery.status as DeliveryStatus);
           const isNext = delivery.id === nextDelivery?.id;
+          const isLocked = !canWorkOnDelivery(delivery);
           
           return (
             <div
               key={delivery.id}
-              onClick={() => handleDeliveryClick(delivery)}
-              className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-muted/50 ${
-                isNext ? 'border-primary bg-primary/5' : ''
-              }`}
+              onClick={() => !isLocked && handleDeliveryClick(delivery)}
+              className={`p-3 rounded-lg border transition-all ${
+                isLocked 
+                  ? 'opacity-50 cursor-not-allowed bg-muted/30' 
+                  : 'cursor-pointer hover:bg-muted/50'
+              } ${isNext ? 'border-primary bg-primary/5' : ''}`}
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                     isNext ? 'bg-primary text-primary-foreground' : 'bg-muted'
                   }`}>
-                    {index + 1}
+                    {isLocked ? <Lock className="w-4 h-4" /> : delivery.delivery_sequence}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className="text-xs">
+                        Entrega {delivery.delivery_sequence} de {totalDeliveries}
+                      </Badge>
                       <Badge 
                         variant="secondary" 
                         className={`text-xs ${statusInfo.color}`}
@@ -128,7 +157,7 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
                         {statusInfo.label}
                       </Badge>
                       {delivery.is_additional_delivery && (
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-dashed">
                           Adicional
                         </Badge>
                       )}
@@ -137,7 +166,7 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground truncate mt-1">
-                      {delivery.status === 'picked_up' ? (
+                      {delivery.status === 'picked_up' || delivery.status === 'delivering' ? (
                         <span className="flex items-center gap-1">
                           <Navigation className="w-3 h-3" />
                           {delivery.delivery_address}
@@ -155,7 +184,7 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
                   <span className="font-semibold text-primary">
                     R$ {Number(delivery.price_adjusted).toFixed(2)}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  {!isLocked && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                 </div>
               </div>
             </div>
