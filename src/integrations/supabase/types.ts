@@ -768,6 +768,10 @@ export type Database = {
         Args: { p_parent_delivery_id: string }
         Returns: number
       }
+      get_route_financial_summary: {
+        Args: { p_driver_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

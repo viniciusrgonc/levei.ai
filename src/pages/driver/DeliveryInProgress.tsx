@@ -73,6 +73,15 @@ interface Delivery {
   delivery_latitude: number;
   delivery_longitude: number;
   driver_id: string;
+  is_additional_delivery: boolean | null;
+  delivery_sequence: number | null;
+  parent_delivery_id: string | null;
+}
+
+interface CompletionResult {
+  earnings: number;
+  isLastDelivery: boolean;
+  totalRouteEarnings: number;
 }
 
 export default function DeliveryInProgress() {
@@ -85,9 +94,24 @@ export default function DeliveryInProgress() {
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
+  const [remainingDeliveries, setRemainingDeliveries] = useState(0);
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
-    onSuccess: () => {
+    onSuccess: (_, __, transaction) => {
+      if (transaction) {
+        setCompletionResult({
+          earnings: transaction.driver_earnings,
+          isLastDelivery: transaction.is_last_delivery,
+          totalRouteEarnings: transaction.total_route_earnings
+        });
+      } else {
+        setCompletionResult({
+          earnings: delivery ? Number(delivery.price_adjusted || delivery.price) * 0.80 : 0,
+          isLastDelivery: true,
+          totalRouteEarnings: 0
+        });
+      }
       setShowSuccess(true);
     }
   });
@@ -387,17 +411,27 @@ export default function DeliveryInProgress() {
             <div className="w-20 h-20 rounded-full bg-success/10 flex items-center justify-center mx-auto animate-scale-in">
               <PartyPopper className="w-10 h-10 text-success" />
             </div>
-            <DialogTitle className="text-2xl">Entrega Concluída!</DialogTitle>
+            <DialogTitle className="text-2xl">
+              {completionResult?.isLastDelivery ? 'Rota Concluída!' : 'Entrega Concluída!'}
+            </DialogTitle>
             <DialogDescription className="text-base">
-              Parabéns! Você ganhou{' '}
-              <span className="font-bold text-success">
-                R$ {delivery ? (Number(delivery.price_adjusted || delivery.price) * 0.8).toFixed(2) : '0.00'}
-              </span>
-              {' '}com essa entrega.
+              {completionResult?.isLastDelivery ? (
+                <>
+                  Parabéns! Sua rota foi finalizada.{' '}
+                  <span className="font-bold text-success">
+                    R$ {(completionResult?.totalRouteEarnings || completionResult?.earnings || 0).toFixed(2)}
+                  </span>
+                  {' '}foi creditado na sua carteira.
+                </>
+              ) : (
+                <>
+                  Continue para a próxima entrega da rota. O pagamento será creditado ao final.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <Button onClick={handleSuccessClose} size="lg" className="w-full mt-4">
-            Voltar ao Início
+            {completionResult?.isLastDelivery ? 'Voltar ao Início' : 'Próxima Entrega'}
           </Button>
         </DialogContent>
       </Dialog>

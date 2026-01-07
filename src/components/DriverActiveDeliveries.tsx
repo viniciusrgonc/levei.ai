@@ -4,9 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, ChevronRight, Lock } from 'lucide-react';
+import { MapPin, Navigation, ChevronRight, Lock, Wallet } from 'lucide-react';
 import { getStatusConfig, DeliveryStatus } from '@/lib/deliveryStatus';
-
+import { RouteFinancialSummary } from './RouteFinancialSummary';
 interface Delivery {
   id: string;
   status: string;
@@ -112,15 +112,29 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
     return true;
   };
 
+  // Calculate route totals
+  const totalGross = deliveries.reduce((sum, d) => sum + Number(d.price_adjusted), 0);
+  const totalNet = totalGross * 0.80;
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <span>Suas Entregas Ativas</span>
-          <Badge variant="secondary">{deliveries.length} entrega(s)</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
+    <div className="space-y-3">
+      {/* Route Financial Summary */}
+      <RouteFinancialSummary driverId={driverId} />
+      
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg flex items-center justify-between">
+            <span>Suas Entregas Ativas</span>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="gap-1">
+                <Wallet className="w-3 h-3" />
+                R$ {totalNet.toFixed(2)}
+              </Badge>
+              <Badge variant="secondary">{deliveries.length}</Badge>
+            </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
         {deliveries
           .sort((a, b) => a.delivery_sequence - b.delivery_sequence)
           .map((delivery) => {
@@ -191,17 +205,18 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
           );
         })}
 
-        {nextDelivery && (
-          <Button 
-            onClick={() => handleDeliveryClick(nextDelivery)}
-            className="w-full mt-2"
-            size="lg"
-          >
-            <Navigation className="w-4 h-4 mr-2" />
-            Ir para Próxima Entrega
-          </Button>
-        )}
-      </CardContent>
-    </Card>
+          {nextDelivery && (
+            <Button 
+              onClick={() => handleDeliveryClick(nextDelivery)}
+              className="w-full mt-2"
+              size="lg"
+            >
+              <Navigation className="w-4 h-4 mr-2" />
+              Ir para Próxima Entrega
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
