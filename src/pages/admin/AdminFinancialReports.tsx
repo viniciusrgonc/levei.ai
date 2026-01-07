@@ -99,6 +99,15 @@ export default function AdminFinancialReports() {
 
       if (deliveriesError) throw deliveriesError;
 
+      // Buscar transações do período para dados reais
+      const { data: transactions, error: transactionsError } = await supabase
+        .from('transactions')
+        .select('*')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+
+      if (transactionsError) throw transactionsError;
+
       // Buscar entregas do período anterior para calcular crescimento
       const previousStartDate = useMonthly ? subMonths(startDate, 12) : subDays(startDate, period === '7d' ? 7 : period === '30d' ? 30 : 90);
       const { data: previousDeliveries, error: previousError } = await supabase
@@ -110,10 +119,16 @@ export default function AdminFinancialReports() {
 
       if (previousError) throw previousError;
 
-      // Calcular estatísticas gerais
+      // Calcular estatísticas a partir das transações reais
       const totalReceita = deliveries?.reduce((sum, d) => sum + (d.price_adjusted || 0), 0) || 0;
-      const totalTaxaPlataforma = totalReceita * 0.20;
-      const totalPagamentoEntregadores = totalReceita * 0.80;
+      
+      // Usar dados reais das transações
+      const platformFeeTransactions = transactions?.filter(t => t.type === 'platform_fee') || [];
+      const driverPaymentTransactions = transactions?.filter(t => t.type === 'delivery_payment') || [];
+      
+      const totalTaxaPlataforma = platformFeeTransactions.reduce((sum, t) => sum + (t.platform_fee || t.amount || 0), 0);
+      const totalPagamentoEntregadores = driverPaymentTransactions.reduce((sum, t) => sum + (t.driver_earnings || t.amount || 0), 0);
+      
       const totalEntregas = deliveries?.length || 0;
       const ticketMedio = totalEntregas > 0 ? totalReceita / totalEntregas : 0;
 
@@ -131,8 +146,8 @@ export default function AdminFinancialReports() {
 
       setStats({
         totalReceita,
-        totalTaxaPlataforma,
-        totalPagamentoEntregadores,
+        totalTaxaPlataforma: totalTaxaPlataforma || totalReceita * 0.20,
+        totalPagamentoEntregadores: totalPagamentoEntregadores || totalReceita * 0.80,
         totalEntregas,
         ticketMedio,
         crescimentoReceita,
