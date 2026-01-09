@@ -160,7 +160,7 @@ export default function NewDelivery() {
 
     const { data: deliveryData, error } = await supabase
       .from('deliveries')
-      .select('id, driver_id, vehicle_category')
+      .select('id, driver_id, vehicle_category, accepted_at')
       .eq('id', parentDeliveryId)
       .eq('restaurant_id', restaurant.id)
       .eq('status', 'picking_up')
@@ -170,7 +170,42 @@ export default function NewDelivery() {
       toast({
         variant: 'destructive',
         title: 'Entregador não disponível',
-        description: 'A janela de tempo para adicionar entregas expirou.'
+        description: 'A janela de tempo para adicionar entregas expirou ou a entrega já saiu para coleta.'
+      });
+      navigate('/restaurant/dashboard');
+      return;
+    }
+
+    // Check batch availability via RPC
+    const { data: batchResult, error: batchError } = await supabase
+      .rpc('check_driver_available_for_batch', {
+        p_driver_id: deliveryData.driver_id,
+        p_restaurant_id: restaurant.id
+      });
+
+    if (batchError || !batchResult) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao verificar disponibilidade',
+        description: 'Tente novamente em alguns instantes.'
+      });
+      navigate('/restaurant/dashboard');
+      return;
+    }
+
+    const batchInfo = batchResult as unknown as {
+      available: boolean;
+      reason?: string;
+      time_remaining_minutes?: number;
+      base_price?: number;
+      price_per_km?: number;
+    };
+
+    if (!batchInfo.available) {
+      toast({
+        variant: 'destructive',
+        title: 'Não é possível adicionar entrega',
+        description: batchInfo.reason || 'A janela de tempo expirou ou o limite de entregas foi atingido.'
       });
       navigate('/restaurant/dashboard');
       return;
@@ -195,6 +230,14 @@ export default function NewDelivery() {
       setIsAdditionalDelivery(true);
       // Skip to step 2 (delivery location) since pickup is fixed
       setStep(2);
+      
+      // Show info toast about time remaining
+      if (batchInfo.time_remaining_minutes) {
+        toast({
+          title: '⏱️ Entrega adicional',
+          description: `Você tem ${Math.ceil(batchInfo.time_remaining_minutes)} minutos para finalizar.`
+        });
+      }
     }
   };
 

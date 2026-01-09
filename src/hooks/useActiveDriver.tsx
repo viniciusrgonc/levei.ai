@@ -10,12 +10,23 @@ interface ActiveDriverInfo {
   time_remaining_minutes?: number;
   base_price?: number;
   price_per_km?: number;
+  regular_base_price?: number;
+  regular_price_per_km?: number;
   reason?: string;
 }
 
-export function useActiveDriver(restaurantId: string | undefined) {
+interface UseActiveDriverResult {
+  activeDriver: ActiveDriverInfo | null;
+  loading: boolean;
+  noEligibleDriver: boolean;
+  noEligibleReason: string | null;
+}
+
+export function useActiveDriver(restaurantId: string | undefined): UseActiveDriverResult {
   const [activeDriver, setActiveDriver] = useState<ActiveDriverInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [noEligibleDriver, setNoEligibleDriver] = useState(false);
+  const [noEligibleReason, setNoEligibleReason] = useState<string | null>(null);
 
   useEffect(() => {
     if (!restaurantId) {
@@ -25,11 +36,14 @@ export function useActiveDriver(restaurantId: string | undefined) {
 
     const checkActiveDriver = async () => {
       setLoading(true);
+      setNoEligibleDriver(false);
+      setNoEligibleReason(null);
+
       try {
         // Find drivers currently picking up at this restaurant
         const { data: pickingUpDeliveries, error } = await supabase
           .from('deliveries')
-          .select('driver_id')
+          .select('id, driver_id, vehicle_category, accepted_at')
           .eq('restaurant_id', restaurantId)
           .eq('status', 'picking_up')
           .not('driver_id', 'is', null);
@@ -50,12 +64,35 @@ export function useActiveDriver(restaurantId: string | undefined) {
 
           if (!rpcError && result && typeof result === 'object') {
             const driverInfo = result as unknown as ActiveDriverInfo;
+            
             if (driverInfo.available) {
-              setActiveDriver(driverInfo);
+              // Also fetch regular pricing for comparison
+              const { data: regularSettings } = await supabase
+                .from('delivery_categories')
+                .select('base_price, price_per_km')
+                .eq('is_active', true)
+                .limit(1)
+                .single();
+
+              setActiveDriver({
+                ...driverInfo,
+                regular_base_price: regularSettings?.base_price || 5.00,
+                regular_price_per_km: regularSettings?.price_per_km || 2.50
+              });
               setLoading(false);
               return;
+            } else if (driverInfo.reason) {
+              // Driver exists but is not eligible
+              setNoEligibleDriver(true);
+              setNoEligibleReason(driverInfo.reason);
             }
           }
+        }
+
+        // If we got here, there are picking_up deliveries but none are eligible
+        if (pickingUpDeliveries.length > 0 && !noEligibleReason) {
+          setNoEligibleDriver(true);
+          setNoEligibleReason('Janela de tempo expirada ou limite de entregas atingido');
         }
 
         setActiveDriver(null);
@@ -91,5 +128,5 @@ export function useActiveDriver(restaurantId: string | undefined) {
     };
   }, [restaurantId]);
 
-  return { activeDriver, loading };
+  return { activeDriver, loading, noEligibleDriver, noEligibleReason };
 }

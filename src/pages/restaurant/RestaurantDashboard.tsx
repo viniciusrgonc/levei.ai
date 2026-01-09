@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, X } from 'lucide-react';
+import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import NotificationBell from '@/components/NotificationBell';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { useActiveDriver } from '@/hooks/useActiveDriver';
 import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 type Restaurant = {
   id: string;
@@ -63,7 +64,7 @@ export default function RestaurantDashboard() {
     fetchDeliveries();
   };
 
-  const { activeDriver } = useActiveDriver(restaurant?.id);
+  const { activeDriver, noEligibleDriver, noEligibleReason } = useActiveDriver(restaurant?.id);
 
   useRealtimeDeliveries({
     restaurantId: restaurant?.id,
@@ -176,7 +177,19 @@ export default function RestaurantDashboard() {
                 timeRemainingMinutes={activeDriver.time_remaining_minutes!}
                 basePrice={activeDriver.base_price!}
                 pricePerKm={activeDriver.price_per_km!}
+                regularBasePrice={activeDriver.regular_base_price}
+                regularPricePerKm={activeDriver.regular_price_per_km}
               />
+            )}
+
+            {/* Aviso quando há entregador mas não está elegível */}
+            {noEligibleDriver && !activeDriver?.available && (
+              <Alert variant="default" className="border-muted-foreground/20">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-sm">
+                  {noEligibleReason || 'Entregador em rota, mas a janela de tempo para adicionar entregas expirou.'}
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* CTA Principal */}
