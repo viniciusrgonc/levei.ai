@@ -9,6 +9,8 @@ import { MapPin, Navigation, Clock, CheckCircle, Package, AlertCircle } from 'lu
 import { usePickupDelivery } from '@/hooks/usePickupDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
+import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
+import { RouteProgressHeader } from '@/components/RouteProgressHeader';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -65,6 +67,7 @@ interface Delivery {
   delivery_latitude: number;
   delivery_longitude: number;
   driver_id: string;
+  delivery_sequence: number | null;
 }
 
 export default function PickupInProgress() {
@@ -88,6 +91,9 @@ export default function PickupInProgress() {
     : null;
 
   const { route } = useMapNavigation(currentPosition, destination);
+
+  // Hook for route info
+  const routeInfo = useRouteDeliveries(driverId, deliveryId);
 
   useDriverLocationTracking({
     driverId: driverId || '',
@@ -195,7 +201,17 @@ export default function PickupInProgress() {
       {/* Header flutuante sobre o mapa */}
       <div className="absolute top-0 left-0 right-0 z-[1000] p-4 safe-top">
         <Card className="glass">
-          <CardContent className="p-3">
+          <CardContent className="p-3 space-y-2">
+            {/* Route progress for batch deliveries */}
+            {routeInfo.totalDeliveries > 1 && (
+              <RouteProgressHeader
+                currentSequence={delivery.delivery_sequence || 1}
+                totalDeliveries={routeInfo.totalDeliveries}
+                nextDeliveryAddress={routeInfo.nextDeliveryAddress}
+                accumulatedEarnings={routeInfo.accumulatedEarnings}
+              />
+            )}
+            
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground">COLETA</p>
