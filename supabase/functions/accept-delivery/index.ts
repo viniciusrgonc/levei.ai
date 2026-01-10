@@ -15,29 +15,33 @@ Deno.serve(async (req) => {
   try {
     // Get auth header and validate user
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      console.error('Missing authorization header')
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      console.error('Missing/invalid authorization header')
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ error: 'Unauthorized: missing token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-    // Verify user from token
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
-    
+    // User-scoped client used ONLY for auth validation (relies on Authorization header)
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+        },
+      },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser()
+
     if (authError || !user) {
       console.error('Auth error:', authError)
       return new Response(
@@ -45,6 +49,14 @@ Deno.serve(async (req) => {
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // Service client for privileged DB ops
+    const supabaseClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
 
     // Get request body
     const { delivery_id, driver_id } = await req.json()

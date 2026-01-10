@@ -155,7 +155,15 @@ export default function AvailableDeliveries() {
 
     setAccepting(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData.session?.access_token) {
+        throw new Error('Sessão expirada. Faça login novamente.');
+      }
+
       const { data, error } = await supabase.functions.invoke('accept-delivery', {
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
         body: { delivery_id: deliveryId, driver_id: driver.id }
       });
 
@@ -169,9 +177,10 @@ export default function AvailableDeliveries() {
       
       navigate(`/driver/pickup/${deliveryId}`, { replace: true });
     } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Não foi possível aceitar a entrega';
       toast({
         title: 'Erro',
-        description: error instanceof Error ? error.message : 'Não foi possível aceitar a entrega',
+        description: msg,
         variant: 'destructive',
       });
     } finally {
