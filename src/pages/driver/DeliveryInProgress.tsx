@@ -5,12 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper, MessageCircle } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper, MessageCircle, LayoutDashboard, X } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { RouteProgressHeader } from '@/components/RouteProgressHeader';
+import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -98,6 +99,7 @@ export default function DeliveryInProgress() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const [remainingDeliveries, setRemainingDeliveries] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
     onSuccess: (_, __, transaction) => {
@@ -269,6 +271,28 @@ export default function DeliveryInProgress() {
         <div className="absolute top-0 left-0 right-0 z-[1000] p-4 safe-top">
           <Card className="glass">
             <CardContent className="p-3 space-y-2">
+              {/* Dashboard button */}
+              <div className="flex items-center justify-between mb-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => navigate('/driver/dashboard')}
+                >
+                  <LayoutDashboard className="w-4 h-4 mr-1" />
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowCancelModal(true)}
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Cancelar
+                </Button>
+              </div>
+              
               {/* Route progress for batch deliveries */}
               {routeInfo.totalDeliveries > 1 && (
                 <RouteProgressHeader
@@ -450,6 +474,19 @@ export default function DeliveryInProgress() {
           </Button>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Modal */}
+      {deliveryId && (
+        <CancelDeliveryModal
+          deliveryId={deliveryId}
+          open={showCancelModal}
+          onOpenChange={setShowCancelModal}
+          onCancelled={() => {
+            setShowCancelModal(false);
+            navigate('/driver/dashboard', { replace: true });
+          }}
+        />
+      )}
     </>
   );
 }

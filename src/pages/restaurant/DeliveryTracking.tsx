@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle, LayoutDashboard } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -191,6 +191,27 @@ export default function DeliveryTracking() {
               <h1 className="text-sm sm:text-base font-semibold truncate">Acompanhar Entrega</h1>
               <p className="text-xs text-muted-foreground">#{delivery.id.slice(0, 8).toUpperCase()}</p>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate('/restaurant/dashboard')}
+            >
+              <LayoutDashboard className="h-4 w-4 mr-1" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </Button>
+            {/* Cancel button for active deliveries */}
+            {['pending', 'accepted', 'picking_up', 'picked_up'].includes(delivery.status) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setShowCancelModal(true)}
+              >
+                <X className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">Cancelar</span>
+              </Button>
+            )}
           </header>
 
           <main className="flex-1 overflow-auto">
@@ -307,15 +328,6 @@ export default function DeliveryTracking() {
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       Aguarde enquanto buscamos um entregador disponível
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-3 sm:mt-4 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                      onClick={() => setShowCancelModal(true)}
-                    >
-                      <X className="h-4 w-4 mr-1.5" />
-                      Cancelar entrega
-                    </Button>
                   </CardContent>
                 </Card>
               ) : delivery.status === 'cancelled' ? (

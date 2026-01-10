@@ -5,12 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, Clock, CheckCircle, Package, AlertCircle } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle, Package, AlertCircle, LayoutDashboard, X } from 'lucide-react';
 import { usePickupDelivery } from '@/hooks/usePickupDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { RouteProgressHeader } from '@/components/RouteProgressHeader';
+import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -79,6 +80,7 @@ export default function PickupInProgress() {
   const [driverId, setDriverId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const { pickupDelivery, loading: pickingUp } = usePickupDelivery({
     onSuccess: (id: string) => {
@@ -197,11 +199,34 @@ export default function PickupInProgress() {
   const routeDistance = route ? (route.distance / 1000).toFixed(1) : null;
 
   return (
+    <>
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header flutuante sobre o mapa */}
       <div className="absolute top-0 left-0 right-0 z-[1000] p-4 safe-top">
         <Card className="glass">
           <CardContent className="p-3 space-y-2">
+            {/* Dashboard button */}
+            <div className="flex items-center justify-between mb-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate('/driver/dashboard')}
+              >
+                <LayoutDashboard className="w-4 h-4 mr-1" />
+                Dashboard
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setShowCancelModal(true)}
+              >
+                <X className="w-4 h-4 mr-1" />
+                Cancelar
+              </Button>
+            </div>
+            
             {/* Route progress for batch deliveries */}
             {routeInfo.totalDeliveries > 1 && (
               <RouteProgressHeader
@@ -328,5 +353,19 @@ export default function PickupInProgress() {
         </div>
       </div>
     </div>
+
+    {/* Cancel Modal */}
+    {deliveryId && (
+      <CancelDeliveryModal
+        deliveryId={deliveryId}
+        open={showCancelModal}
+        onOpenChange={setShowCancelModal}
+        onCancelled={() => {
+          setShowCancelModal(false);
+          navigate('/driver/dashboard', { replace: true });
+        }}
+      />
+    )}
+    </>
   );
 }
