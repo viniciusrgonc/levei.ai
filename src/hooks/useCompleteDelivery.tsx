@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { 
+  parseEdgeFunctionResponse, 
+  isSessionExpired, 
+  isAlreadyCompleted 
+} from '@/lib/edgeFunctionResponse';
 
 interface TransactionResult {
   total_amount: number;
@@ -14,67 +19,110 @@ interface TransactionResult {
 interface UseCompleteDeliveryParams {
   onSuccess?: (deliveryId: string, price: number, transaction?: TransactionResult) => void;
   onError?: (error: Error) => void;
+  onSessionExpired?: () => void;
 }
 
-export const useCompleteDelivery = ({ onSuccess, onError }: UseCompleteDeliveryParams = {}) => {
+export const useCompleteDelivery = ({ 
+  onSuccess, 
+  onError,
+  onSessionExpired 
+}: UseCompleteDeliveryParams = {}) => {
   const [loading, setLoading] = useState(false);
 
   const completeDelivery = async (deliveryId: string, driverId: string, price: number) => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('complete-delivery', {
+      const { data, error: invokeError } = await supabase.functions.invoke('complete-delivery', {
         body: {
           delivery_id: deliveryId,
           driver_id: driverId
         }
       });
 
-      if (error) {
-        throw error;
+      // Parse standardized response
+      const response = parseEdgeFunctionResponse(data);
+
+      // Handle invoke errors (network, etc) - should be rare with new pattern
+      if (invokeError) {
+        console.error('Network error completing delivery:', invokeError);
+        toast({
+          title: 'Erro de conexão',
+          description: 'Verifique sua internet e tente novamente.',
+        });
+        onError?.(new Error(invokeError.message));
+        return { success: false, error: invokeError.message };
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      // Handle session expired - requires user action
+      if (isSessionExpired(response)) {
+        toast({
+          title: '⚠️ Sessão expirada',
+          description: response.message || 'Faça login novamente.',
+          variant: 'destructive',
+        });
+        onSessionExpired?.();
+        return { success: false, error: response.message };
       }
 
-      const transaction = data.transaction as TransactionResult | undefined;
+      // Handle already completed (idempotent) - treat as success
+      if (response.data?.already_completed) {
+        toast({
+          title: '✅ Entrega finalizada',
+          description: response.message || 'Entrega já estava concluída.',
+        });
+        onSuccess?.(deliveryId, price);
+        return { success: true, delivery: response.data?.delivery };
+      }
+
+      // Handle other errors with toast based on ui_behavior
+      if (!response.success) {
+        if (response.ui_behavior === 'toast') {
+          toast({
+            title: 'Aviso',
+            description: response.message || 'Não foi possível finalizar a entrega.',
+          });
+        } else if (response.ui_behavior === 'silent') {
+          console.log('Silent error:', response.code, response.message);
+        }
+        // Don't show error toast for silent or already-handled cases
+        return { success: false, error: response.message };
+      }
+
+      // Success!
+      const transaction = response.data?.transaction as TransactionResult | undefined;
       const isLastDelivery = transaction?.is_last_delivery ?? true;
-      const earnings = transaction?.driver_earnings ?? price * 0.80;
-      const totalRouteEarnings = transaction?.total_route_earnings ?? earnings;
+      const totalRouteEarnings = transaction?.total_route_earnings ?? transaction?.driver_earnings ?? price * 0.80;
       
-      // Show appropriate message based on batch status
       if (isLastDelivery && totalRouteEarnings > 0) {
         toast({
           title: '🎉 Rota concluída!',
-          description: `Parabéns! R$ ${totalRouteEarnings.toFixed(2)} foi creditado na sua carteira.`,
+          description: response.message || `Parabéns! R$ ${totalRouteEarnings.toFixed(2)} foi creditado na sua carteira.`,
         });
       } else {
         toast({
           title: '✅ Entrega concluída!',
-          description: `Continue para a próxima entrega da rota.`,
+          description: response.message || 'Continue para a próxima entrega da rota.',
         });
       }
 
       onSuccess?.(deliveryId, price, transaction);
+      return { success: true, delivery: response.data?.delivery, transaction };
 
-      return { success: true, delivery: data.delivery, transaction };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Não foi possível atualizar o status';
+      // This should be very rare with the new pattern
+      console.error('Unexpected error completing delivery:', error);
       
-      console.error('Error completing delivery:', error);
-
       toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
+        title: 'Erro inesperado',
+        description: 'Tente novamente em alguns instantes.',
       });
 
       if (error instanceof Error) {
         onError?.(error);
       }
 
-      return { success: false, error: errorMessage };
+      return { success: false, error: 'Erro inesperado' };
     } finally {
       setLoading(false);
     }
