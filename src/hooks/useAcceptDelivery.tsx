@@ -1,50 +1,67 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-
-// Error codes from backend
-const ERROR_MESSAGES: Record<string, string> = {
-  AUTH_REQUIRED: 'Você precisa estar autenticado para aceitar entregas',
-  INVALID_TOKEN: 'Sessão expirada. Faça login novamente.',
-  INVALID_INPUT: 'Dados inválidos. Tente novamente.',
-  DRIVER_NOT_FOUND: 'Conta de motorista não encontrada',
-  UNAUTHORIZED_DRIVER: 'Você não tem permissão para aceitar entregas com esta conta',
-  DELIVERY_NOT_FOUND: 'Entrega não encontrada',
-  DELIVERY_ALREADY_ACCEPTED: 'Esta entrega já foi aceita por outro entregador',
-  DELIVERY_UNAVAILABLE: 'Esta entrega não está mais disponível',
-  DRIVER_HAS_ACTIVE_DELIVERY: 'Você já possui uma entrega ativa',
-  OUT_OF_RADIUS: 'Você está fora do raio permitido para esta entrega',
-  INTERNAL_ERROR: 'Erro interno. Tente novamente em alguns instantes.',
-};
-
-interface AcceptDeliveryResult {
-  success: boolean;
-  delivery?: { id: string };
-  message?: string;
-  error?: {
-    code: string;
-    message: string;
-    details?: Record<string, unknown>;
-  };
-}
+import { 
+  parseEdgeFunctionResponse, 
+  isSessionExpired,
+  StandardResponse 
+} from '@/lib/edgeFunctionResponse';
 
 interface UseAcceptDeliveryParams {
   onSuccess?: (deliveryId: string) => void;
   onError?: (error: { code: string; message: string }) => void;
+  onSessionExpired?: () => void;
 }
 
-export const useAcceptDelivery = ({ onSuccess, onError }: UseAcceptDeliveryParams = {}) => {
+export const useAcceptDelivery = ({ 
+  onSuccess, 
+  onError,
+  onSessionExpired 
+}: UseAcceptDeliveryParams = {}) => {
   const [loading, setLoading] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
-  const getErrorMessage = (code: string, fallback: string): string => {
-    return ERROR_MESSAGES[code] || fallback || 'Não foi possível aceitar a entrega';
+  const handleError = (response: StandardResponse) => {
+    const code = response.code || 'UNKNOWN';
+    const message = response.message || 'Não foi possível aceitar a entrega';
+
+    // Specific user-friendly messages based on code
+    switch (code) {
+      case 'DELIVERY_ALREADY_ACCEPTED':
+        toast({
+          title: 'Entrega indisponível',
+          description: 'Esta entrega já foi aceita por outro entregador.',
+        });
+        break;
+      case 'DELIVERY_UNAVAILABLE':
+        toast({
+          title: 'Entrega indisponível',
+          description: 'Esta entrega não está mais disponível.',
+        });
+        break;
+      case 'OUT_OF_RADIUS':
+        toast({
+          title: 'Fora do raio',
+          description: message,
+        });
+        break;
+      default:
+        // Only show toast if ui_behavior is 'toast'
+        if (response.ui_behavior === 'toast') {
+          toast({
+            title: 'Aviso',
+            description: message,
+          });
+        }
+    }
+
+    onError?.({ code, message });
   };
 
   const acceptDelivery = useCallback(async (deliveryId: string, driverId: string) => {
     if (loading) {
       console.log('[useAcceptDelivery] Already processing, ignoring duplicate call');
-      return { success: false, error: { code: 'BUSY', message: 'Aguarde...' } };
+      return { success: false };
     }
 
     setLoading(true);
@@ -55,20 +72,19 @@ export const useAcceptDelivery = ({ onSuccess, onError }: UseAcceptDeliveryParam
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError || !sessionData.session?.access_token) {
-        const error = { code: 'AUTH_REQUIRED', message: getErrorMessage('AUTH_REQUIRED', '') };
         toast({
-          title: 'Sessão expirada',
-          description: error.message,
+          title: '⚠️ Sessão expirada',
+          description: 'Faça login novamente.',
           variant: 'destructive',
         });
-        onError?.(error);
-        return { success: false, error };
+        onSessionExpired?.();
+        return { success: false };
       }
 
       console.log('[useAcceptDelivery] Calling accept-delivery function', { deliveryId, driverId });
 
       // Call edge function with auth header
-      const { data, error } = await supabase.functions.invoke<AcceptDeliveryResult>('accept-delivery', {
+      const { data, error: invokeError } = await supabase.functions.invoke('accept-delivery', {
         headers: {
           Authorization: `Bearer ${sessionData.session.access_token}`,
         },
@@ -78,97 +94,69 @@ export const useAcceptDelivery = ({ onSuccess, onError }: UseAcceptDeliveryParam
         }
       });
 
-      // Handle fetch/network errors
-      if (error) {
-        console.error('[useAcceptDelivery] Function invoke error:', error);
-        
-        // Parse error message if possible
-        let errorCode = 'INTERNAL_ERROR';
-        let errorMessage = 'Erro ao conectar com o servidor';
-        
-        if (error.message) {
-          // Try to extract meaningful error from the message
-          if (error.message.includes('401')) {
-            errorCode = 'AUTH_REQUIRED';
-            errorMessage = getErrorMessage('AUTH_REQUIRED', '');
-          } else if (error.message.includes('403')) {
-            errorCode = 'UNAUTHORIZED_DRIVER';
-            errorMessage = getErrorMessage('UNAUTHORIZED_DRIVER', '');
-          } else if (error.message.includes('409')) {
-            errorCode = 'DELIVERY_ALREADY_ACCEPTED';
-            errorMessage = getErrorMessage('DELIVERY_ALREADY_ACCEPTED', '');
-          } else if (error.message.includes('non-2xx')) {
-            // Generic edge function error - try to parse body
-            errorMessage = 'Não foi possível aceitar a entrega. Tente novamente.';
-          } else {
-            errorMessage = error.message;
-          }
-        }
+      // Parse standardized response (always HTTP 200 now)
+      const response = parseEdgeFunctionResponse(data);
 
-        const parsedError = { code: errorCode, message: errorMessage };
-        
+      // Handle network errors (rare with new pattern)
+      if (invokeError) {
+        console.error('[useAcceptDelivery] Network error:', invokeError);
         toast({
-          title: 'Erro',
-          description: errorMessage,
-          variant: 'destructive',
+          title: 'Erro de conexão',
+          description: 'Verifique sua internet e tente novamente.',
         });
-        
-        onError?.(parsedError);
-        return { success: false, error: parsedError };
+        onError?.({ code: 'NETWORK_ERROR', message: invokeError.message });
+        return { success: false };
       }
 
-      // Handle structured error response from edge function
-      if (data && !data.success && data.error) {
-        console.log('[useAcceptDelivery] Backend returned error:', data.error);
-        
-        const errorMessage = getErrorMessage(data.error.code, data.error.message);
-        
+      // Handle session expired
+      if (isSessionExpired(response)) {
         toast({
-          title: 'Não foi possível aceitar',
-          description: errorMessage,
+          title: '⚠️ Sessão expirada',
+          description: response.message || 'Faça login novamente.',
           variant: 'destructive',
         });
-        
-        onError?.(data.error);
-        return { success: false, error: data.error };
+        onSessionExpired?.();
+        return { success: false };
       }
 
-      // Success!
-      console.log('[useAcceptDelivery] Delivery accepted successfully:', data);
+      // Handle errors
+      if (!response.success) {
+        handleError(response);
+        return { success: false };
+      }
+
+      // Success (including idempotent case)
+      console.log('[useAcceptDelivery] Delivery accepted successfully');
       
       toast({
-        title: '✅ Entrega aceita!',
-        description: data?.message || 'Vá até o ponto de coleta',
+        title: '🎉 Entrega aceita!',
+        description: response.message || 'Vá até o local de coleta.',
       });
       
       onSuccess?.(deliveryId);
       
       return { 
         success: true, 
-        delivery: data?.delivery,
-        message: data?.message 
+        delivery: response.data?.delivery
       };
 
     } catch (err) {
       console.error('[useAcceptDelivery] Unexpected error:', err);
       
-      const errorMessage = err instanceof Error ? err.message : 'Erro inesperado';
-      const error = { code: 'INTERNAL_ERROR', message: errorMessage };
-      
       toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
+        title: 'Erro inesperado',
+        description: 'Tente novamente em alguns instantes.',
       });
       
-      onError?.(error);
-      return { success: false, error };
+      const message = err instanceof Error ? err.message : 'Erro inesperado';
+      onError?.({ code: 'UNEXPECTED_ERROR', message });
+      return { success: false };
 
     } finally {
       setLoading(false);
       setAcceptingId(null);
     }
-  }, [loading, onSuccess, onError]);
+  }, [loading, onSuccess, onError, onSessionExpired]);
 
   return {
     acceptDelivery,

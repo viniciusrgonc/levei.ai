@@ -1,63 +1,108 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { 
+  parseEdgeFunctionResponse, 
+  isSessionExpired 
+} from '@/lib/edgeFunctionResponse';
 
 interface UsePickupDeliveryParams {
   onSuccess?: (deliveryId: string) => void;
   onError?: (error: Error) => void;
+  onSessionExpired?: () => void;
 }
 
-export const usePickupDelivery = ({ onSuccess, onError }: UsePickupDeliveryParams = {}) => {
+export const usePickupDelivery = ({ 
+  onSuccess, 
+  onError,
+  onSessionExpired 
+}: UsePickupDeliveryParams = {}) => {
   const [loading, setLoading] = useState(false);
 
   const pickupDelivery = async (deliveryId: string, driverId: string) => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('pickup-delivery', {
+      const { data, error: invokeError } = await supabase.functions.invoke('pickup-delivery', {
         body: {
           delivery_id: deliveryId,
           driver_id: driverId
         }
       });
 
-      if (error) {
-        throw error;
+      // Parse standardized response
+      const response = parseEdgeFunctionResponse(data);
+
+      // Handle invoke errors (network, etc)
+      if (invokeError) {
+        console.error('Network error picking up delivery:', invokeError);
+        toast({
+          title: 'Erro de conexão',
+          description: 'Verifique sua internet e tente novamente.',
+        });
+        onError?.(new Error(invokeError.message));
+        return { success: false, error: invokeError.message };
       }
 
-      if (data?.error) {
-        throw new Error(data.error);
+      // Handle session expired
+      if (isSessionExpired(response)) {
+        toast({
+          title: '⚠️ Sessão expirada',
+          description: response.message || 'Faça login novamente.',
+          variant: 'destructive',
+        });
+        onSessionExpired?.();
+        return { success: false, error: response.message };
       }
 
+      // Handle already picked up (idempotent) - treat as success
+      if (response.data?.already_picked_up || response.data?.already_completed) {
+        toast({
+          title: '✅ Coleta confirmada',
+          description: response.message || 'Siga para o destino.',
+        });
+        onSuccess?.(deliveryId);
+        return { success: true, delivery: response.data?.delivery };
+      }
+
+      // Handle other errors
+      if (!response.success) {
+        if (response.ui_behavior === 'toast') {
+          toast({
+            title: 'Aviso',
+            description: response.message || 'Não foi possível confirmar a coleta.',
+          });
+        }
+        return { success: false, error: response.message };
+      }
+
+      // Success!
       toast({
         title: '📦 Pedido coletado!',
-        description: 'Status atualizado. Agora siga para o endereço de entrega.',
+        description: response.message || 'Status atualizado. Siga para o endereço de entrega.',
       });
 
-      // Call success callback after a small delay to ensure state updates
       if (onSuccess) {
         setTimeout(() => {
           onSuccess(deliveryId);
         }, 100);
       }
 
-      return { success: true, delivery: data.delivery };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Não foi possível atualizar o status';
-      
-      console.error('Error picking up delivery:', error);
+      return { success: true, delivery: response.data?.delivery };
 
+    } catch (error) {
+      console.error('Unexpected error picking up delivery:', error);
+      
       toast({
-        title: 'Erro',
-        description: errorMessage,
-        variant: 'destructive',
+        title: 'Erro inesperado',
+        description: 'Tente novamente em alguns instantes.',
       });
 
       if (error instanceof Error) {
         onError?.(error);
       }
 
-      return { success: false, error: errorMessage };
+      return { success: false, error: 'Erro inesperado' };
     } finally {
       setLoading(false);
     }
