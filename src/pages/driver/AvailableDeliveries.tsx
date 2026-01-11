@@ -11,7 +11,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DriverSidebar } from '@/components/DriverSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
+import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
 
 interface Driver {
   id: string;
@@ -44,12 +44,15 @@ function EmptyState({ isAvailable, radiusKm, onGoToDashboard }: { isAvailable: b
 function DeliveryListCard({ 
   delivery, 
   onAccept, 
-  accepting 
+  accepting,
+  isAccepting 
 }: { 
   delivery: any; 
   onAccept: (id: string) => void;
   accepting: boolean;
+  isAccepting: boolean;
 }) {
+  const isThisAccepting = isAccepting;
   return (
     <Card className="overflow-hidden animate-fade-in">
       <CardContent className="p-0">
@@ -107,7 +110,7 @@ function DeliveryListCard({
             className="w-full h-12 text-base font-semibold"
             size="lg"
           >
-            {accepting ? 'Aceitando...' : 'Aceitar Entrega'}
+            {isThisAccepting ? 'Aceitando...' : 'Aceitar Entrega'}
           </Button>
         </div>
       </CardContent>
@@ -119,8 +122,13 @@ export default function AvailableDeliveries() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [accepting, setAccepting] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { acceptDelivery, loading: accepting, acceptingId } = useAcceptDelivery({
+    onSuccess: (deliveryId) => {
+      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
+    },
+  });
 
   const {
     deliveries: availableDeliveries,
@@ -150,42 +158,9 @@ export default function AvailableDeliveries() {
     setLoading(false);
   };
 
-  const acceptDelivery = async (deliveryId: string) => {
-    if (!driver?.id || accepting) return;
-
-    setAccepting(true);
-    try {
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !sessionData.session?.access_token) {
-        throw new Error('Sessão expirada. Faça login novamente.');
-      }
-
-      const { data, error } = await supabase.functions.invoke('accept-delivery', {
-        headers: {
-          Authorization: `Bearer ${sessionData.session.access_token}`,
-        },
-        body: { delivery_id: deliveryId, driver_id: driver.id }
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      toast({
-        title: '✅ Entrega aceita!',
-        description: 'Vá até o ponto de coleta',
-      });
-      
-      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Não foi possível aceitar a entrega';
-      toast({
-        title: 'Erro',
-        description: msg,
-        variant: 'destructive',
-      });
-    } finally {
-      setAccepting(false);
-    }
+  const handleAcceptDelivery = async (deliveryId: string) => {
+    if (!driver?.id) return;
+    await acceptDelivery(deliveryId, driver.id);
   };
 
   if (loading) {
@@ -278,8 +253,9 @@ export default function AvailableDeliveries() {
                     <DeliveryListCard
                       key={delivery.id}
                       delivery={delivery}
-                      onAccept={acceptDelivery}
+                      onAccept={handleAcceptDelivery}
                       accepting={accepting}
+                      isAccepting={acceptingId === delivery.id}
                     />
                   ))}
                 </div>
