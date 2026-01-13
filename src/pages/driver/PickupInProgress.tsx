@@ -181,11 +181,11 @@ export default function PickupInProgress() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-mobile-column bg-background">
         <div className="flex-1 relative">
           <Skeleton className="absolute inset-0" />
         </div>
-        <div className="p-4 space-y-3 safe-bottom">
+        <div className="p-responsive space-y-3 safe-bottom shrink-0">
           <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-14 rounded-xl" />
         </div>
@@ -200,9 +200,9 @@ export default function PickupInProgress() {
 
   return (
     <>
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex-mobile-column bg-background">
       {/* Header flutuante sobre o mapa */}
-      <div className="absolute top-0 left-0 right-0 z-[1000] p-4 safe-top">
+      <div className="floating-header p-3 sm:p-4">
         <Card className="glass">
           <CardContent className="p-3 space-y-2">
             {/* Dashboard button */}
@@ -214,7 +214,7 @@ export default function PickupInProgress() {
                 onClick={() => navigate('/driver/dashboard')}
               >
                 <LayoutDashboard className="w-4 h-4 mr-1" />
-                Dashboard
+                <span className="hidden xs:inline">Dashboard</span>
               </Button>
               <Button
                 variant="ghost"
@@ -223,7 +223,7 @@ export default function PickupInProgress() {
                 onClick={() => setShowCancelModal(true)}
               >
                 <X className="w-4 h-4 mr-1" />
-                Cancelar
+                <span className="hidden xs:inline">Cancelar</span>
               </Button>
             </div>
             
@@ -238,18 +238,18 @@ export default function PickupInProgress() {
             )}
             
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">COLETA</p>
-                <p className="font-semibold text-foreground">Indo buscar o pedido</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-responsive-xs font-medium text-muted-foreground">COLETA</p>
+                <p className="text-responsive-sm font-semibold text-foreground truncate">Indo buscar o pedido</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                 {routeDistance && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-xs">
                     <Navigation className="w-3 h-3 mr-1" />
                     {routeDistance} km
                   </Badge>
                 )}
-                <Badge variant="secondary">
+                <Badge variant="secondary" className="text-xs">
                   <Clock className="w-3 h-3 mr-1" />
                   ~{estimatedTime} min
                 </Badge>
@@ -260,7 +260,7 @@ export default function PickupInProgress() {
       </div>
 
       {/* Mapa fullscreen */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative" style={{ minHeight: '40vh' }}>
         {currentPosition && destination ? (
           <MapContainer
             center={currentPosition}
@@ -290,10 +290,10 @@ export default function PickupInProgress() {
         ) : (
           <div className="h-full flex items-center justify-center bg-muted">
             {geoError ? (
-              <div className="text-center p-4">
-                <AlertCircle className="w-12 h-12 text-warning mx-auto mb-2" />
-                <p className="font-medium">Localização indisponível</p>
-                <p className="text-sm text-muted-foreground">Ative o GPS do seu dispositivo</p>
+              <div className="text-center p-responsive">
+                <AlertCircle className="icon-responsive-lg text-warning mx-auto mb-2" />
+                <p className="text-responsive-base font-medium">Localização indisponível</p>
+                <p className="text-responsive-sm text-muted-foreground">Ative o GPS do seu dispositivo</p>
               </div>
             ) : (
               <div className="animate-pulse text-muted-foreground">Obtendo localização...</div>
@@ -303,25 +303,25 @@ export default function PickupInProgress() {
       </div>
 
       {/* Bottom sheet com ações */}
-      <div className="bg-background border-t border-border p-4 space-y-3 safe-bottom animate-slide-up">
+      <div className="bg-background border-t border-border p-responsive space-y-3 safe-bottom animate-slide-up-sheet shrink-0">
         {/* Endereço de coleta */}
-        <Card>
+        <Card className="card-dynamic">
           <CardContent className="p-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
-                <Package className="w-5 h-5 text-success" />
+              <div className="avatar-responsive-sm rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                <Package className="icon-responsive-sm text-success" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-muted-foreground">LOCAL DE COLETA</p>
-                <p className="text-sm text-foreground">{delivery.pickup_address}</p>
+                <p className="text-responsive-xs font-medium text-muted-foreground">LOCAL DE COLETA</p>
+                <p className="text-responsive-sm text-foreground line-clamp-2">{delivery.pickup_address}</p>
                 {delivery.product_type && (
                   <Badge variant="outline" className="mt-1 text-xs">
                     {delivery.product_type}
                   </Badge>
                 )}
               </div>
-              <div className="text-right">
-                <p className="text-lg font-bold text-primary">
+              <div className="text-right shrink-0">
+                <p className="text-responsive-lg font-bold text-primary">
                   R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
                 </p>
               </div>
@@ -330,25 +330,25 @@ export default function PickupInProgress() {
         </Card>
 
         {/* Botões de ação */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           <Button 
             onClick={openGPS}
             variant="outline"
             size="lg"
-            className="h-14"
+            className="btn-touch"
           >
-            <Navigation className="w-5 h-5 mr-2" />
-            Abrir GPS
+            <Navigation className="icon-responsive-sm mr-2" />
+            <span className="text-responsive-sm">Abrir GPS</span>
           </Button>
 
           <Button 
             onClick={handleConfirmPickup}
             disabled={pickingUp}
             size="lg"
-            className="h-14 font-semibold"
+            className="btn-touch font-semibold"
           >
-            <CheckCircle className="w-5 h-5 mr-2" />
-            {pickingUp ? 'Confirmando...' : 'Confirmar Coleta'}
+            <CheckCircle className="icon-responsive-sm mr-2" />
+            <span className="text-responsive-sm">{pickingUp ? 'Confirmando...' : 'Confirmar Coleta'}</span>
           </Button>
         </div>
       </div>

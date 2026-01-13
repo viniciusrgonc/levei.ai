@@ -301,17 +301,17 @@ export default function DriverDashboard() {
   if (loading) {
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full">
+        <div className="flex-mobile-column flex w-full">
           <DriverSidebar />
           <div className="flex-1 flex flex-col">
-            <header className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top">
+            <header className="header-mobile border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top shrink-0">
               <div className="flex items-center gap-2 sm:gap-3">
                 <SidebarTrigger className="text-primary-foreground" />
-                <h1 className="text-base sm:text-lg font-bold text-primary-foreground">Levei</h1>
+                <h1 className="text-responsive-lg font-bold text-primary-foreground">Levei</h1>
               </div>
               <NotificationBell />
             </header>
-            <main className="flex-1 p-3 sm:p-4 bg-background safe-bottom">
+            <main className="scroll-container p-responsive bg-background safe-bottom">
               <DashboardSkeleton />
             </main>
           </div>
@@ -322,26 +322,26 @@ export default function DriverDashboard() {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full">
+      <div className="flex-mobile-column flex w-full">
         <DriverSidebar />
         <div className="flex-1 flex flex-col">
           {/* Header compacto */}
-          <header className="h-12 sm:h-14 border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top">
+          <header className="header-mobile border-b border-border flex items-center justify-between px-3 sm:px-4 bg-primary safe-top shrink-0">
             <div className="flex items-center gap-2 sm:gap-3">
               <SidebarTrigger className="text-primary-foreground" />
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <Bike className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
-                <h1 className="text-base sm:text-lg font-bold text-primary-foreground">Levei</h1>
+                <Bike className="icon-responsive-sm text-primary-foreground" />
+                <h1 className="text-responsive-lg font-bold text-primary-foreground">Levei</h1>
               </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <div className={`w-2 h-2 rounded-full ${status.color}`} />
-              <span className="text-[10px] sm:text-xs text-primary-foreground/80">{status.label}</span>
+              <span className="text-responsive-xs text-primary-foreground/80">{status.label}</span>
               <NotificationBell />
             </div>
           </header>
 
-          <main className="flex-1 p-3 sm:p-4 bg-background overflow-auto safe-bottom">
+          <main className="scroll-container p-responsive bg-background safe-bottom">
             <div className="max-w-lg mx-auto space-y-3 sm:space-y-4">
               
               {/* KPIs - Ganhos e Entregas */}

@@ -275,21 +275,28 @@
     @apply bg-background/80 backdrop-blur-lg;
   }
 
-  /* Safe area padding for mobile */
+  /* Safe area padding for mobile - Enhanced for all devices */
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
   }
 
   .safe-top {
-    padding-top: env(safe-area-inset-top);
+    padding-top: max(env(safe-area-inset-top, 0px), 8px);
   }
 
   .safe-left {
-    padding-left: env(safe-area-inset-left);
+    padding-left: env(safe-area-inset-left, 0px);
   }
 
   .safe-right {
-    padding-right: env(safe-area-inset-right);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
 
   /* Mobile-first responsive containers */
@@ -315,6 +322,118 @@
   /* Full width cards on mobile */
   .card-full-mobile {
     @apply rounded-none sm:rounded-xl border-x-0 sm:border-x;
+  }
+
+  /* Responsive text sizing */
+  .text-responsive-xs {
+    @apply text-[10px] sm:text-xs;
+  }
+
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  .text-responsive-3xl {
+    @apply text-2xl sm:text-3xl;
+  }
+
+  /* Fixed bottom bar with safe area */
+  .fixed-bottom-bar {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  }
+
+  /* Floating header with safe area */
+  .floating-header {
+    @apply absolute top-0 left-0 right-0 z-[1000];
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Fullscreen map container */
+  .map-fullscreen {
+    @apply absolute inset-0;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  /* Flex layout for mobile screens */
+  .flex-mobile-column {
+    @apply flex flex-col min-h-screen;
+    min-height: 100dvh;
+  }
+
+  /* Scroll container with flex-grow */
+  .scroll-container {
+    @apply flex-1 overflow-auto;
+  }
+
+  /* Card with dynamic height */
+  .card-dynamic {
+    @apply w-full;
+    height: auto;
+    min-height: fit-content;
+  }
+
+  /* Button height for mobile touch */
+  .btn-touch {
+    @apply h-12 sm:h-14 min-h-[48px];
+  }
+
+  /* Responsive gap */
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+
+  /* Responsive padding */
+  .p-responsive {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+
+  /* Responsive margin */
+  .m-responsive {
+    @apply m-3 sm:m-4 md:m-6;
+  }
+
+  /* Icon sizes responsive */
+  .icon-responsive-sm {
+    @apply w-4 h-4 sm:w-5 sm:h-5;
+  }
+
+  .icon-responsive-md {
+    @apply w-5 h-5 sm:w-6 sm:h-6;
+  }
+
+  .icon-responsive-lg {
+    @apply w-6 h-6 sm:w-8 sm:h-8;
+  }
+
+  /* Avatar sizes responsive */
+  .avatar-responsive-sm {
+    @apply w-8 h-8 sm:w-10 sm:h-10;
+  }
+
+  .avatar-responsive-md {
+    @apply w-10 h-10 sm:w-12 sm:h-12;
+  }
+
+  .avatar-responsive-lg {
+    @apply w-12 h-12 sm:w-16 sm:h-16;
   }
 }
 
@@ -381,6 +500,7 @@
 .leaflet-container {
   font-family: inherit;
   border-radius: var(--radius);
+  z-index: 1;
 }
 
 .leaflet-control-attribution {
@@ -433,4 +553,65 @@
 ::selection {
   background: hsl(var(--primary) / 0.2);
   color: hsl(var(--foreground));
+}
+
+/* Mobile viewport height fix */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+  .h-screen {
+    height: 100dvh;
+  }
+}
+
+/* Prevent overscroll on iOS */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure body stretches to fill viewport */
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Fix for iOS input zoom */
+@media screen and (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Responsive aspect ratios for maps */
+.map-aspect-responsive {
+  aspect-ratio: 16/9;
+}
+
+@media (min-width: 640px) {
+  .map-aspect-responsive {
+    aspect-ratio: 21/9;
+  }
+}
+
+/* Bottom sheet animation for mobile */
+@keyframes slide-up-sheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up-sheet {
+  animation: slide-up-sheet 0.3s ease-out;
+}
+
+/* Responsive grid for cards */
+.grid-responsive-cards {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4;
 }

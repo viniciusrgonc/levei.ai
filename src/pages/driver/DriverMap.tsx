@@ -37,71 +37,71 @@ export default function DriverMap() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="flex-mobile-column flex w-full bg-background">
         <DriverSidebar />
-        <main className="flex-1 overflow-y-auto">
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
+        <main className="flex-1 flex flex-col overflow-hidden">
+          <header className="header-mobile sticky top-0 z-10 flex items-center gap-4 border-b bg-background px-3 sm:px-4 safe-top shrink-0">
             <SidebarTrigger />
-            <h1 className="text-lg font-semibold">Mapa de Entregas</h1>
+            <h1 className="text-responsive-lg font-semibold">Mapa de Entregas</h1>
             <div className="ml-auto">
               <NotificationBell />
             </div>
           </header>
 
-          <div className="p-6 space-y-6">
+          <div className="scroll-container p-responsive safe-bottom">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
+              <CardHeader className="p-3 sm:p-4">
+                <CardTitle className="flex items-center gap-2 text-responsive-base">
+                  <MapPin className="icon-responsive-sm" />
                   Entregas Disponíveis
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-responsive-sm">
                   Veja as entregas próximas a você
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-3 sm:p-4 pt-0">
                 {loading ? (
-                  <p className="text-muted-foreground">Carregando...</p>
+                  <p className="text-muted-foreground text-responsive-sm">Carregando...</p>
                 ) : nearbyDeliveries.length === 0 ? (
-                  <p className="text-muted-foreground">Nenhuma entrega disponível no momento</p>
+                  <p className="text-muted-foreground text-responsive-sm">Nenhuma entrega disponível no momento</p>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {nearbyDeliveries.map((delivery) => (
-                      <Card key={delivery.id}>
-                        <CardContent className="pt-6">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="space-y-1">
-                              <p className="font-semibold">{delivery.restaurants?.business_name}</p>
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Navigation className="h-4 w-4" />
+                      <Card key={delivery.id} className="card-dynamic">
+                        <CardContent className="p-3 sm:pt-4">
+                          <div className="flex justify-between items-start mb-3 sm:mb-4">
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <p className="text-responsive-sm font-semibold truncate">{delivery.restaurants?.business_name}</p>
+                              <div className="flex items-center gap-2 text-responsive-xs text-muted-foreground">
+                                <Navigation className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
                                 <span>{delivery.distance_km} km</span>
                               </div>
                             </div>
-                            <Badge variant="secondary">
+                            <Badge variant="secondary" className="text-xs shrink-0">
                               R$ {Number(delivery.price).toFixed(2)}
                             </Badge>
                           </div>
-                          <div className="space-y-2 mb-4">
+                          <div className="space-y-2 mb-3 sm:mb-4">
                             <div className="flex items-start gap-2">
-                              <Package className="h-4 w-4 mt-1 text-primary" />
-                              <div>
-                                <p className="text-sm font-medium">Coleta</p>
-                                <p className="text-sm text-muted-foreground">{delivery.pickup_address}</p>
+                              <Package className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 text-primary shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-responsive-xs font-medium">Coleta</p>
+                                <p className="text-responsive-xs text-muted-foreground truncate">{delivery.pickup_address}</p>
                               </div>
                             </div>
                             <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 mt-1 text-destructive" />
-                              <div>
-                                <p className="text-sm font-medium">Entrega</p>
-                                <p className="text-sm text-muted-foreground">{delivery.delivery_address}</p>
+                              <MapPin className="w-3 h-3 sm:w-4 sm:h-4 mt-0.5 text-destructive shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-responsive-xs font-medium">Entrega</p>
+                                <p className="text-responsive-xs text-muted-foreground truncate">{delivery.delivery_address}</p>
                               </div>
                             </div>
                           </div>
                           <Button 
-                            className="w-full" 
+                            className="w-full btn-touch" 
                             onClick={() => navigate(`/driver/delivery/${delivery.id}`)}
                           >
-                            Ver Detalhes
+                            <span className="text-responsive-sm">Ver Detalhes</span>
                           </Button>
                         </CardContent>
                       </Card>
