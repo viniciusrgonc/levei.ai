@@ -27,29 +27,8 @@ export function useUserSetup(): UserSetupStatus {
     }
 
     const checkSetup = async () => {
-      // Special handling for admin@admin.com - automatically assign admin role
-      if (user.email === 'admin@admin.com') {
-        const { data: existingRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
-
-        // If admin role doesn't exist, create it
-        if (!existingRole) {
-          await supabase
-            .from('user_roles')
-            .insert({ user_id: user.id, role: 'admin' });
-        }
-
-        setStatus({
-          role: 'admin',
-          hasCompletedSetup: true,
-          loading: false,
-        });
-        return;
-      }
+      // Check user role - admin roles must be assigned manually via database
+      // This prevents privilege escalation attacks via hardcoded emails
 
       // Check user role for non-admin users
       const { data: roleData } = await supabase
