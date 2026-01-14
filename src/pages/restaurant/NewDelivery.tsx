@@ -426,36 +426,37 @@ export default function NewDelivery() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="flex w-full bg-background layout-mobile-safe no-overflow-x">
         <RestaurantSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0 max-w-full">
           {/* Header */}
-          <header className="sticky top-0 z-10 h-16 border-b bg-background flex items-center px-4 gap-4">
+          <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-background flex items-center px-3 sm:px-4 gap-2 sm:gap-4 safe-top flex-shrink-0">
             <Button 
               variant="ghost" 
               size="icon"
+              className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
               onClick={handlePrevStep}
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
-            <div className="flex-1">
-              <h1 className="font-semibold flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold flex items-center gap-2 text-sm sm:text-base truncate">
                 {isAdditionalDelivery && (
-                  <Badge variant="secondary" className="bg-success/10 text-success">
+                  <Badge variant="secondary" className="bg-success/10 text-success text-xs flex-shrink-0">
                     <Layers className="w-3 h-3 mr-1" />
                     Adicional
                   </Badge>
                 )}
-                Nova Entrega
+                <span className="truncate">Nova Entrega</span>
               </h1>
-              <p className="text-xs text-muted-foreground">Etapa {step} de {totalSteps}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">Etapa {step} de {totalSteps}</p>
             </div>
             {/* Progress */}
-            <div className="flex gap-1">
+            <div className="flex gap-0.5 sm:gap-1 flex-shrink-0">
               {Array.from({ length: totalSteps }).map((_, i) => (
                 <div
                   key={i}
-                  className={`h-1.5 w-6 rounded-full transition-colors ${
+                  className={`h-1 sm:h-1.5 w-4 sm:w-6 rounded-full transition-colors ${
                     i < step ? 'bg-primary' : 'bg-muted'
                   }`}
                 />
@@ -463,7 +464,7 @@ export default function NewDelivery() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto content-scroll-safe pb-20 sm:pb-24">
             {/* Step 1: Pickup Location - Skip for additional deliveries */}
             {step === 1 && !isAdditionalDelivery && (
               <div className="p-4 space-y-4">
@@ -715,32 +716,32 @@ export default function NewDelivery() {
           </main>
 
           {/* Footer Button */}
-          <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+          <div className="footer-button-safe flex-shrink-0">
             {step < totalSteps ? (
               <Button
-                size="xl"
-                className="w-full"
+                size="lg"
+                className="w-full h-12 sm:h-14 text-sm sm:text-base"
                 onClick={handleNextStep}
                 disabled={!canProceed()}
               >
                 Continuar
-                <ChevronRight className="h-5 w-5 ml-2" />
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 ml-2" />
               </Button>
             ) : (
               <Button
-                size="xl"
-                className="w-full"
+                size="lg"
+                className="w-full h-12 sm:h-14 text-sm sm:text-base"
                 onClick={handleSubmit}
                 disabled={submitting || (restaurant ? restaurant.wallet_balance < estimatedPrice : true)}
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin mr-2" />
                     Criando...
                   </>
                 ) : (
                   <>
-                    Solicitar Entrega • R$ {estimatedPrice.toFixed(2)}
+                    Solicitar • R$ {estimatedPrice.toFixed(2)}
                   </>
                 )}
               </Button>
