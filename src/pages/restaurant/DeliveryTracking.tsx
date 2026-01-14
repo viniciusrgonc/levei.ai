@@ -66,6 +66,7 @@ export default function DeliveryTracking() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [hasRated, setHasRated] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [autoRatingChecked, setAutoRatingChecked] = useState(false);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -119,7 +120,7 @@ export default function DeliveryTracking() {
   };
 
   const checkIfRated = async (deliveryId: string) => {
-    if (!user) return;
+    if (!user) return false;
     
     const { data } = await supabase
       .from('ratings')
@@ -129,7 +130,24 @@ export default function DeliveryTracking() {
       .maybeSingle();
     
     setHasRated(!!data);
+    return !!data;
   };
+
+  // Auto-show rating modal when delivery is completed
+  useEffect(() => {
+    if (delivery?.status === 'delivered' && driver && !hasRated && !autoRatingChecked) {
+      setAutoRatingChecked(true);
+      // Check if already rated before showing modal
+      checkIfRated(delivery.id).then((alreadyRated) => {
+        if (!alreadyRated) {
+          // Small delay to let the user see the "delivered" status first
+          setTimeout(() => {
+            setShowRatingModal(true);
+          }, 1500);
+        }
+      });
+    }
+  }, [delivery?.status, driver, hasRated, autoRatingChecked]);
 
   const fetchDriver = async (driverId: string) => {
     const { data } = await supabase

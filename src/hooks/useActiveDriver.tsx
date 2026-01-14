@@ -40,22 +40,23 @@ export function useActiveDriver(restaurantId: string | undefined): UseActiveDriv
       setNoEligibleReason(null);
 
       try {
-        // Find drivers currently picking up at this restaurant
-        const { data: pickingUpDeliveries, error } = await supabase
+        // Find drivers currently picking up or on the way to this restaurant
+        const { data: activeDeliveries, error } = await supabase
           .from('deliveries')
-          .select('id, driver_id, vehicle_category, accepted_at')
+          .select('id, driver_id, vehicle_category, accepted_at, status')
           .eq('restaurant_id', restaurantId)
-          .eq('status', 'picking_up')
-          .not('driver_id', 'is', null);
+          .in('status', ['accepted', 'picking_up'])
+          .not('driver_id', 'is', null)
+          .order('accepted_at', { ascending: false });
 
-        if (error || !pickingUpDeliveries || pickingUpDeliveries.length === 0) {
+        if (error || !activeDeliveries || activeDeliveries.length === 0) {
           setActiveDriver(null);
           setLoading(false);
           return;
         }
 
         // Check each driver for batch availability
-        for (const delivery of pickingUpDeliveries) {
+        for (const delivery of activeDeliveries) {
           const { data: result, error: rpcError } = await supabase
             .rpc('check_driver_available_for_batch', {
               p_driver_id: delivery.driver_id,
@@ -89,8 +90,8 @@ export function useActiveDriver(restaurantId: string | undefined): UseActiveDriv
           }
         }
 
-        // If we got here, there are picking_up deliveries but none are eligible
-        if (pickingUpDeliveries.length > 0 && !noEligibleReason) {
+        // If we got here, there are active deliveries but none are eligible
+        if (activeDeliveries.length > 0 && !noEligibleReason) {
           setNoEligibleDriver(true);
           setNoEligibleReason('Janela de tempo expirada ou limite de entregas atingido');
         }
