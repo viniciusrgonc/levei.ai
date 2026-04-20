@@ -51,7 +51,9 @@ type Driver = {
 const statusConfig: Record<string, { step: number; label: string; description: string; icon: string; color: string }> = {
   pending: { step: 1, label: 'Aguardando entregador', description: 'Procurando entregador disponível...', icon: '🕐', color: 'text-amber-600' },
   accepted: { step: 2, label: 'Coleta em andamento', description: 'Entregador a caminho da coleta', icon: '🚗', color: 'text-blue-600' },
+  picking_up: { step: 2, label: 'Coleta em andamento', description: 'Entregador a caminho da coleta', icon: '🚗', color: 'text-blue-600' },
   picked_up: { step: 3, label: 'Em rota de entrega', description: 'Seu pacote está a caminho', icon: '📦', color: 'text-purple-600' },
+  delivering: { step: 3, label: 'Em rota de entrega', description: 'Seu pacote está a caminho', icon: '📦', color: 'text-purple-600' },
   delivered: { step: 4, label: 'Entregue', description: 'Entrega finalizada com sucesso!', icon: '✅', color: 'text-green-600' },
   cancelled: { step: 0, label: 'Cancelada', description: 'Esta entrega foi cancelada', icon: '❌', color: 'text-red-600' },
 };

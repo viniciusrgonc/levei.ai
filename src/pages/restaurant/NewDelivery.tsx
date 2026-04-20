@@ -163,8 +163,8 @@ export default function NewDelivery() {
       .select('id, driver_id, vehicle_category, accepted_at')
       .eq('id', parentDeliveryId)
       .eq('restaurant_id', restaurant.id)
-      .eq('status', 'picking_up')
-      .single();
+      .in('status', ['accepted', 'picking_up'])
+      .maybeSingle();
 
     if (error || !deliveryData || !deliveryData.driver_id) {
       toast({

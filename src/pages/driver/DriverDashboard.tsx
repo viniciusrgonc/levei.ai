@@ -189,9 +189,9 @@ export default function DriverDashboard() {
   // Redirecionar para entrega ativa
   useEffect(() => {
     if (activeDelivery) {
-      if (activeDelivery.status === 'accepted') {
+      if (activeDelivery.status === 'accepted' || activeDelivery.status === 'picking_up') {
         navigate(`/driver/pickup/${activeDelivery.id}`, { replace: true });
-      } else if (activeDelivery.status === 'picked_up') {
+      } else if (activeDelivery.status === 'picked_up' || activeDelivery.status === 'delivering') {
         navigate(`/driver/delivery/${activeDelivery.id}`, { replace: true });
       }
     }
@@ -219,15 +219,17 @@ export default function DriverDashboard() {
       .from('drivers')
       .select('id')
       .eq('user_id', user?.id)
-      .single();
+      .maybeSingle();
 
     if (driverData) {
       const { data } = await supabase
         .from('deliveries')
         .select('*')
         .eq('driver_id', driverData.id)
-        .in('status', ['accepted', 'picked_up'])
-        .single();
+        .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering'])
+        .order('delivery_sequence', { ascending: true, nullsFirst: true })
+        .limit(1)
+        .maybeSingle();
 
       setActiveDelivery(data);
     }
@@ -238,7 +240,7 @@ export default function DriverDashboard() {
       .from('drivers')
       .select('id')
       .eq('user_id', user?.id)
-      .single();
+      .maybeSingle();
 
     if (driverData) {
       const today = new Date();
