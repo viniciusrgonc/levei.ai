@@ -160,7 +160,7 @@ export function useNearbyDeliveries({
       console.log('[NearbyDeliveries] Setting up realtime subscription');
       
       // Subscribe to realtime updates with debounce
-      let debounceTimer: NodeJS.Timeout | null = null;
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
       const channelName = `pending-deliveries-nearby-${Date.now()}`;
       
       const channel = supabase
