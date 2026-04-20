@@ -19,7 +19,7 @@ export function useDriverLocationTracking({
   deliveryId, 
   isActive 
 }: UseDriverLocationTrackingProps) {
-  const intervalRef = useRef<NodeJS.Timeout>();
+  const intervalRef = useRef<ReturnType<typeof setTimeout>>();
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null);
 
   const calculateSpeed = (last: LastLocation, current: { latitude: number; longitude: number }, timestamp: number): number => {

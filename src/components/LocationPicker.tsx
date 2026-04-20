@@ -51,7 +51,7 @@ export default function LocationPicker({
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
-  const [searchTimeout, setSearchTimeoutState] = useState<NodeJS.Timeout | null>(null);
+  const [searchTimeout, setSearchTimeoutState] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
