@@ -15,8 +15,7 @@ import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { useActiveDriver } from '@/hooks/useActiveDriver';
 import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { RatingModal } from '@/components/RatingModal';
-import { Star } from 'lucide-react';
+import { shortAddress } from '@/lib/utils';
 
 type Restaurant = {
   id: string;
@@ -53,12 +52,6 @@ export default function RestaurantDashboard() {
   const [loading, setLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
-  const [ratingModalData, setRatingModalData] = useState<{
-    deliveryId: string;
-    driverUserId: string;
-    driverName: string;
-  } | null>(null);
-  const [ratedDeliveryIds, setRatedDeliveryIds] = useState<Set<string>>(new Set());
 
   const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
     e.stopPropagation();
@@ -71,41 +64,6 @@ export default function RestaurantDashboard() {
     setSelectedDeliveryId(null);
     fetchDeliveries();
   };
-
-  const openRatingForDelivery = async (e: React.MouseEvent, deliveryId: string, driverId: string) => {
-    e.stopPropagation();
-    // Fetch driver info
-    const { data: driverData } = await supabase
-      .from('drivers')
-      .select('user_id, profiles!drivers_user_id_fkey(full_name)')
-      .eq('id', driverId)
-      .maybeSingle();
-
-    if (!driverData) return;
-    setRatingModalData({
-      deliveryId,
-      driverUserId: driverData.user_id,
-      driverName: (driverData as any).profiles?.full_name || 'Entregador',
-    });
-  };
-
-  // Load already-rated delivery ids so we can hide the button
-  useEffect(() => {
-    const loadRated = async () => {
-      const ids = deliveries
-        .filter((d) => d.status === 'delivered' && d.driver_id)
-        .map((d) => d.id);
-      if (!user || ids.length === 0) return;
-      const { data } = await supabase
-        .from('ratings')
-        .select('delivery_id')
-        .eq('rated_by', user.id)
-        .in('delivery_id', ids);
-      if (data) setRatedDeliveryIds(new Set(data.map((r) => r.delivery_id)));
-    };
-    loadRated();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, deliveries]);
 
   const { activeDriver, noEligibleDriver, noEligibleReason } = useActiveDriver(restaurant?.id);
 
@@ -128,35 +86,28 @@ export default function RestaurantDashboard() {
 
   const fetchRestaurant = async () => {
     if (!user) return;
-
     const { data, error } = await supabase
       .from('restaurants')
       .select('id, business_name, wallet_balance')
       .eq('user_id', user.id)
       .single();
-
     if (error) {
-      if (error.code === 'PGRST116') {
-        navigate('/restaurant/setup');
-      }
+      if (error.code === 'PGRST116') navigate('/restaurant/setup');
       setLoading(false);
       return;
     }
-
     setRestaurant(data);
     setLoading(false);
   };
 
   const fetchDeliveries = async () => {
     if (!restaurant) return;
-
     const { data } = await supabase
       .from('deliveries')
       .select('*')
       .eq('restaurant_id', restaurant.id)
       .order('created_at', { ascending: false })
       .limit(20);
-
     setDeliveries(data || []);
   };
 
@@ -165,23 +116,23 @@ export default function RestaurantDashboard() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full">
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full overflow-hidden">
           <RestaurantSidebar />
-          <div className="flex-1 flex flex-col">
-            <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
-              <div className="flex h-full items-center justify-between px-3 sm:px-4">
-                <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="sticky top-0 z-10 h-12 border-b bg-primary">
+              <div className="flex h-full items-center justify-between px-3">
+                <div className="flex items-center gap-2">
                   <SidebarTrigger className="text-primary-foreground" />
-                  <Skeleton className="h-5 w-24 sm:h-6 sm:w-32 bg-primary-foreground/20" />
+                  <Skeleton className="h-5 w-24 bg-primary-foreground/20" />
                 </div>
                 <NotificationBell />
               </div>
             </header>
-            <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
-              <Skeleton className="h-12 sm:h-14 w-full rounded-lg sm:rounded-xl" />
-              <Skeleton className="h-20 sm:h-24 w-full rounded-lg sm:rounded-xl" />
-              <Skeleton className="h-40 sm:h-48 w-full rounded-lg sm:rounded-xl" />
+            <main className="flex-1 p-3 space-y-4">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-20 w-full rounded-xl" />
+              <Skeleton className="h-40 w-full rounded-xl" />
             </main>
           </div>
         </div>
@@ -192,16 +143,16 @@ export default function RestaurantDashboard() {
   if (!restaurant) return null;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
+    <SidebarProvider defaultOpen={false}>
+      <div className="min-h-screen flex w-full overflow-hidden bg-background">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header - Compacto em mobile */}
-          <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
-            <div className="flex h-full items-center justify-between px-3 sm:px-4">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+
+          <header className="sticky top-0 z-10 h-12 border-b bg-primary">
+            <div className="flex h-full items-center justify-between px-3">
+              <div className="flex items-center gap-2 min-w-0">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10 flex-shrink-0" />
-                <h1 className="text-sm sm:text-base md:text-lg font-bold text-primary-foreground truncate">
+                <h1 className="text-sm font-bold text-primary-foreground truncate">
                   {restaurant.business_name}
                 </h1>
               </div>
@@ -209,8 +160,8 @@ export default function RestaurantDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-x-hidden overflow-y-auto pb-20 sm:pb-24 safe-bottom min-w-0">
-            {/* Banner de Entregador Ativo */}
+          <main className="flex-1 p-3 space-y-4 overflow-y-auto pb-24">
+
             {activeDriver && activeDriver.available && (
               <ActiveDriverBanner
                 driverId={activeDriver.driver_id!}
@@ -225,79 +176,73 @@ export default function RestaurantDashboard() {
               />
             )}
 
-            {/* Aviso quando há entregador mas não está elegível */}
             {noEligibleDriver && !activeDriver?.available && (
               <Alert variant="default" className="border-muted-foreground/20">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
                 <AlertDescription className="text-sm">
                   {noEligibleReason || 'Entregador em rota, mas a janela de tempo para adicionar entregas expirou.'}
                 </AlertDescription>
               </Alert>
             )}
 
-            {/* CTA Principal */}
             <Button
               onClick={() => navigate('/restaurant/new-delivery')}
               size="lg"
-              className="w-full gap-2 sm:gap-3 text-base sm:text-lg shadow-lg h-12 sm:h-14"
+              className="w-full gap-2 text-base shadow-lg h-12"
             >
-              <Plus className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Plus className="h-5 w-5" />
               Nova Entrega
             </Button>
 
-            {/* Saldo */}
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate('/restaurant/wallet')}
             >
-              <CardContent className="p-3 sm:p-4 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+              <CardContent className="p-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="h-5 w-5 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Saldo disponível</p>
-                    <p className="text-xl sm:text-2xl font-bold truncate">R$ {restaurant.wallet_balance.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground">Saldo disponível</p>
+                    <p className="text-xl font-bold">R$ {restaurant.wallet_balance.toFixed(2)}</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="flex-shrink-0 text-xs sm:text-sm">
+                <Button variant="outline" size="sm" className="flex-shrink-0 text-xs">
                   Adicionar
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Entregas Ativas */}
             <section>
-              <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
-                  <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-                  Em andamento
-                  {activeDeliveries.length > 0 && (
-                    <Badge variant="secondary" className="ml-1 sm:ml-2 text-xs">
-                      {activeDeliveries.length}
-                    </Badge>
-                  )}
-                </h2>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="h-4 w-4 text-primary flex-shrink-0" />
+                <h2 className="text-base font-semibold">Em andamento</h2>
+                {activeDeliveries.length > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {activeDeliveries.length}
+                  </Badge>
+                )}
               </div>
 
               {activeDeliveries.length === 0 ? (
                 <Card className="border-dashed">
-                  <CardContent className="p-6 sm:p-8 text-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-muted mx-auto mb-3 sm:mb-4 flex items-center justify-center">
-                      <Package className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                  <CardContent className="p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-muted mx-auto mb-3 flex items-center justify-center">
+                      <Package className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <h3 className="font-semibold mb-2 text-sm sm:text-base">Nenhuma entrega ativa</h3>
-                    <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
+                    <h3 className="font-semibold mb-1 text-sm">Nenhuma entrega ativa</h3>
+                    <p className="text-xs text-muted-foreground mb-3">
                       Clique em "Nova Entrega" para solicitar sua primeira entrega
                     </p>
                     <Button onClick={() => navigate('/restaurant/new-delivery')} variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
+                      <Plus className="h-4 w-4 mr-1" />
                       Criar entrega
                     </Button>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-2">
                   {activeDeliveries.map((delivery) => {
                     const status = statusConfig[delivery.status] || statusConfig.pending;
                     return (
@@ -306,20 +251,20 @@ export default function RestaurantDashboard() {
                         className="cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
                         onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                       >
-                        <CardContent className="p-3 sm:p-4">
-                          <div className="flex items-start justify-between gap-2 sm:gap-3">
+                        <CardContent className="p-3">
+                          <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2 flex-wrap">
-                                <span className="text-lg sm:text-xl">{status.icon}</span>
+                              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                                <span className="text-base">{status.icon}</span>
                                 <Badge className={`${status.color} border font-medium text-xs`}>
                                   {status.label}
                                 </Badge>
                               </div>
-                              <p className="text-sm font-medium truncate flex items-center gap-1.5 sm:gap-2">
-                                <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground flex-shrink-0" />
-                                <span className="truncate">{delivery.delivery_address}</span>
+                              <p className="text-sm font-medium flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="truncate">{shortAddress(delivery.delivery_address)}</span>
                               </p>
-                              <div className="flex items-center gap-2 sm:gap-3 mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
                                 <span>{delivery.distance_km?.toFixed(1)} km</span>
                                 <span>•</span>
                                 <span>
@@ -331,30 +276,30 @@ export default function RestaurantDashboard() {
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <p className="text-lg sm:text-xl font-bold text-primary">
+                              <p className="text-base font-bold text-primary">
                                 R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
                               </p>
-                              <div className="flex flex-col gap-0.5 sm:gap-1 mt-1">
+                              <div className="flex flex-col gap-0.5 mt-1">
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 text-xs sm:text-sm px-2"
+                                  className="h-7 text-xs px-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/restaurant/delivery/${delivery.id}`);
                                   }}
                                 >
-                                  <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                  <Eye className="h-3.5 w-3.5 mr-1" />
                                   Rastrear
                                 </Button>
                                 {delivery.status === 'pending' && (
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="h-8 text-xs sm:text-sm px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    className="h-7 text-xs px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={(e) => handleOpenCancelModal(e, delivery.id)}
                                   >
-                                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                    <X className="h-3.5 w-3.5 mr-1" />
                                     Cancelar
                                   </Button>
                                 )}
@@ -369,23 +314,17 @@ export default function RestaurantDashboard() {
               )}
             </section>
 
-            {/* Entregas Concluídas */}
             {completedDeliveries.length > 0 && (
               <section>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-base font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
                     Concluídas recentemente
                   </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/restaurant/history')}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/restaurant/history')}>
                     Ver todas
                   </Button>
                 </div>
-
                 <div className="space-y-2">
                   {completedDeliveries.slice(0, 3).map((delivery) => (
                     <Card
@@ -394,33 +333,20 @@ export default function RestaurantDashboard() {
                       onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                     >
                       <CardContent className="p-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <span className="text-lg">✅</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-base flex-shrink-0">✅</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {delivery.recipient_name || delivery.delivery_address}
+                              {delivery.recipient_name || shortAddress(delivery.delivery_address)}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(delivery.created_at).toLocaleDateString('pt-BR')}
                             </p>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <p className="font-semibold text-green-600 text-sm">
-                            R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                          </p>
-                          {delivery.driver_id && !ratedDeliveryIds.has(delivery.id) && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2 text-xs gap-1"
-                              onClick={(e) => openRatingForDelivery(e, delivery.id, delivery.driver_id!)}
-                            >
-                              <Star className="h-3 w-3" />
-                              Avaliar
-                            </Button>
-                          )}
-                        </div>
+                        <p className="font-semibold text-green-600 flex-shrink-0 text-sm">
+                          R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
@@ -431,27 +357,12 @@ export default function RestaurantDashboard() {
         </div>
       </div>
 
-      {/* Cancel Modal */}
       {selectedDeliveryId && (
         <CancelDeliveryModal
           deliveryId={selectedDeliveryId}
           open={cancelModalOpen}
           onOpenChange={setCancelModalOpen}
           onCancelled={handleCancelSuccess}
-        />
-      )}
-
-      {/* Rating Modal - opens from completed deliveries list */}
-      {ratingModalData && (
-        <RatingModal
-          deliveryId={ratingModalData.deliveryId}
-          driverUserId={ratingModalData.driverUserId}
-          driverName={ratingModalData.driverName}
-          onClose={() => setRatingModalData(null)}
-          onSubmitted={() => {
-            setRatedDeliveryIds((prev) => new Set(prev).add(ratingModalData.deliveryId));
-            setRatingModalData(null);
-          }}
         />
       )}
     </SidebarProvider>
