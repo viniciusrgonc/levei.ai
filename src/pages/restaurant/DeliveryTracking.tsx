@@ -10,7 +10,7 @@ import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
-import { getGoogleMapsLink } from '@/lib/utils';
+import { getGoogleMapsLink, formatAddress } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingModal } from '@/components/RatingModal';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
@@ -74,9 +74,7 @@ export default function DeliveryTracking() {
 
   useEffect(() => {
     if (!deliveryId) return;
-    
     fetchDelivery();
-
     const channel = supabase
       .channel(`delivery-tracking-${deliveryId}`)
       .on('postgres_changes', {
@@ -91,31 +89,24 @@ export default function DeliveryTracking() {
         }
       })
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [deliveryId]);
 
   const fetchDelivery = async () => {
     if (!deliveryId) return;
-
     const { data, error } = await supabase
       .from('deliveries')
       .select('*')
       .eq('id', deliveryId)
       .single();
-
     if (error || !data) {
       toast({ variant: 'destructive', title: 'Entrega não encontrada' });
       navigate('/restaurant/dashboard');
       return;
     }
-
     setDelivery(data);
     if (data.driver_id) {
       fetchDriver(data.driver_id);
-      // Check if already rated
       checkIfRated(data.id);
     }
     setLoading(false);
@@ -123,29 +114,22 @@ export default function DeliveryTracking() {
 
   const checkIfRated = async (deliveryId: string) => {
     if (!user) return false;
-    
     const { data } = await supabase
       .from('ratings')
       .select('id')
       .eq('delivery_id', deliveryId)
       .eq('rated_by', user.id)
       .maybeSingle();
-    
     setHasRated(!!data);
     return !!data;
   };
 
-  // Auto-show rating modal when delivery is completed
   useEffect(() => {
     if (delivery?.status === 'delivered' && driver && !hasRated && !autoRatingChecked) {
       setAutoRatingChecked(true);
-      // Check if already rated before showing modal
       checkIfRated(delivery.id).then((alreadyRated) => {
         if (!alreadyRated) {
-          // Small delay to let the user see the "delivered" status first
-          setTimeout(() => {
-            setShowRatingModal(true);
-          }, 1500);
+          setTimeout(() => { setShowRatingModal(true); }, 1500);
         }
       });
     }
@@ -157,7 +141,6 @@ export default function DeliveryTracking() {
       .select(`*, profiles!drivers_user_id_fkey (full_name, phone)`)
       .eq('id', driverId)
       .single();
-
     if (data) setDriver(data as any);
   };
 
@@ -174,10 +157,10 @@ export default function DeliveryTracking() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <div className="min-h-screen flex w-full">
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full overflow-hidden">
           <RestaurantSidebar />
-          <div className="flex-1 p-4 space-y-4">
+          <div className="flex-1 p-4 space-y-4 min-w-0">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-64 w-full" />
             <Skeleton className="h-32 w-full" />
@@ -193,34 +176,33 @@ export default function DeliveryTracking() {
   const isActive = ['accepted', 'picked_up'].includes(delivery.status);
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+    <SidebarProvider defaultOpen={false}>
+      <div className="min-h-screen flex w-full overflow-hidden bg-background">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header - Mobile optimized */}
-          <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-background flex items-center px-3 sm:px-4 gap-2 sm:gap-3 safe-top">
-            <Button 
-              variant="ghost" 
+
+          <header className="sticky top-0 z-10 h-12 border-b bg-background flex items-center px-3 gap-2">
+            <Button
+              variant="ghost"
               size="icon"
-              className="h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0"
+              className="h-9 w-9 flex-shrink-0"
               onClick={() => navigate('/restaurant/dashboard')}
             >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-sm sm:text-base font-semibold truncate">Acompanhar Entrega</h1>
+              <h1 className="text-sm font-semibold truncate">Acompanhar Entrega</h1>
               <p className="text-xs text-muted-foreground">#{delivery.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              className="h-8 px-2 text-muted-foreground"
               onClick={() => navigate('/restaurant/dashboard')}
             >
               <LayoutDashboard className="h-4 w-4 mr-1" />
               <span className="hidden sm:inline">Dashboard</span>
             </Button>
-            {/* Cancel button for active deliveries */}
             {['pending', 'accepted', 'picking_up', 'picked_up'].includes(delivery.status) && (
               <Button
                 variant="ghost"
@@ -235,9 +217,8 @@ export default function DeliveryTracking() {
           </header>
 
           <main className="flex-1 overflow-auto">
-            {/* Map - Responsive height */}
             {isActive && (
-              <div className="h-48 sm:h-64 md:h-80 relative">
+              <div className="h-48 sm:h-64 relative">
                 <DeliveryMap
                   pickupLat={delivery.pickup_latitude}
                   pickupLng={delivery.pickup_longitude}
@@ -248,63 +229,48 @@ export default function DeliveryTracking() {
                   locationHistory={locationHistory}
                 />
                 {currentLocation && (
-                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-background/95 backdrop-blur rounded-lg px-2 py-1.5 sm:px-3 sm:py-2 text-xs shadow-lg">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 animate-pulse" />
-                      <span className="font-medium text-xs">Entregador em movimento</span>
+                  <div className="absolute top-2 right-2 bg-background/95 backdrop-blur rounded-lg px-2 py-1.5 text-xs shadow-lg">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      <span className="font-medium">Entregador em movimento</span>
                     </div>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4 pb-20 safe-bottom">
-              {/* Status Card - Compact on mobile */}
+            <div className="p-3 space-y-3 pb-20">
+
               <Card className="border-2">
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="text-2xl sm:text-4xl">{status.icon}</div>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl">{status.icon}</div>
                     <div className="flex-1 min-w-0">
-                      <h2 className={`text-base sm:text-xl font-bold ${status.color} truncate`}>
-                        {status.label}
-                      </h2>
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate">{status.description}</p>
+                      <h2 className={`text-base font-bold ${status.color} truncate`}>{status.label}</h2>
+                      <p className="text-xs text-muted-foreground truncate">{status.description}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-lg sm:text-2xl font-bold text-primary">
+                      <p className="text-lg font-bold text-primary">
                         R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Progress Steps - Smaller on mobile */}
-                  <div className="flex items-center gap-1 sm:gap-2 mt-4 sm:mt-6">
+                  <div className="flex items-center gap-1 mt-4">
                     {[1, 2, 3, 4].map((stepNum) => (
-                      <div key={stepNum} className="flex-1 flex items-center gap-1 sm:gap-2">
-                        <div
-                          className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm font-medium transition-colors ${
-                            stepNum <= status.step
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {stepNum < status.step ? (
-                            <CheckCircle2 className="h-3 w-3 sm:h-5 sm:w-5" />
-                          ) : (
-                            stepNum
-                          )}
+                      <div key={stepNum} className="flex-1 flex items-center gap-1">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                          stepNum <= status.step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {stepNum < status.step ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
                         </div>
                         {stepNum < 4 && (
-                          <div
-                            className={`flex-1 h-0.5 sm:h-1 rounded-full ${
-                              stepNum < status.step ? 'bg-primary' : 'bg-muted'
-                            }`}
-                          />
+                          <div className={`flex-1 h-0.5 rounded-full ${stepNum < status.step ? 'bg-primary' : 'bg-muted'}`} />
                         )}
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-muted-foreground">
+                  <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
                     <span>Criado</span>
                     <span>Aceito</span>
                     <span>Coletado</span>
@@ -313,28 +279,22 @@ export default function DeliveryTracking() {
                 </CardContent>
               </Card>
 
-              {/* Driver Card - Compact on mobile */}
               {driver ? (
                 <Card>
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <User className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <User className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-base sm:text-lg truncate">{driver.profiles.full_name}</p>
-                        <p className="text-xs sm:text-sm text-muted-foreground capitalize truncate">
+                        <p className="font-semibold text-sm truncate">{driver.profiles.full_name}</p>
+                        <p className="text-xs text-muted-foreground capitalize truncate">
                           {driver.vehicle_type} • {driver.license_plate}
                         </p>
                       </div>
                       {driver.profiles.phone && (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={handleCall}
-                          className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0"
-                        >
-                          <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <Button size="icon" variant="outline" onClick={handleCall} className="h-9 w-9 flex-shrink-0">
+                          <Phone className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
@@ -342,111 +302,94 @@ export default function DeliveryTracking() {
                 </Card>
               ) : delivery.status === 'pending' ? (
                 <Card className="border-dashed">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin mx-auto text-muted-foreground mb-2 sm:mb-3" />
-                    <p className="font-medium text-sm sm:text-base">Procurando entregador...</p>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      Aguarde enquanto buscamos um entregador disponível
-                    </p>
+                  <CardContent className="p-6 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground mb-2" />
+                    <p className="font-medium text-sm">Procurando entregador...</p>
+                    <p className="text-xs text-muted-foreground">Aguarde enquanto buscamos um entregador disponível</p>
                   </CardContent>
                 </Card>
               ) : delivery.status === 'cancelled' ? (
-                <Card className="bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <XCircle className="h-10 w-10 sm:h-12 sm:w-12 text-red-600 mx-auto mb-2 sm:mb-3" />
-                    <h3 className="text-base sm:text-lg font-bold text-red-800 dark:text-red-400">Entrega Cancelada</h3>
-                    <p className="text-xs sm:text-sm text-red-700 dark:text-red-500 mt-1">
-                      Esta entrega foi cancelada e não está mais disponível.
-                    </p>
+                <Card className="bg-red-50 border-red-200">
+                  <CardContent className="p-6 text-center">
+                    <XCircle className="h-10 w-10 text-red-600 mx-auto mb-2" />
+                    <h3 className="text-base font-bold text-red-800">Entrega Cancelada</h3>
+                    <p className="text-xs text-red-700 mt-1">Esta entrega foi cancelada e não está mais disponível.</p>
                   </CardContent>
                 </Card>
               ) : null}
 
-              {/* Addresses - Compact on mobile */}
               <Card>
-                <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-                  <div 
-                    className="flex items-start gap-2 sm:gap-3 cursor-pointer hover:bg-muted/50 p-1.5 sm:p-2 rounded-lg transition-colors -m-1.5 sm:-m-2"
+                <CardContent className="p-3 space-y-3">
+                  <div
+                    className="flex items-start gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
                     onClick={() => openInMaps(delivery.pickup_latitude, delivery.pickup_longitude)}
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Coleta</p>
-                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{delivery.pickup_address}</p>
+                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{formatAddress(delivery.pickup_address)}</p>
                     </div>
-                    <Navigation className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+                    <Navigation className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
                   </div>
 
-                  <div className="border-l-2 border-dashed border-muted ml-4 sm:ml-5 h-3 sm:h-4" />
+                  <div className="border-l-2 border-dashed border-muted ml-4 h-3" />
 
-                  <div 
-                    className="flex items-start gap-2 sm:gap-3 cursor-pointer hover:bg-muted/50 p-1.5 sm:p-2 rounded-lg transition-colors -m-1.5 sm:-m-2"
+                  <div
+                    className="flex items-start gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
                     onClick={() => openInMaps(delivery.delivery_latitude, delivery.delivery_longitude)}
                   >
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                      <Navigation className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <Navigation className="h-4 w-4 text-red-600" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-muted-foreground">Entrega</p>
-                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{delivery.delivery_address}</p>
+                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{formatAddress(delivery.delivery_address)}</p>
                       {delivery.recipient_name && (
                         <p className="text-xs text-muted-foreground">Para: {delivery.recipient_name}</p>
                       )}
                     </div>
-                    <Navigation className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+                    <Navigation className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Info - Compact on mobile */}
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <Card>
-                  <CardContent className="p-3 sm:p-4 text-center">
-                    <Clock className="h-4 w-4 sm:h-5 sm:w-5 mx-auto text-muted-foreground mb-0.5 sm:mb-1" />
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Criado em</p>
-                    <p className="font-medium text-xs sm:text-sm">
-                      {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                  <CardContent className="p-3 text-center">
+                    <Clock className="h-4 w-4 mx-auto text-muted-foreground mb-0.5" />
+                    <p className="text-[10px] text-muted-foreground">Criado em</p>
+                    <p className="font-medium text-xs">
+                      {new Date(delivery.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </CardContent>
                 </Card>
                 <Card>
-                  <CardContent className="p-3 sm:p-4 text-center">
-                    <Package className="h-4 w-4 sm:h-5 sm:w-5 mx-auto text-muted-foreground mb-0.5 sm:mb-1" />
-                    <p className="text-[10px] sm:text-xs text-muted-foreground">Distância</p>
-                    <p className="font-medium text-xs sm:text-sm">{delivery.distance_km.toFixed(1)} km</p>
+                  <CardContent className="p-3 text-center">
+                    <Package className="h-4 w-4 mx-auto text-muted-foreground mb-0.5" />
+                    <p className="text-[10px] text-muted-foreground">Distância</p>
+                    <p className="font-medium text-xs">{delivery.distance_km.toFixed(1)} km</p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Success Message - Compact on mobile */}
               {delivery.status === 'delivered' && (
-                <Card className="bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-900">
-                  <CardContent className="p-4 sm:p-6 text-center">
-                    <CheckCircle2 className="h-10 w-10 sm:h-12 sm:w-12 text-green-600 mx-auto mb-2 sm:mb-3" />
-                    <h3 className="text-base sm:text-lg font-bold text-green-800 dark:text-green-400">Entrega Concluída!</h3>
-                    <p className="text-xs sm:text-sm text-green-700 dark:text-green-500 mt-1">
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="p-4 text-center">
+                    <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto mb-2" />
+                    <h3 className="text-base font-bold text-green-800">Entrega Concluída!</h3>
+                    <p className="text-xs text-green-700 mt-1">
                       Entregue em {delivery.delivered_at && new Date(delivery.delivered_at).toLocaleString('pt-BR')}
                     </p>
-                    
-                    {/* Rating Button */}
                     {driver && !hasRated && (
-                      <Button
-                        size="sm"
-                        className="mt-3 sm:mt-4 gap-2"
-                        onClick={() => setShowRatingModal(true)}
-                      >
+                      <Button size="sm" className="mt-3 gap-2" onClick={() => setShowRatingModal(true)}>
                         <Star className="h-4 w-4" />
                         Avaliar Entregador
                       </Button>
                     )}
-                    
                     {hasRated && (
-                      <p className="mt-3 sm:mt-4 text-xs sm:text-sm text-green-600 flex items-center justify-center gap-1.5 sm:gap-2">
+                      <p className="mt-3 text-xs text-green-600 flex items-center justify-center gap-1.5">
                         <Star className="h-4 w-4 fill-current" />
                         Você já avaliou esta entrega
                       </p>
@@ -459,29 +402,21 @@ export default function DeliveryTracking() {
         </div>
       </div>
 
-      {/* Rating Modal */}
       {showRatingModal && driver && (
         <RatingModal
           deliveryId={delivery.id}
           driverUserId={driver.user_id}
           driverName={driver.profiles.full_name}
           onClose={() => setShowRatingModal(false)}
-          onSubmitted={() => {
-            setShowRatingModal(false);
-            setHasRated(true);
-          }}
+          onSubmitted={() => { setShowRatingModal(false); setHasRated(true); }}
         />
       )}
 
-      {/* Cancel Modal */}
       <CancelDeliveryModal
         deliveryId={delivery.id}
         open={showCancelModal}
         onOpenChange={setShowCancelModal}
-        onCancelled={() => {
-          setShowCancelModal(false);
-          fetchDelivery();
-        }}
+        onCancelled={() => { setShowCancelModal(false); fetchDelivery(); }}
       />
     </SidebarProvider>
   );
