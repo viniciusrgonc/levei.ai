@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -19,12 +19,21 @@ export function useUserSetup(): UserSetupStatus {
     hasCompletedSetup: false,
     loading: true,
   });
+  const lastFetchedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!user) {
+      lastFetchedUserIdRef.current = null;
       setStatus({ role: null, hasCompletedSetup: false, loading: false });
       return;
     }
+
+    // Prevent duplicate fetches when the user object reference changes
+    // but the underlying user id is the same
+    if (lastFetchedUserIdRef.current === user.id) {
+      return;
+    }
+    lastFetchedUserIdRef.current = user.id;
 
     const checkSetup = async () => {
       // Check user role - admin roles must be assigned manually via database
@@ -73,7 +82,7 @@ export function useUserSetup(): UserSetupStatus {
     };
 
     checkSetup();
-  }, [user]);
+  }, [user?.id]);
 
   return status;
 }

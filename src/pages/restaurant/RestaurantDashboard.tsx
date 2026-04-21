@@ -150,9 +150,9 @@ export default function RestaurantDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
         <RestaurantSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Header - Compacto em mobile */}
           <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
             <div className="flex h-full items-center justify-between px-3 sm:px-4">
@@ -166,7 +166,7 @@ export default function RestaurantDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-auto pb-20 sm:pb-24 safe-bottom">
+          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-x-hidden overflow-y-auto pb-20 sm:pb-24 safe-bottom min-w-0">
             {/* Banner de Entregador Ativo */}
             {activeDriver && activeDriver.available && (
               <ActiveDriverBanner
