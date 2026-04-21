@@ -92,12 +92,15 @@ export default function RestaurantDashboard() {
   // Load already-rated delivery ids so we can hide the button
   useEffect(() => {
     const loadRated = async () => {
-      if (!user || completedDeliveriesIds.length === 0) return;
+      const ids = deliveries
+        .filter((d) => d.status === 'delivered' && d.driver_id)
+        .map((d) => d.id);
+      if (!user || ids.length === 0) return;
       const { data } = await supabase
         .from('ratings')
         .select('delivery_id')
         .eq('rated_by', user.id)
-        .in('delivery_id', completedDeliveriesIds);
+        .in('delivery_id', ids);
       if (data) setRatedDeliveryIds(new Set(data.map((r) => r.delivery_id)));
     };
     loadRated();
