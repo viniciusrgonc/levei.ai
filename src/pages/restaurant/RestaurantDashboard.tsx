@@ -393,8 +393,8 @@ export default function RestaurantDashboard() {
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                     >
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <span className="text-lg">✅</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
@@ -405,9 +405,22 @@ export default function RestaurantDashboard() {
                             </p>
                           </div>
                         </div>
-                        <p className="font-semibold text-green-600">
-                          R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                        </p>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <p className="font-semibold text-green-600 text-sm">
+                            R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                          </p>
+                          {delivery.driver_id && !ratedDeliveryIds.has(delivery.id) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={(e) => openRatingForDelivery(e, delivery.id, delivery.driver_id!)}
+                            >
+                              <Star className="h-3 w-3" />
+                              Avaliar
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -425,6 +438,20 @@ export default function RestaurantDashboard() {
           open={cancelModalOpen}
           onOpenChange={setCancelModalOpen}
           onCancelled={handleCancelSuccess}
+        />
+      )}
+
+      {/* Rating Modal - opens from completed deliveries list */}
+      {ratingModalData && (
+        <RatingModal
+          deliveryId={ratingModalData.deliveryId}
+          driverUserId={ratingModalData.driverUserId}
+          driverName={ratingModalData.driverName}
+          onClose={() => setRatingModalData(null)}
+          onSubmitted={() => {
+            setRatedDeliveryIds((prev) => new Set(prev).add(ratingModalData.deliveryId));
+            setRatingModalData(null);
+          }}
         />
       )}
     </SidebarProvider>
