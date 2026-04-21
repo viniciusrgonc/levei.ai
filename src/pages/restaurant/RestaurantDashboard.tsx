@@ -15,6 +15,8 @@ import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { useActiveDriver } from '@/hooks/useActiveDriver';
 import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RatingModal } from '@/components/RatingModal';
+import { Star } from 'lucide-react';
 
 type Restaurant = {
   id: string;
@@ -51,6 +53,12 @@ export default function RestaurantDashboard() {
   const [loading, setLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [ratingModalData, setRatingModalData] = useState<{
+    deliveryId: string;
+    driverUserId: string;
+    driverName: string;
+  } | null>(null);
+  const [ratedDeliveryIds, setRatedDeliveryIds] = useState<Set<string>>(new Set());
 
   const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
     e.stopPropagation();
@@ -63,6 +71,38 @@ export default function RestaurantDashboard() {
     setSelectedDeliveryId(null);
     fetchDeliveries();
   };
+
+  const openRatingForDelivery = async (e: React.MouseEvent, deliveryId: string, driverId: string) => {
+    e.stopPropagation();
+    // Fetch driver info
+    const { data: driverData } = await supabase
+      .from('drivers')
+      .select('user_id, profiles!drivers_user_id_fkey(full_name)')
+      .eq('id', driverId)
+      .maybeSingle();
+
+    if (!driverData) return;
+    setRatingModalData({
+      deliveryId,
+      driverUserId: driverData.user_id,
+      driverName: (driverData as any).profiles?.full_name || 'Entregador',
+    });
+  };
+
+  // Load already-rated delivery ids so we can hide the button
+  useEffect(() => {
+    const loadRated = async () => {
+      if (!user || completedDeliveriesIds.length === 0) return;
+      const { data } = await supabase
+        .from('ratings')
+        .select('delivery_id')
+        .eq('rated_by', user.id)
+        .in('delivery_id', completedDeliveriesIds);
+      if (data) setRatedDeliveryIds(new Set(data.map((r) => r.delivery_id)));
+    };
+    loadRated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, deliveries]);
 
   const { activeDriver, noEligibleDriver, noEligibleReason } = useActiveDriver(restaurant?.id);
 
