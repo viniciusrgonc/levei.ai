@@ -70,15 +70,17 @@ setNeighborhood(data.address.suburb || data.address.neighbourhood || data.addres
 setCity(data.address.city || data.address.town || data.address.municipality || ''
 }
 } else {
-// Geocoding returned no result — switch to manual tab so user can type the address
-setActiveTab('manual');
+const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+setAddress(coords);
+onLocationSelect(lat, lng, coords);
 }
 } catch (error) {
 console.error('Erro ao obter endereço:', error);
-// On network error, just keep current address and switch to manual
-setActiveTab('manual');
-},
+const coords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+setAddress(coords);
+onLocationSelect(lat, lng, coords);
 }
+},
 [onLocationSelect]
 );
 // Initialize Leaflet map
@@ -373,19 +375,22 @@ Usar Este Endereço
 </p>
 </TabsContent>
 </Tabs>
-{address && !address.match(/^-?\d+\.\d+,\s*-?\d+\.\d+$/) && (
-<div className="space-y-1.5">
-<Label className="text-xs text-muted-foreground">Endereço selecionado</Label>
-<div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-<p className="text-sm text-foreground leading-snug">{address}</p>
+<div className="grid grid-cols-2 gap-4">
+<div className="space-y-2">
+<Label>Latitude</Label>
+<Input value={latitude.toFixed(6)} readOnly className="text-xs" />
+</div>
+<div className="space-y-2">
+<Label>Longitude</Label>
+<Input value={longitude.toFixed(6)} readOnly className="text-xs" />
 </div>
 </div>
-)}
-{address && address.match(/^-?\d+\.\d+,\s*-?\d+\.\d+$/) && (
-<div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-<p className="text-xs text-amber-700">
-Endereço não identificado. Use a aba <strong>Manual</strong> para digitar o en
-</p>
+{address && (
+<div className="space-y-2">
+<Label>Endereço Selecionado</Label>
+<div className="p-3 bg-primary/10 rounded-md">
+<p className="text-sm">{address}</p>
+</div>
 </div>
 )}
 </div>
