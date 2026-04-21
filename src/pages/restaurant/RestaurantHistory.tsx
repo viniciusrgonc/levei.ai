@@ -7,11 +7,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MapPin, Package, DollarSign, Clock, Calendar, Eye, Search } from 'lucide-react';
+import { MapPin, Package, DollarSign, Clock, Calendar, Eye, Search, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
+import { RatingModal } from '@/components/RatingModal';
 
 type Delivery = {
   id: string;
@@ -23,6 +24,7 @@ type Delivery = {
   created_at: string;
   delivered_at: string | null;
   description: string | null;
+  driver_id: string | null;
 };
 
 export default function RestaurantHistory() {
@@ -33,6 +35,12 @@ export default function RestaurantHistory() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [ratingModalData, setRatingModalData] = useState<{
+    deliveryId: string;
+    driverUserId: string;
+    driverName: string;
+  } | null>(null);
+  const [ratedDeliveryIds, setRatedDeliveryIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDeliveries();
@@ -41,6 +49,38 @@ export default function RestaurantHistory() {
   useEffect(() => {
     filterDeliveries();
   }, [searchTerm, statusFilter, deliveries]);
+
+  // Load already-rated delivery ids
+  useEffect(() => {
+    const loadRated = async () => {
+      const ids = deliveries
+        .filter((d) => d.status === 'delivered' && d.driver_id)
+        .map((d) => d.id);
+      if (!user || ids.length === 0) return;
+      const { data } = await supabase
+        .from('ratings')
+        .select('delivery_id')
+        .eq('rated_by', user.id)
+        .in('delivery_id', ids);
+      if (data) setRatedDeliveryIds(new Set(data.map((r) => r.delivery_id)));
+    };
+    loadRated();
+  }, [user?.id, deliveries]);
+
+  const openRatingForDelivery = async (deliveryId: string, driverId: string) => {
+    const { data: driverData } = await supabase
+      .from('drivers')
+      .select('user_id, profiles!drivers_user_id_fkey(full_name)')
+      .eq('id', driverId)
+      .maybeSingle();
+
+    if (!driverData) return;
+    setRatingModalData({
+      deliveryId,
+      driverUserId: driverData.user_id,
+      driverName: (driverData as any).profiles?.full_name || 'Entregador',
+    });
+  };
 
   const fetchDeliveries = async () => {
     if (!user) return;
@@ -274,6 +314,16 @@ export default function RestaurantHistory() {
                                   <Eye className="mr-2 h-4 w-4" />
                                   Ver Detalhes
                                 </Button>
+                                {delivery.status === 'delivered' && delivery.driver_id && !ratedDeliveryIds.has(delivery.id) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openRatingForDelivery(delivery.id, delivery.driver_id!)}
+                                  >
+                                    <Star className="mr-2 h-4 w-4" />
+                                    Avaliar
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </CardContent>
@@ -287,6 +337,19 @@ export default function RestaurantHistory() {
           </main>
         </div>
       </div>
+
+      {ratingModalData && (
+        <RatingModal
+          deliveryId={ratingModalData.deliveryId}
+          driverUserId={ratingModalData.driverUserId}
+          driverName={ratingModalData.driverName}
+          onClose={() => setRatingModalData(null)}
+          onSubmitted={() => {
+            setRatedDeliveryIds((prev) => new Set(prev).add(ratingModalData.deliveryId));
+            setRatingModalData(null);
+          }}
+        />
+      )}
     </SidebarProvider>
   );
 }

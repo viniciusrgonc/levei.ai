@@ -15,6 +15,8 @@ import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { useActiveDriver } from '@/hooks/useActiveDriver';
 import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RatingModal } from '@/components/RatingModal';
+import { Star } from 'lucide-react';
 
 type Restaurant = {
   id: string;
@@ -51,6 +53,12 @@ export default function RestaurantDashboard() {
   const [loading, setLoading] = useState(true);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
+  const [ratingModalData, setRatingModalData] = useState<{
+    deliveryId: string;
+    driverUserId: string;
+    driverName: string;
+  } | null>(null);
+  const [ratedDeliveryIds, setRatedDeliveryIds] = useState<Set<string>>(new Set());
 
   const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
     e.stopPropagation();
@@ -63,6 +71,41 @@ export default function RestaurantDashboard() {
     setSelectedDeliveryId(null);
     fetchDeliveries();
   };
+
+  const openRatingForDelivery = async (e: React.MouseEvent, deliveryId: string, driverId: string) => {
+    e.stopPropagation();
+    // Fetch driver info
+    const { data: driverData } = await supabase
+      .from('drivers')
+      .select('user_id, profiles!drivers_user_id_fkey(full_name)')
+      .eq('id', driverId)
+      .maybeSingle();
+
+    if (!driverData) return;
+    setRatingModalData({
+      deliveryId,
+      driverUserId: driverData.user_id,
+      driverName: (driverData as any).profiles?.full_name || 'Entregador',
+    });
+  };
+
+  // Load already-rated delivery ids so we can hide the button
+  useEffect(() => {
+    const loadRated = async () => {
+      const ids = deliveries
+        .filter((d) => d.status === 'delivered' && d.driver_id)
+        .map((d) => d.id);
+      if (!user || ids.length === 0) return;
+      const { data } = await supabase
+        .from('ratings')
+        .select('delivery_id')
+        .eq('rated_by', user.id)
+        .in('delivery_id', ids);
+      if (data) setRatedDeliveryIds(new Set(data.map((r) => r.delivery_id)));
+    };
+    loadRated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, deliveries]);
 
   const { activeDriver, noEligibleDriver, noEligibleReason } = useActiveDriver(restaurant?.id);
 
@@ -150,9 +193,9 @@ export default function RestaurantDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background overflow-x-hidden">
         <RestaurantSidebar />
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-w-0">
           {/* Header - Compacto em mobile */}
           <header className="sticky top-0 z-10 h-12 sm:h-14 border-b bg-primary safe-top">
             <div className="flex h-full items-center justify-between px-3 sm:px-4">
@@ -166,7 +209,7 @@ export default function RestaurantDashboard() {
             </div>
           </header>
 
-          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-auto pb-20 sm:pb-24 safe-bottom">
+          <main className="flex-1 p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 overflow-x-hidden overflow-y-auto pb-20 sm:pb-24 safe-bottom min-w-0">
             {/* Banner de Entregador Ativo */}
             {activeDriver && activeDriver.available && (
               <ActiveDriverBanner
@@ -350,8 +393,8 @@ export default function RestaurantDashboard() {
                       className="cursor-pointer hover:bg-muted/50 transition-colors"
                       onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                     >
-                      <CardContent className="p-3 flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0">
+                      <CardContent className="p-3 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <span className="text-lg">✅</span>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">
@@ -362,9 +405,22 @@ export default function RestaurantDashboard() {
                             </p>
                           </div>
                         </div>
-                        <p className="font-semibold text-green-600">
-                          R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                        </p>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <p className="font-semibold text-green-600 text-sm">
+                            R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                          </p>
+                          {delivery.driver_id && !ratedDeliveryIds.has(delivery.id) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={(e) => openRatingForDelivery(e, delivery.id, delivery.driver_id!)}
+                            >
+                              <Star className="h-3 w-3" />
+                              Avaliar
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -382,6 +438,20 @@ export default function RestaurantDashboard() {
           open={cancelModalOpen}
           onOpenChange={setCancelModalOpen}
           onCancelled={handleCancelSuccess}
+        />
+      )}
+
+      {/* Rating Modal - opens from completed deliveries list */}
+      {ratingModalData && (
+        <RatingModal
+          deliveryId={ratingModalData.deliveryId}
+          driverUserId={ratingModalData.driverUserId}
+          driverName={ratingModalData.driverName}
+          onClose={() => setRatingModalData(null)}
+          onSubmitted={() => {
+            setRatedDeliveryIds((prev) => new Set(prev).add(ratingModalData.deliveryId));
+            setRatingModalData(null);
+          }}
         />
       )}
     </SidebarProvider>
