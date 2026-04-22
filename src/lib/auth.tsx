@@ -145,6 +145,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [resolveUserSetup]);
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`auth-user-setup-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_roles', filter: `user_id=eq.${user.id}` },
+        () => {
+          void resolveUserSetup(user);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'restaurants', filter: `user_id=eq.${user.id}` },
+        () => {
+          void resolveUserSetup(user);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'drivers', filter: `user_id=eq.${user.id}` },
+        () => {
+          void resolveUserSetup(user);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [resolveUserSetup, user]);
+
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
