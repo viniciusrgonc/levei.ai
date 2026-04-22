@@ -11,13 +11,12 @@ import { PasswordStrengthIndicator, validatePassword } from '@/components/Passwo
 import leveiLogo from '@/assets/levei-logo.png';
 
 export default function Auth() {
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, loading: authLoading, roleLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [signupPassword, setSignupPassword] = useState('');
   const { loading: redirecting } = useAuthRedirect();
 
-  // Show loading while checking auth state and redirecting
-  if (user && redirecting) {
+  if (authLoading || (user && (roleLoading || redirecting))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -28,7 +27,6 @@ export default function Auth() {
     );
   }
 
-  // If user is logged in and not redirecting, they'll be redirected by useAuthRedirect
   if (user) {
     return null;
   }

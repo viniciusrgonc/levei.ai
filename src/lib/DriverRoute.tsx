@@ -15,18 +15,17 @@ export function DriverRoute({ children }: DriverRouteProps) {
   useEffect(() => {
     if (!authLoading && !roleLoading) {
       if (!user) {
-        navigate('/auth');
+        navigate('/auth', { replace: true });
         return;
       }
 
       if (role !== 'driver') {
-        // Redirect non-driver users to their appropriate dashboard
         if (role === 'restaurant') {
-          navigate('/restaurant/dashboard');
+          navigate('/restaurant/dashboard', { replace: true });
         } else if (role === 'admin') {
-          navigate('/admin/dashboard');
+          navigate('/admin/dashboard', { replace: true });
         } else {
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
       }
     }

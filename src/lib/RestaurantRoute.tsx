@@ -15,18 +15,17 @@ export function RestaurantRoute({ children }: RestaurantRouteProps) {
   useEffect(() => {
     if (!authLoading && !roleLoading) {
       if (!user) {
-        navigate('/auth');
+        navigate('/auth', { replace: true });
         return;
       }
 
       if (role !== 'restaurant') {
-        // Redirect non-restaurant users to their appropriate dashboard
         if (role === 'driver') {
-          navigate('/driver/dashboard');
+          navigate('/driver/dashboard', { replace: true });
         } else if (role === 'admin') {
-          navigate('/admin/dashboard');
+          navigate('/admin/dashboard', { replace: true });
         } else {
-          navigate('/dashboard');
+          navigate('/dashboard', { replace: true });
         }
       }
     }
