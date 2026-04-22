@@ -83,13 +83,13 @@
     --status-cancelled: 4 72% 52%;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 13% 13%;
+    --sidebar-background: 219 100% 9%;
+    --sidebar-foreground: 220 20% 96%;
     --sidebar-primary: 220 84% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 220 13% 13%;
-    --sidebar-border: 220 13% 90%;
+    --sidebar-accent: 220 58% 16%;
+    --sidebar-accent-foreground: 220 20% 96%;
+    --sidebar-border: 219 54% 21%;
     --sidebar-ring: 220 84% 50%;
   }
 
