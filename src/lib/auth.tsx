@@ -1,43 +1,149 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+
+export type UserRole = 'admin' | 'restaurant' | 'driver' | null;
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  role: UserRole;
+  roleLoading: boolean;
+  hasCompletedSetup: boolean;
   signUp: (email: string, password: string, fullName: string, phone: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  refreshUserSetup: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const ADMIN_EMAIL = 'admin@admin.com';
+
+const getPrimaryRole = (roles: Array<{ role: string }>): UserRole => {
+  if (roles.some(({ role }) => role === 'admin')) return 'admin';
+  if (roles.some(({ role }) => role === 'restaurant')) return 'restaurant';
+  if (roles.some(({ role }) => role === 'driver')) return 'driver';
+  return null;
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<UserRole>(null);
+  const [roleLoading, setRoleLoading] = useState(true);
+  const [hasCompletedSetup, setHasCompletedSetup] = useState(false);
+  const roleRequestIdRef = useRef(0);
+
+  const resolveUserSetup = useCallback(async (currentUser: User | null) => {
+    const requestId = ++roleRequestIdRef.current;
+
+    if (!currentUser) {
+      console.log('[auth] USER:', null);
+      setRole(null);
+      setHasCompletedSetup(false);
+      setRoleLoading(false);
+      return;
+    }
+
+    setRoleLoading(true);
+
+    console.log('[auth] USER:', {
+      id: currentUser.id,
+      email: currentUser.email ?? null,
+    });
+
+    const fetchRole = async (): Promise<UserRole> => {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', currentUser.id);
+
+      console.log('[auth] ROLE RESULT:', { data, error });
+
+      return getPrimaryRole(data ?? []);
+    };
+
+    let resolvedRole = await fetchRole();
+
+    if (currentUser.email?.toLowerCase() === ADMIN_EMAIL && resolvedRole !== 'admin') {
+      const { data, error } = await (supabase as any).rpc('ensure_admin_user');
+      console.log('[auth] ENSURE ADMIN RESULT:', { data, error });
+      resolvedRole = await fetchRole();
+    }
+
+    console.log('[auth] ROLE FOUND:', resolvedRole);
+
+    if (requestId !== roleRequestIdRef.current) {
+      return;
+    }
+
+    if (!resolvedRole) {
+      setRole(null);
+      setHasCompletedSetup(false);
+      setRoleLoading(false);
+      return;
+    }
+
+    let completedSetup = resolvedRole === 'admin';
+
+    if (resolvedRole === 'restaurant') {
+      const { data } = await supabase
+        .from('restaurants')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      completedSetup = !!data;
+    }
+
+    if (resolvedRole === 'driver') {
+      const { data } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      completedSetup = !!data;
+    }
+
+    if (requestId !== roleRequestIdRef.current) {
+      return;
+    }
+
+    setRole(resolvedRole);
+    setHasCompletedSetup(completedSetup);
+    setRoleLoading(false);
+  }, []);
+
+  const refreshUserSetup = useCallback(async () => {
+    await resolveUserSetup(session?.user ?? user);
+  }, [resolveUserSetup, session?.user, user]);
 
   useEffect(() => {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
         setLoading(false);
+        void resolveUserSetup(nextSession?.user ?? null);
       }
     );
 
     // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      setSession(existingSession);
+      setUser(existingSession?.user ?? null);
       setLoading(false);
+      void resolveUserSetup(existingSession?.user ?? null);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [resolveUserSetup]);
 
   const signUp = async (email: string, password: string, fullName: string, phone: string) => {
     const redirectUrl = `${window.location.origin}/`;
@@ -71,7 +177,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        role,
+        roleLoading,
+        hasCompletedSetup,
+        signUp,
+        signIn,
+        signOut,
+        refreshUserSetup,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -92,7 +211,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
-      navigate('/auth');
+      navigate('/auth', { replace: true });
     }
   }, [user, loading, navigate]);
 
