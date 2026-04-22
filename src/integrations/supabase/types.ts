@@ -760,6 +760,7 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_admin_user: { Args: never; Returns: Json }
       finalize_delivery_transaction: {
         Args: { p_delivery_id: string; p_driver_id: string }
         Returns: Json
