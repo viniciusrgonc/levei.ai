@@ -1,164 +1,78 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
-type UserRole = 'admin' | 'restaurant' | 'driver' | null;
-
 interface UserSetupStatus {
-  role: UserRole;
+  role: 'admin' | 'restaurant' | 'driver' | null;
   hasCompletedSetup: boolean;
   loading: boolean;
 }
 
 export function useUserSetup(): UserSetupStatus {
-  const { user } = useAuth();
-  const [status, setStatus] = useState<UserSetupStatus>({
-    role: null,
-    hasCompletedSetup: false,
-    loading: true,
-  });
+  const { role, hasCompletedSetup, roleLoading } = useAuth();
 
-  const getPrimaryRole = (roles: Array<{ role: string }>): UserRole => {
-    if (roles.some(({ role }) => role === 'admin')) return 'admin';
-    if (roles.some(({ role }) => role === 'restaurant')) return 'restaurant';
-    if (roles.some(({ role }) => role === 'driver')) return 'driver';
-    return null;
+  return {
+    role,
+    hasCompletedSetup,
+    loading: roleLoading,
   };
-
-  const fetchSetupStatus = useCallback(async () => {
-    if (!user) {
-      setStatus({ role: null, hasCompletedSetup: false, loading: false });
-      return;
-    }
-
-    setStatus((current) => ({ ...current, loading: true }));
-
-    const fetchRoles = async () => {
-      const { data } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      return getPrimaryRole(data ?? []);
-    };
-
-    let userRole = await fetchRoles();
-
-    if (!userRole && user.email?.toLowerCase() === 'admin@admin.com') {
-      await (supabase as any).rpc('ensure_admin_user');
-      userRole = await fetchRoles();
-    }
-
-    if (!userRole) {
-      setStatus({ role: null, hasCompletedSetup: false, loading: false });
-      return;
-    }
-
-    let hasCompleted = false;
-
-    if (userRole === 'restaurant') {
-      const { data } = await supabase
-        .from('restaurants')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      hasCompleted = !!data;
-    } else if (userRole === 'driver') {
-      const { data } = await supabase
-        .from('drivers')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      hasCompleted = !!data;
-    } else if (userRole === 'admin') {
-      hasCompleted = true;
-    }
-
-    setStatus({
-      role: userRole,
-      hasCompletedSetup: hasCompleted,
-      loading: false,
-    });
-  }, [user?.id, user?.email]);
-
-  useEffect(() => {
-    if (!user) {
-      setStatus({ role: null, hasCompletedSetup: false, loading: false });
-      return;
-    }
-
-    fetchSetupStatus();
-
-    const channel = supabase
-      .channel(`user-role-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'user_roles', filter: `user_id=eq.${user.id}` },
-        () => fetchSetupStatus()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, fetchSetupStatus]);
-
-  return status;
 }
 
 export function useAuthRedirect() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, role, hasCompletedSetup, roleLoading } = useAuth();
   const navigate = useNavigate();
-  const { role, hasCompletedSetup, loading } = useUserSetup();
 
   useEffect(() => {
-    if (loading || !user) return;
+    if (authLoading) return;
 
-    // Get current path to avoid redirecting users who are already on valid driver/restaurant routes
+    if (!user) return;
+
+    if (roleLoading) return;
+
     const currentPath = window.location.pathname;
-    
-    // CRITICAL: Never redirect drivers away from driver routes
-    if (currentPath.startsWith('/driver/') && role === 'driver') {
-      return; // Driver is on a valid driver route, don't interfere
-    }
-    
-    // CRITICAL: Never redirect restaurants away from restaurant routes
-    if (currentPath.startsWith('/restaurant/') && role === 'restaurant') {
-      // Only allow redirect to setup if they haven't completed it and are on the setup page
-      if (!hasCompletedSetup && currentPath !== '/restaurant/setup') {
-        navigate('/restaurant/setup');
+
+    if (role === 'admin') {
+      if (!currentPath.startsWith('/admin/')) {
+        navigate('/admin/dashboard', { replace: true });
       }
       return;
     }
 
-    // No role selected yet
+    if (currentPath.startsWith('/driver/') && role === 'driver') {
+      return;
+    }
+
+    if (currentPath.startsWith('/restaurant/') && role === 'restaurant') {
+      if (!hasCompletedSetup && currentPath !== '/restaurant/setup') {
+        navigate('/restaurant/setup', { replace: true });
+      } else if (hasCompletedSetup && currentPath === '/restaurant/setup') {
+        navigate('/restaurant/dashboard', { replace: true });
+      }
+      return;
+    }
+
     if (!role) {
       if (currentPath !== '/dashboard') {
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       }
       return;
     }
 
-    // Has role but hasn't completed setup - redirect to appropriate setup page
     if (!hasCompletedSetup) {
       if (role === 'restaurant' && currentPath !== '/restaurant/setup') {
-        navigate('/restaurant/setup');
+        navigate('/restaurant/setup', { replace: true });
       } else if (role === 'driver' && currentPath !== '/driver/setup') {
-        navigate('/driver/setup');
+        navigate('/driver/setup', { replace: true });
       }
       return;
     }
 
-    // Has role and completed setup - go to dashboard (only if not already on a valid route)
     if (role === 'restaurant' && !currentPath.startsWith('/restaurant/')) {
-      navigate('/restaurant/dashboard');
+      navigate('/restaurant/dashboard', { replace: true });
     } else if (role === 'driver' && !currentPath.startsWith('/driver/')) {
-      navigate('/driver/dashboard');
-    } else if (role === 'admin' && !currentPath.startsWith('/admin/')) {
-      navigate('/admin/dashboard');
+      navigate('/driver/dashboard', { replace: true });
     }
-  }, [user, role, hasCompletedSetup, loading, navigate]);
+  }, [authLoading, user, roleLoading, role, hasCompletedSetup, navigate]);
 
-  return { role, hasCompletedSetup, loading };
+  return { role, hasCompletedSetup, loading: authLoading || roleLoading };
 }
