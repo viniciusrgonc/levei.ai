@@ -7,16 +7,16 @@ import Hero from "@/components/Hero";
 import leveiLogo from '@/assets/levei-logo.png';
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, roleLoading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading && user) {
-      navigate('/dashboard');
+    if (!loading && !roleLoading && user) {
+      navigate('/dashboard', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, roleLoading, navigate]);
 
-  if (loading) {
+  if (loading || (user && roleLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
