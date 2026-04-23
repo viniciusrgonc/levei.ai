@@ -44,7 +44,7 @@ export default function Dashboard() {
         title: 'Perfil selecionado!',
         description: `Você agora é um ${selectedRole === 'restaurant' ? 'solicitante' : 'entregador'}`
       });
-      navigate(selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup');
+      window.location.href = selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup';
     }
   };
 
