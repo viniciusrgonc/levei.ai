@@ -213,6 +213,90 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_confirmation_settings: {
+        Row: {
+          allow_outside_radius: boolean
+          created_at: string
+          id: string
+          is_active: boolean
+          max_distance_meters: number
+          updated_at: string
+        }
+        Insert: {
+          allow_outside_radius?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_distance_meters?: number
+          updated_at?: string
+        }
+        Update: {
+          allow_outside_radius?: boolean
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_distance_meters?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      delivery_confirmations: {
+        Row: {
+          confirmation_method: string
+          confirmed_at: string
+          created_at: string
+          delivery_id: string
+          distance_meters: number | null
+          driver_id: string
+          id: string
+          is_within_radius: boolean | null
+          latitude: number
+          longitude: number
+          max_distance_meters: number
+          metadata: Json
+          otp_code_hash: string | null
+          otp_verified_at: string | null
+          outside_radius_allowed: boolean
+          photo_url: string
+        }
+        Insert: {
+          confirmation_method?: string
+          confirmed_at?: string
+          created_at?: string
+          delivery_id: string
+          distance_meters?: number | null
+          driver_id: string
+          id?: string
+          is_within_radius?: boolean | null
+          latitude: number
+          longitude: number
+          max_distance_meters?: number
+          metadata?: Json
+          otp_code_hash?: string | null
+          otp_verified_at?: string | null
+          outside_radius_allowed?: boolean
+          photo_url: string
+        }
+        Update: {
+          confirmation_method?: string
+          confirmed_at?: string
+          created_at?: string
+          delivery_id?: string
+          distance_meters?: number | null
+          driver_id?: string
+          id?: string
+          is_within_radius?: boolean | null
+          latitude?: number
+          longitude?: number
+          max_distance_meters?: number
+          metadata?: Json
+          otp_code_hash?: string | null
+          otp_verified_at?: string | null
+          outside_radius_allowed?: boolean
+          photo_url?: string
+        }
+        Relationships: []
+      }
       delivery_radius_settings: {
         Row: {
           created_at: string
@@ -746,6 +830,10 @@ export type Database = {
         Args: { p_delivery_id: string }
         Returns: Json
       }
+      calculate_distance_meters: {
+        Args: { lat1: number; lat2: number; lon1: number; lon2: number }
+        Returns: number
+      }
       check_driver_available_for_batch: {
         Args: { p_driver_id: string; p_restaurant_id: string }
         Returns: Json
@@ -761,10 +849,23 @@ export type Database = {
         Returns: string
       }
       ensure_admin_user: { Args: never; Returns: Json }
-      finalize_delivery_transaction: {
-        Args: { p_delivery_id: string; p_driver_id: string }
-        Returns: Json
-      }
+      finalize_delivery_transaction:
+        | {
+            Args: { p_delivery_id: string; p_driver_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_confirmation_latitude?: number
+              p_confirmation_longitude?: number
+              p_confirmation_metadata?: Json
+              p_confirmation_photo_url?: string
+              p_delivery_id: string
+              p_driver_id: string
+              p_outside_radius_allowed?: boolean
+            }
+            Returns: Json
+          }
       get_next_delivery_sequence: {
         Args: { p_parent_delivery_id: string }
         Returns: number
