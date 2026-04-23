@@ -22,6 +22,14 @@ interface UseCompleteDeliveryParams {
   onSessionExpired?: () => void;
 }
 
+interface DeliveryConfirmationPayload {
+  photo_url: string;
+  latitude: number;
+  longitude: number;
+  outside_radius_allowed?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
 export const useCompleteDelivery = ({ 
   onSuccess, 
   onError,
@@ -29,14 +37,20 @@ export const useCompleteDelivery = ({
 }: UseCompleteDeliveryParams = {}) => {
   const [loading, setLoading] = useState(false);
 
-  const completeDelivery = async (deliveryId: string, driverId: string, price: number) => {
+  const completeDelivery = async (
+    deliveryId: string,
+    driverId: string,
+    price: number,
+    confirmation?: DeliveryConfirmationPayload
+  ) => {
     setLoading(true);
 
     try {
       const { data, error: invokeError } = await supabase.functions.invoke('complete-delivery', {
         body: {
           delivery_id: deliveryId,
-          driver_id: driverId
+          driver_id: driverId,
+          confirmation
         }
       });
 
