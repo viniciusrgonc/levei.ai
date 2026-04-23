@@ -61,7 +61,17 @@ Deno.serve(async (req) => {
     console.log(`[Complete-Delivery] ${requestId} - User authenticated:`, user.id)
 
     // === 2. INPUT VALIDATION ===
-    let body: { delivery_id?: string; driver_id?: string }
+    let body: {
+      delivery_id?: string
+      driver_id?: string
+      confirmation?: {
+        photo_url?: string
+        latitude?: number
+        longitude?: number
+        outside_radius_allowed?: boolean
+        metadata?: Record<string, unknown>
+      }
+    }
     try {
       body = await req.json()
     } catch {
@@ -71,7 +81,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { delivery_id, driver_id } = body
+    const { delivery_id, driver_id, confirmation } = body
     
     console.log(`[Complete-Delivery] ${requestId} - Request params:`, { 
       delivery_id, 
@@ -90,6 +100,20 @@ Deno.serve(async (req) => {
       return errorResponse(
         ErrorCodes.INVALID_UUID,
         'Formato de ID inválido'
+      )
+    }
+
+    if (!confirmation?.photo_url) {
+      return errorResponse(
+        ErrorCodes.MISSING_FIELDS,
+        'A foto de confirmação é obrigatória para finalizar a entrega'
+      )
+    }
+
+    if (typeof confirmation.latitude !== 'number' || typeof confirmation.longitude !== 'number') {
+      return errorResponse(
+        ErrorCodes.MISSING_FIELDS,
+        'A localização de confirmação é obrigatória para finalizar a entrega'
       )
     }
 
@@ -168,7 +192,12 @@ Deno.serve(async (req) => {
     const { data: result, error: finalizeError } = await supabaseClient
       .rpc('finalize_delivery_transaction', {
         p_delivery_id: delivery_id,
-        p_driver_id: driver_id
+        p_driver_id: driver_id,
+        p_confirmation_photo_url: confirmation.photo_url,
+        p_confirmation_latitude: confirmation.latitude,
+        p_confirmation_longitude: confirmation.longitude,
+        p_outside_radius_allowed: confirmation.outside_radius_allowed ?? false,
+        p_confirmation_metadata: confirmation.metadata ?? {}
       })
 
     if (finalizeError) {

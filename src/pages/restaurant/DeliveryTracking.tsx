@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle, LayoutDashboard } from 'lucide-react';
+import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle, LayoutDashboard, Camera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -48,6 +48,15 @@ type Driver = {
   };
 };
 
+type DeliveryConfirmation = {
+  photo_url: string;
+  latitude: number;
+  longitude: number;
+  distance_meters: number | null;
+  is_within_radius: boolean | null;
+  confirmed_at: string;
+};
+
 const statusConfig: Record<string, { step: number; label: string; description: string; icon: string; color: string }> = {
   pending: { step: 1, label: 'Aguardando entregador', description: 'Procurando entregador disponível...', icon: '🕐', color: 'text-amber-600' },
   accepted: { step: 2, label: 'Coleta em andamento', description: 'Entregador a caminho da coleta', icon: '🚗', color: 'text-blue-600' },
@@ -69,6 +78,8 @@ export default function DeliveryTracking() {
   const [hasRated, setHasRated] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [autoRatingChecked, setAutoRatingChecked] = useState(false);
+  const [confirmation, setConfirmation] = useState<DeliveryConfirmation | null>(null);
+  const [confirmationPhotoUrl, setConfirmationPhotoUrl] = useState<string | null>(null);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -109,7 +120,24 @@ export default function DeliveryTracking() {
       fetchDriver(data.driver_id);
       checkIfRated(data.id);
     }
+    if (data.status === 'delivered') fetchConfirmation(data.id);
     setLoading(false);
+  };
+
+  const fetchConfirmation = async (id: string) => {
+    const { data } = await (supabase as any)
+      .from('delivery_confirmations')
+      .select('photo_url, latitude, longitude, distance_meters, is_within_radius, confirmed_at')
+      .eq('delivery_id', id)
+      .maybeSingle();
+
+    if (!data) return;
+    setConfirmation(data);
+
+    const { data: signed } = await supabase.storage
+      .from('delivery-photos')
+      .createSignedUrl(data.photo_url, 60 * 10);
+    setConfirmationPhotoUrl(signed?.signedUrl ?? null);
   };
 
   const checkIfRated = async (deliveryId: string) => {
@@ -394,6 +422,39 @@ export default function DeliveryTracking() {
                         Você já avaliou esta entrega
                       </p>
                     )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {delivery.status === 'delivered' && confirmation && (
+                <Card>
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold">Comprovante de entrega</h3>
+                    </div>
+                    {confirmationPhotoUrl && (
+                      <img
+                        src={confirmationPhotoUrl}
+                        alt="Foto de confirmação da entrega"
+                        className="w-full max-h-72 rounded-lg object-cover border"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Horário</p>
+                        <p className="font-medium">{new Date(confirmation.confirmed_at).toLocaleString('pt-BR')}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Localização</p>
+                        <p className="font-medium">{Number(confirmation.latitude).toFixed(5)}, {Number(confirmation.longitude).toFixed(5)}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Distância do destino</p>
+                        <p className="font-medium">{Math.round(Number(confirmation.distance_meters || 0))} m</p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               )}

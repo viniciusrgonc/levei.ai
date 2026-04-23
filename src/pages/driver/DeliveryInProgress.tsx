@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper, MessageCircle, LayoutDashboard, X } from 'lucide-react';
+import { MapPin, Navigation, Clock, CheckCircle, Phone, User, AlertCircle, PartyPopper, MessageCircle, LayoutDashboard, X, Camera } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
@@ -87,6 +87,22 @@ interface CompletionResult {
   totalRouteEarnings: number;
 }
 
+interface ConfirmationSettings {
+  max_distance_meters: number;
+  allow_outside_radius: boolean;
+}
+
+const calculateDistanceMeters = (from: [number, number], to: [number, number]) => {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const earthRadius = 6371000;
+  const dLat = toRad(to[0] - from[0]);
+  const dLng = toRad(to[1] - from[1]);
+  const lat1 = toRad(from[0]);
+  const lat2 = toRad(to[0]);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export default function DeliveryInProgress() {
   const { deliveryId } = useParams();
   const { user } = useAuth();
@@ -100,6 +116,9 @@ export default function DeliveryInProgress() {
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const [remainingDeliveries, setRemainingDeliveries] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [confirmationSettings, setConfirmationSettings] = useState<ConfirmationSettings>({ max_distance_meters: 100, allow_outside_radius: true });
+  const [isPreparingCompletion, setIsPreparingCompletion] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
     onSuccess: (_, __, transaction) => {
@@ -159,6 +178,22 @@ export default function DeliveryInProgress() {
     if (driverId && deliveryId) fetchDelivery();
   }, [driverId, deliveryId]);
 
+  useEffect(() => {
+    const fetchConfirmationSettings = async () => {
+      const { data } = await (supabase as any)
+        .from('delivery_confirmation_settings')
+        .select('max_distance_meters, allow_outside_radius')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) setConfirmationSettings(data);
+    };
+
+    fetchConfirmationSettings();
+  }, []);
+
   const fetchDriver = async () => {
     const { data } = await supabase
       .from('drivers')
@@ -200,9 +235,77 @@ export default function DeliveryInProgress() {
     setLoading(false);
   };
 
+  const getCompletionPosition = () => new Promise<[number, number]>((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve([position.coords.latitude, position.coords.longitude]),
+      reject,
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
+    );
+  });
+
+  const uploadConfirmationPhoto = async (file: File) => {
+    if (!user || !deliveryId) throw new Error('Sessão inválida');
+    const extension = file.name.split('.').pop() || 'jpg';
+    const path = `${user.id}/${deliveryId}/${Date.now()}.${extension}`;
+    const { error } = await supabase.storage.from('delivery-photos').upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+    if (error) throw error;
+    return path;
+  };
+
+  const handlePhotoSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !deliveryId || !driverId || !delivery) return;
+
+    setIsPreparingCompletion(true);
+    try {
+      const position = await getCompletionPosition();
+      setCurrentPosition(position);
+      const target: [number, number] = [Number(delivery.delivery_latitude), Number(delivery.delivery_longitude)];
+      const distanceMeters = calculateDistanceMeters(position, target);
+      const isWithinRadius = distanceMeters <= confirmationSettings.max_distance_meters;
+
+      if (!isWithinRadius) {
+        const message = `Você está a ${Math.round(distanceMeters)}m do destino. O limite configurado é ${confirmationSettings.max_distance_meters}m.`;
+        if (!confirmationSettings.allow_outside_radius) {
+          toast({ title: 'Fora do local de entrega', description: message, variant: 'destructive' });
+          return;
+        }
+        const shouldContinue = window.confirm(`${message}\n\nDeseja finalizar mesmo assim?`);
+        if (!shouldContinue) return;
+      }
+
+      const photoPath = await uploadConfirmationPhoto(file);
+      await completeDelivery(deliveryId, driverId, Number(delivery.price), {
+        photo_url: photoPath,
+        latitude: position[0],
+        longitude: position[1],
+        outside_radius_allowed: !isWithinRadius && confirmationSettings.allow_outside_radius,
+        metadata: {
+          captured_at: new Date().toISOString(),
+          distance_meters: Math.round(distanceMeters),
+          otp_ready: true,
+        },
+      });
+    } catch (error) {
+      console.error('Delivery confirmation error:', error);
+      toast({
+        title: 'Não foi possível finalizar',
+        description: 'Capture a foto e permita o acesso à localização para concluir a entrega.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPreparingCompletion(false);
+    }
+  };
+
   const handleCompleteDelivery = async () => {
     if (!deliveryId || !driverId || !delivery) return;
-    await completeDelivery(deliveryId, driverId, Number(delivery.price));
+    photoInputRef.current?.click();
   };
 
   const openGPS = () => {
@@ -420,6 +523,14 @@ export default function DeliveryInProgress() {
 
           {/* Botões de ação */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
             <Button 
               onClick={openGPS}
               variant="outline"
@@ -432,12 +543,12 @@ export default function DeliveryInProgress() {
 
             <Button 
               onClick={handleCompleteDelivery}
-              disabled={completing}
+              disabled={completing || isPreparingCompletion}
               size="lg"
               className="btn-touch font-semibold bg-success hover:bg-success/90"
             >
-              <CheckCircle className="icon-responsive-sm mr-2" />
-              <span className="text-responsive-sm">{completing ? 'Finalizando...' : 'Finalizar Entrega'}</span>
+              {isPreparingCompletion ? <Camera className="icon-responsive-sm mr-2" /> : <CheckCircle className="icon-responsive-sm mr-2" />}
+              <span className="text-responsive-sm">{completing || isPreparingCompletion ? 'Validando...' : 'Finalizar Entrega'}</span>
             </Button>
           </div>
         </div>
