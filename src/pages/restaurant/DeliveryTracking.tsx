@@ -425,6 +425,39 @@ export default function DeliveryTracking() {
                   </CardContent>
                 </Card>
               )}
+
+              {delivery.status === 'delivered' && confirmation && (
+                <Card>
+                  <CardContent className="p-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Camera className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold">Comprovante de entrega</h3>
+                    </div>
+                    {confirmationPhotoUrl && (
+                      <img
+                        src={confirmationPhotoUrl}
+                        alt="Foto de confirmação da entrega"
+                        className="w-full max-h-72 rounded-lg object-cover border"
+                        loading="lazy"
+                      />
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Horário</p>
+                        <p className="font-medium">{new Date(confirmation.confirmed_at).toLocaleString('pt-BR')}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Localização</p>
+                        <p className="font-medium">{Number(confirmation.latitude).toFixed(5)}, {Number(confirmation.longitude).toFixed(5)}</p>
+                      </div>
+                      <div className="rounded-lg bg-muted p-2">
+                        <p className="text-muted-foreground">Distância do destino</p>
+                        <p className="font-medium">{Math.round(Number(confirmation.distance_meters || 0))} m</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </main>
         </div>
