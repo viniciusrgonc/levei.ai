@@ -523,6 +523,14 @@ export default function DeliveryInProgress() {
 
           {/* Botões de ação */}
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoSelected}
+            />
             <Button 
               onClick={openGPS}
               variant="outline"
@@ -535,12 +543,12 @@ export default function DeliveryInProgress() {
 
             <Button 
               onClick={handleCompleteDelivery}
-              disabled={completing}
+              disabled={completing || isPreparingCompletion}
               size="lg"
               className="btn-touch font-semibold bg-success hover:bg-success/90"
             >
-              <CheckCircle className="icon-responsive-sm mr-2" />
-              <span className="text-responsive-sm">{completing ? 'Finalizando...' : 'Finalizar Entrega'}</span>
+              {isPreparingCompletion ? <Camera className="icon-responsive-sm mr-2" /> : <CheckCircle className="icon-responsive-sm mr-2" />}
+              <span className="text-responsive-sm">{completing || isPreparingCompletion ? 'Validando...' : 'Finalizar Entrega'}</span>
             </Button>
           </div>
         </div>
