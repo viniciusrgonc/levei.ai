@@ -9,7 +9,7 @@ import { LogOut, Store, Bike, ArrowRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 export default function Dashboard() {
-  const { user, signOut, roleLoading } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { role, loading } = useUserSetup();
   useAuthRedirect(); // Handle automatic redirects for users with roles
@@ -44,14 +44,12 @@ export default function Dashboard() {
         title: 'Perfil selecionado!',
         description: `Você agora é um ${selectedRole === 'restaurant' ? 'solicitante' : 'entregador'}`
       });
-      
-      // Redirect will be handled by useAuthRedirect hook
-      // which will detect the new role and redirect appropriately
+      navigate(selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup');
     }
   };
 
   // Show loading while checking user setup
-  if (loading || roleLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -64,6 +62,8 @@ export default function Dashboard() {
     );
   }
 
+  // If user has a role, useAuthRedirect will handle navigation
+  // This page should only be shown when user has no role
   if (role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
