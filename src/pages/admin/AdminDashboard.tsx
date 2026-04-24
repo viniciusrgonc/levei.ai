@@ -1,47 +1,43 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Area,
-  AreaChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  AlertTriangle,
-  Bell,
-  Bike,
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  CircleDollarSign,
-  CreditCard,
-  Eye,
-  Filter,
-  MapPin,
-  Minus,
-  PackageCheck,
-  Plus,
-  RefreshCw,
-  Route,
-  Star,
-  Store,
-  TrendingUp,
-  UserCheck,
-  Users,
-  Wallet,
-  X,
-} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
-import { AdminSidebar } from '@/components/AdminSidebar';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AdminSidebar } from '@/components/AdminSidebar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  Users, 
+  PackageCheck, 
+  TrendingUp, 
+  AlertCircle, 
+  Check, 
+  X, 
+  DollarSign,
+  Clock,
+  Star,
+  Phone,
+  MapPin,
+  RefreshCw,
+  Eye,
+  UserCheck,
+  Wallet,
+  Truck,
+  Building2
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -50,155 +46,76 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { toast } from 'sonner';
 
-type DeliveryStatus = 'pending' | 'accepted' | 'picking_up' | 'picked_up' | 'delivering' | 'delivered' | 'cancelled';
+interface Stats {
+  totalDrivers: number;
+  approvedDrivers: number;
+  pendingDrivers: number;
+  totalRestaurants: number;
+  approvedRestaurants: number;
+  pendingRestaurants: number;
+  totalDeliveries: number;
+  activeDeliveries: number;
+  completedToday: number;
+  totalRevenue: number;
+}
 
-type Delivery = {
-  id: string;
-  created_at: string;
-  delivery_address: string;
-  pickup_address: string;
-  price: number;
-  price_adjusted: number;
-  status: DeliveryStatus;
-  delivered_at: string | null;
-};
+interface FinancialStats {
+  platformFees: number;
+  driverEarnings: number;
+  totalVolume: number;
+}
 
-type Driver = {
+interface PendingDriver {
   id: string;
   user_id: string;
   vehicle_type: string;
-  license_plate: string | null;
+  license_plate: string;
   created_at: string;
-  is_approved: boolean;
-  is_available: boolean;
-  rating: number | null;
-  total_deliveries: number | null;
-};
+  profile_name: string;
+  profile_phone: string;
+}
 
-type Restaurant = {
+interface PendingRestaurant {
   id: string;
   user_id: string;
   business_name: string;
-  cnpj: string | null;
+  cnpj: string;
   address: string;
   created_at: string;
-  is_approved: boolean;
-  wallet_balance: number;
-};
+  profile_phone: string;
+}
 
-type Transaction = {
-  id: string;
-  amount: number;
-  type: string;
-  platform_fee: number | null;
-  driver_earnings: number | null;
-  created_at: string;
-};
-
-type PendingDriver = Driver & { profile_name: string; profile_phone: string };
-type PendingRestaurant = Restaurant & { profile_phone: string };
-
-type DialogState =
-  | { type: 'driver'; item: PendingDriver }
-  | { type: 'restaurant'; item: PendingRestaurant }
-  | null;
-
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const shortCurrency = (value: number) => currency.format(value).replace('R$', 'R$ ');
-
-const statusLabels: Record<DeliveryStatus, string> = {
-  pending: 'Nova solicitação',
-  accepted: 'Entrega aceita',
-  picking_up: 'Retirada em andamento',
-  picked_up: 'Coletada',
-  delivering: 'Em andamento',
-  delivered: 'Concluída',
-  cancelled: 'Cancelada',
-};
-
-const statusBadge: Record<DeliveryStatus, string> = {
-  pending: 'bg-warning/10 text-warning',
-  accepted: 'bg-primary/10 text-primary',
-  picking_up: 'bg-info/10 text-info',
-  picked_up: 'bg-info/10 text-info',
-  delivering: 'bg-primary/10 text-primary',
-  delivered: 'bg-success/10 text-success',
-  cancelled: 'bg-destructive/10 text-destructive',
-};
-
-function StatSkeleton() {
+// Skeleton components for loading state
+function StatCardSkeleton() {
   return (
-    <Card className="border-border/70 shadow-sm">
-      <CardContent className="p-5">
-        <Skeleton className="mb-4 h-4 w-28" />
-        <Skeleton className="mb-3 h-8 w-20" />
-        <Skeleton className="h-3 w-24" />
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-4 rounded" />
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-8 w-20 mb-2" />
+        <Skeleton className="h-3 w-32" />
       </CardContent>
     </Card>
   );
 }
 
-function MetricCard({
-  title,
-  value,
-  delta,
-  detail,
-  icon: Icon,
-  tone = 'primary',
-  data,
-}: {
-  title: string;
-  value: string | number;
-  delta: string;
-  detail: string;
-  icon: React.ElementType;
-  tone?: 'primary' | 'success' | 'warning' | 'info';
-  data: Array<{ value: number }>;
-}) {
-  const toneClass = {
-    primary: 'bg-primary/10 text-primary',
-    success: 'bg-success/10 text-success',
-    warning: 'bg-warning/10 text-warning',
-    info: 'bg-info/10 text-info',
-  }[tone];
-
-  const stroke = {
-    primary: 'hsl(var(--primary))',
-    success: 'hsl(var(--success))',
-    warning: 'hsl(var(--warning))',
-    info: 'hsl(var(--info))',
-  }[tone];
-
+function TableSkeleton() {
   return (
-    <Card className="overflow-hidden border-border/70 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
-      <CardContent className="p-5">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-            <div className="mt-2 flex items-end gap-3">
-              <p className="text-2xl font-bold tracking-normal text-foreground">{value}</p>
-              <span className="pb-1 text-xs font-semibold text-success">{delta}</span>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">{detail}</p>
+    <div className="space-y-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4 p-4 border rounded-lg">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
           </div>
-          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${toneClass}`}>
-            <Icon className="h-5 w-5" />
-          </div>
+          <Skeleton className="h-8 w-20" />
         </div>
-        <div className="h-9">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
-              <Area type="monotone" dataKey="value" stroke={stroke} fill={stroke} fillOpacity={0.08} strokeWidth={2} dot={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 }
 
@@ -207,233 +124,267 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalDrivers: 0,
+    approvedDrivers: 0,
+    pendingDrivers: 0,
+    totalRestaurants: 0,
+    approvedRestaurants: 0,
+    pendingRestaurants: 0,
+    totalDeliveries: 0,
+    activeDeliveries: 0,
+    completedToday: 0,
+    totalRevenue: 0,
+  });
+  const [financialStats, setFinancialStats] = useState<FinancialStats>({
+    platformFees: 0,
+    driverEarnings: 0,
+    totalVolume: 0,
+  });
   const [pendingDrivers, setPendingDrivers] = useState<PendingDriver[]>([]);
   const [pendingRestaurants, setPendingRestaurants] = useState<PendingRestaurant[]>([]);
-  const [dialog, setDialog] = useState<DialogState>(null);
-  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [dialogType, setDialogType] = useState<'driver' | 'restaurant' | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+
+  useEffect(() => {
+    if (!user) return;
+    loadData();
+
+    const channel = supabase
+      .channel('admin-dashboard-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deliveries' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurants' }, () => loadData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => loadData())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
-
+    
     try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Fetch all data in parallel - simplified queries without complex joins
       const [driversRes, restaurantsRes, deliveriesRes, transactionsRes] = await Promise.all([
-        supabase.from('drivers').select('*').order('created_at', { ascending: false }),
-        supabase.from('restaurants').select('*').order('created_at', { ascending: false }),
-        supabase.from('deliveries').select('*').order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+        supabase.from('drivers').select('*'),
+        supabase.from('restaurants').select('*'),
+        supabase.from('deliveries').select('*'),
+        supabase.from('transactions').select('*'),
       ]);
 
-      if (driversRes.error) throw driversRes.error;
-      if (restaurantsRes.error) throw restaurantsRes.error;
-      if (deliveriesRes.error) throw deliveriesRes.error;
-      if (transactionsRes.error) throw transactionsRes.error;
+      if (driversRes.error) {
+        console.error('Erro drivers:', driversRes.error);
+        throw driversRes.error;
+      }
+      if (restaurantsRes.error) {
+        console.error('Erro restaurants:', restaurantsRes.error);
+        throw restaurantsRes.error;
+      }
+      if (deliveriesRes.error) {
+        console.error('Erro deliveries:', deliveriesRes.error);
+        throw deliveriesRes.error;
+      }
 
-      const driverRows = (driversRes.data ?? []) as Driver[];
-      const restaurantRows = (restaurantsRes.data ?? []) as Restaurant[];
+      const drivers = driversRes.data || [];
+      const restaurants = restaurantsRes.data || [];
+      const deliveries = deliveriesRes.data || [];
+      const transactions = transactionsRes.data || [];
 
-      const [driversWithProfiles, restaurantsWithProfiles] = await Promise.all([
-        Promise.all(
-          driverRows
-            .filter((driver) => !driver.is_approved)
-            .map(async (driver) => {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('full_name, phone')
-                .eq('id', driver.user_id)
-                .maybeSingle();
+      // Calculate stats
+      const approvedDrivers = drivers.filter(d => d.is_approved).length;
+      const pendingDriversCount = drivers.filter(d => !d.is_approved).length;
+      const approvedRestaurants = restaurants.filter(r => r.is_approved).length;
+      const pendingRestaurantsCount = restaurants.filter(r => !r.is_approved).length;
+      
+      const activeDeliveries = deliveries.filter(d => 
+        ['pending', 'accepted', 'picked_up'].includes(d.status)
+      ).length;
+      
+      const completedToday = deliveries.filter(d => 
+        d.status === 'delivered' && new Date(d.delivered_at || d.created_at) >= today
+      ).length;
 
-              return {
-                ...driver,
-                profile_name: profile?.full_name ?? 'Sem nome',
-                profile_phone: profile?.phone ?? '',
-              };
-            })
-        ),
-        Promise.all(
-          restaurantRows
-            .filter((restaurant) => !restaurant.is_approved)
-            .map(async (restaurant) => {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('phone')
-                .eq('id', restaurant.user_id)
-                .maybeSingle();
+      const totalRevenue = deliveries
+        .filter(d => d.status === 'delivered')
+        .reduce((sum, d) => sum + Number(d.price_adjusted || d.price || 0), 0);
 
-              return {
-                ...restaurant,
-                profile_phone: profile?.phone ?? '',
-              };
-            })
-        ),
-      ]);
+      // Calculate financial stats from transactions
+      const platformFees = transactions
+        .filter(t => t.type === 'platform_fee')
+        .reduce((sum, t) => sum + Number(t.platform_fee || t.amount || 0), 0);
 
-      setDrivers(driverRows);
-      setRestaurants(restaurantRows);
-      setDeliveries((deliveriesRes.data ?? []) as Delivery[]);
-      setTransactions((transactionsRes.data ?? []) as Transaction[]);
+      const driverEarnings = transactions
+        .filter(t => t.driver_id && t.driver_earnings)
+        .reduce((sum, t) => sum + Number(t.driver_earnings || 0), 0);
+
+      const totalVolume = deliveries
+        .filter(d => d.status === 'delivered')
+        .reduce((sum, d) => sum + Number(d.price_adjusted || d.price || 0), 0);
+
+      setStats({
+        totalDrivers: drivers.length,
+        approvedDrivers,
+        pendingDrivers: pendingDriversCount,
+        totalRestaurants: restaurants.length,
+        approvedRestaurants,
+        pendingRestaurants: pendingRestaurantsCount,
+        totalDeliveries: deliveries.length,
+        activeDeliveries,
+        completedToday,
+        totalRevenue,
+      });
+
+      setFinancialStats({
+        platformFees,
+        driverEarnings,
+        totalVolume,
+      });
+
+      // Fetch profiles for pending users
+      const pendingDriversList = drivers.filter(d => !d.is_approved);
+      const pendingRestaurantsList = restaurants.filter(r => !r.is_approved);
+
+      // Get profiles for pending drivers
+      const driversWithProfiles = await Promise.all(
+        pendingDriversList.map(async (driver) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', driver.user_id)
+            .maybeSingle();
+          
+          return {
+            id: driver.id,
+            user_id: driver.user_id,
+            vehicle_type: driver.vehicle_type,
+            license_plate: driver.license_plate || '',
+            created_at: driver.created_at,
+            profile_name: profile?.full_name || 'Sem nome',
+            profile_phone: profile?.phone || '',
+          };
+        })
+      );
+
+      // Get profiles for pending restaurants  
+      const restaurantsWithProfiles = await Promise.all(
+        pendingRestaurantsList.map(async (restaurant) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, phone')
+            .eq('id', restaurant.user_id)
+            .maybeSingle();
+          
+          return {
+            id: restaurant.id,
+            user_id: restaurant.user_id,
+            business_name: restaurant.business_name,
+            cnpj: restaurant.cnpj || '',
+            address: restaurant.address,
+            created_at: restaurant.created_at,
+            profile_phone: profile?.phone || '',
+          };
+        })
+      );
+
       setPendingDrivers(driversWithProfiles);
       setPendingRestaurants(restaurantsWithProfiles);
+      
       setLastUpdate(new Date());
-    } catch (err: any) {
-      console.error('Erro ao carregar painel admin:', err);
-      setError(err.message ?? 'Erro ao carregar dados do sistema');
+    } catch (error: any) {
+      console.error('Erro ao carregar dados:', error);
+      setError(error.message || 'Erro ao carregar dados do sistema');
       toast.error('Erro ao carregar dados do sistema');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  const stats = useMemo(() => {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    const activeStatuses: DeliveryStatus[] = ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering'];
-    const activeDeliveries = deliveries.filter((delivery) => activeStatuses.includes(delivery.status)).length;
-    const completedDeliveries = deliveries.filter((delivery) => delivery.status === 'delivered');
-    const completedToday = completedDeliveries.filter((delivery) => new Date(delivery.delivered_at ?? delivery.created_at) >= today).length;
-    const completedYesterday = completedDeliveries.filter((delivery) => {
-      const date = new Date(delivery.delivered_at ?? delivery.created_at);
-      return date >= yesterday && date < today;
-    }).length;
-
-    const grossRevenue = completedDeliveries.reduce((sum, delivery) => sum + Number(delivery.price_adjusted || delivery.price || 0), 0);
-    const platformFees = transactions.reduce((sum, transaction) => {
-      if (transaction.type === 'platform_fee') return sum + Number(transaction.platform_fee || transaction.amount || 0);
-      return sum + Number(transaction.platform_fee || 0);
-    }, 0);
-    const driverEarnings = transactions.reduce((sum, transaction) => sum + Number(transaction.driver_earnings || 0), 0);
-    const fallbackFees = platformFees || grossRevenue * 0.2;
-    const fallbackEarnings = driverEarnings || grossRevenue * 0.8;
-
-    return {
-      totalDeliveries: deliveries.length,
-      activeDeliveries,
-      completedToday,
-      completedYesterday,
-      onlineDrivers: drivers.filter((driver) => driver.is_available && driver.is_approved).length,
-      totalDrivers: drivers.length,
-      approvedDrivers: drivers.filter((driver) => driver.is_approved).length,
-      pendingDrivers: pendingDrivers.length,
-      totalRestaurants: restaurants.length,
-      approvedRestaurants: restaurants.filter((restaurant) => restaurant.is_approved).length,
-      pendingRestaurants: pendingRestaurants.length,
-      grossRevenue,
-      platformFees: fallbackFees,
-      driverEarnings: fallbackEarnings,
-      averageTicket: completedDeliveries.length ? grossRevenue / completedDeliveries.length : 0,
-      averageRating: drivers.length
-        ? drivers.reduce((sum, driver) => sum + Number(driver.rating || 0), 0) / drivers.filter((driver) => driver.rating !== null).length || 0
-        : 0,
-      acceptanceRate: deliveries.length ? Math.round(((deliveries.length - deliveries.filter((delivery) => delivery.status === 'cancelled').length) / deliveries.length) * 1000) / 10 : 0,
-      cancellationRate: deliveries.length ? Math.round((deliveries.filter((delivery) => delivery.status === 'cancelled').length / deliveries.length) * 1000) / 10 : 0,
-    };
-  }, [deliveries, drivers, pendingDrivers.length, pendingRestaurants.length, restaurants, transactions]);
-
-  const chartData = useMemo(() => {
-    return Array.from({ length: 13 }, (_, index) => {
-      const hour = index * 2;
-      const count = deliveries.filter((delivery) => new Date(delivery.created_at).getHours() <= hour).length;
-      return { hour: `${String(hour).padStart(2, '0')}h`, entregas: count };
-    });
-  }, [deliveries]);
-
-  const statusData = useMemo(() => {
-    const delivered = deliveries.filter((delivery) => delivery.status === 'delivered').length;
-    const active = deliveries.filter((delivery) => ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering'].includes(delivery.status)).length;
-    const cancelled = deliveries.filter((delivery) => delivery.status === 'cancelled').length;
-    const total = deliveries.length || 1;
-
-    return [
-      { name: 'Concluídas', value: delivered, percent: Math.round((delivered / total) * 100), color: 'hsl(var(--primary))' },
-      { name: 'Em andamento', value: active, percent: Math.round((active / total) * 100), color: 'hsl(var(--warning))' },
-      { name: 'Canceladas', value: cancelled, percent: Math.round((cancelled / total) * 100), color: 'hsl(var(--destructive))' },
-      { name: 'Falhas', value: Math.max(0, Math.round(deliveries.length * 0.05)), percent: 5, color: 'hsl(var(--muted-foreground))' },
-    ];
-  }, [deliveries]);
-
-  const sparkline = useMemo(() => Array.from({ length: 14 }, (_, index) => ({ value: Math.max(2, Math.round(Math.sin(index / 1.7) * 8 + index * 1.4 + 18)) })), []);
-  const recentDeliveries = deliveries.slice(0, 5);
-  const onlineDrivers = drivers.filter((driver) => driver.is_approved).slice(0, 5);
-  const recentActivities = deliveries.slice(0, 5);
-  const pendingTotal = pendingDrivers.length + pendingRestaurants.length;
-
   const handleApprove = async (id: string, type: 'driver' | 'restaurant') => {
     try {
       const table = type === 'driver' ? 'drivers' : 'restaurants';
-      const { error: updateError } = await supabase.from(table).update({ is_approved: true }).eq('id', id);
-      if (updateError) throw updateError;
+      const { error } = await supabase
+        .from(table)
+        .update({ is_approved: true })
+        .eq('id', id);
 
-      toast.success(`${type === 'driver' ? 'Entregador' : 'Cliente'} aprovado com sucesso`);
-      setDialog(null);
+      if (error) throw error;
+
+      toast.success(`✅ ${type === 'driver' ? 'Entregador' : 'Solicitante'} aprovado com sucesso!`);
+      setDialogType(null);
+      setSelectedItem(null);
       loadData();
-    } catch (err) {
-      console.error('Erro ao aprovar:', err);
+    } catch (error) {
+      console.error('Erro ao aprovar:', error);
       toast.error('Erro ao aprovar cadastro');
     }
   };
 
   const handleReject = async (id: string, type: 'driver' | 'restaurant') => {
     try {
+      // Check for active deliveries before deletion
       const { data: activeDeliveries } = await supabase
         .from('deliveries')
         .select('id')
         .eq(type === 'driver' ? 'driver_id' : 'restaurant_id', id)
-        .in('status', ['pending', 'accepted', 'picking_up', 'picked_up', 'delivering']);
+        .in('status', ['pending', 'accepted', 'picked_up']);
 
       if (activeDeliveries && activeDeliveries.length > 0) {
-        toast.error(`Existem ${activeDeliveries.length} entregas ativas vinculadas a este cadastro`);
+        toast.error(`Não é possível rejeitar: existem ${activeDeliveries.length} entregas ativas. Aguarde a conclusão ou cancelamento.`);
         return;
       }
 
       const table = type === 'driver' ? 'drivers' : 'restaurants';
-      const { error: deleteError } = await supabase.from(table).delete().eq('id', id);
-      if (deleteError) throw deleteError;
+      const { error } = await supabase
+        .from(table)
+        .delete()
+        .eq('id', id);
 
-      toast.success(`${type === 'driver' ? 'Entregador' : 'Cliente'} rejeitado`);
-      setDialog(null);
+      if (error) throw error;
+
+      toast.success(`❌ ${type === 'driver' ? 'Entregador' : 'Solicitante'} rejeitado`);
+      setDialogType(null);
+      setSelectedItem(null);
       loadData();
-    } catch (err) {
-      console.error('Erro ao rejeitar:', err);
+    } catch (error) {
+      console.error('Erro ao rejeitar:', error);
       toast.error('Erro ao rejeitar cadastro');
     }
   };
 
+  const openDetailsDialog = (item: any, type: 'driver' | 'restaurant') => {
+    setSelectedItem(item);
+    setDialogType(type);
+  };
+
+  // Error state with retry button
   if (error && !loading) {
     return (
       <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-secondary/50">
+        <div className="min-h-screen flex w-full bg-background">
           <AdminSidebar />
-          <main className="flex flex-1 items-center justify-center p-6">
-            <Card className="max-w-md border-border/70 shadow-sm">
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="w-full max-w-md mx-4">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-5 w-5" />
+                  <AlertCircle className="h-5 w-5" />
                   Erro ao carregar dados
                 </CardTitle>
+                <CardDescription>{error}</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">{error}</p>
+              <CardContent>
                 <Button onClick={loadData} className="w-full">
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4 mr-2" />
                   Tentar novamente
                 </Button>
               </CardContent>
             </Card>
-          </main>
+          </div>
         </div>
       </SidebarProvider>
     );
@@ -441,323 +392,347 @@ export default function AdminDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-secondary/50">
+      <div className="min-h-screen flex w-full bg-background">
         <AdminSidebar />
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-border/70 bg-background/95 backdrop-blur">
-            <div className="flex h-20 items-center justify-between gap-4 px-4 sm:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <SidebarTrigger />
-                <div className="min-w-0">
-                  <h1 className="truncate text-2xl font-bold tracking-normal text-foreground">Visão geral</h1>
-                  <p className="truncate text-sm text-muted-foreground">Acompanhe tudo que acontece na sua operação em tempo real.</p>
+        
+        <div className="flex-1 flex flex-col">
+          <header className="sticky top-0 z-10 h-16 border-b bg-primary backdrop-blur supports-[backdrop-filter]:bg-primary/95">
+            <div className="flex h-full items-center justify-between px-6">
+              <div className="flex items-center gap-4">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+                <div>
+                  <h1 className="text-xl font-bold text-primary-foreground">Levei Admin</h1>
+                  <p className="text-xs text-primary-foreground/60">
+                    Atualizado: {lastUpdate.toLocaleTimeString('pt-BR')}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={loadData} disabled={loading} className="hidden sm:flex">
-                  <CalendarDays className="h-4 w-4" />
-                  Hoje, {lastUpdate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={loadData}
+                  disabled={loading}
+                >
+                  <RefreshCw className={`h-3 w-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                  Atualizar
                 </Button>
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
-                  {pendingTotal > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate('/admin/reports')}>
-                  <span className="hidden sm:inline">Filtros</span>
-                  <Filter className="h-4 w-4" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    supabase.auth.signOut();
+                    navigate('/auth');
+                  }}
+                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                >
+                  Sair
                 </Button>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto p-4 sm:p-6">
-            <div className="mx-auto max-w-[1680px] space-y-4">
+          <main className="flex-1 p-6 overflow-auto">
+            <div className="max-w-7xl mx-auto space-y-6">
+              <div>
+                <h2 className="text-3xl font-bold text-foreground">Dashboard Administrativo</h2>
+                <p className="text-muted-foreground">Visão geral e gerenciamento do sistema</p>
+              </div>
+
+              {/* Stats Grid */}
               {loading ? (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-                  {Array.from({ length: 6 }).map((_, index) => <StatSkeleton key={index} />)}
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <StatCardSkeleton key={i} />
+                  ))}
                 </div>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-                  <MetricCard title="Entregas realizadas" value={stats.totalDeliveries.toLocaleString('pt-BR')} delta="+12,5%" detail="vs ontem" icon={PackageCheck} data={sparkline} />
-                  <MetricCard title="Entregas em andamento" value={stats.activeDeliveries} delta="Tempo real" detail="operações ativas" icon={Bike} tone="warning" data={sparkline.slice().reverse()} />
-                  <MetricCard title="Entregadores online" value={stats.onlineDrivers} delta="+8,3%" detail="vs ontem" icon={UserCheck} tone="success" data={sparkline} />
-                  <MetricCard title="Faturamento bruto" value={shortCurrency(stats.grossRevenue)} delta="+15,7%" detail="vs ontem" icon={CircleDollarSign} data={sparkline.slice().reverse()} />
-                  <MetricCard title="Ticket médio" value={shortCurrency(stats.averageTicket)} delta="+2,1%" detail="vs ontem" icon={CreditCard} tone="info" data={sparkline} />
-                  <MetricCard title="Avaliação média" value={stats.averageRating ? stats.averageRating.toFixed(1) : '4.9'} delta="+0,1" detail="vs ontem" icon={Star} tone="warning" data={sparkline.slice().reverse()} />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <Card className="border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Entregadores</CardTitle>
+                      <Truck className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{stats.totalDrivers}</div>
+                      <div className="flex items-center gap-4 mt-2 text-xs">
+                        <span className="text-green-600 flex items-center gap-1">
+                          <UserCheck className="h-3 w-3" />
+                          {stats.approvedDrivers} ativos
+                        </span>
+                        {stats.pendingDrivers > 0 && (
+                          <span className="text-orange-600 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {stats.pendingDrivers} pendentes
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-2 hover:border-primary/50 transition-colors">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Solicitantes</CardTitle>
+                      <Building2 className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{stats.totalRestaurants}</div>
+                      <div className="flex items-center gap-4 mt-2 text-xs">
+                        <span className="text-green-600 flex items-center gap-1">
+                          <UserCheck className="h-3 w-3" />
+                          {stats.approvedRestaurants} ativos
+                        </span>
+                        {stats.pendingRestaurants > 0 && (
+                          <span className="text-orange-600 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {stats.pendingRestaurants} pendentes
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Entregas</CardTitle>
+                      <PackageCheck className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{stats.totalDeliveries}</div>
+                      <div className="flex items-center gap-4 mt-2 text-xs">
+                        <span className="text-blue-600 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {stats.activeDeliveries} ativas
+                        </span>
+                        <span className="text-green-600">
+                          {stats.completedToday} hoje
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Volume Total</CardTitle>
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">R$ {stats.totalRevenue.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Entregas concluídas
+                      </p>
+                    </CardContent>
+                  </Card>
                 </div>
               )}
 
-              <div className="grid gap-4 xl:grid-cols-[1.45fr_0.62fr_0.68fr]">
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-base">Entregas em tempo real</CardTitle>
-                      <Badge className="bg-success/10 text-success hover:bg-success/10">Ao vivo</Badge>
+              {/* Financial Card */}
+              {loading ? (
+                <StatCardSkeleton />
+              ) : (
+                <Card className="border-2 border-green-500/20 bg-green-500/5">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Wallet className="h-5 w-5 text-green-600" />
+                          Financeiro da Plataforma
+                        </CardTitle>
+                        <CardDescription className="mt-2">
+                          Resumo financeiro das operações
+                        </CardDescription>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="relative h-[300px] overflow-hidden rounded-lg border border-border/70 bg-secondary">
-                      <div className="absolute inset-0 opacity-70 [background-image:linear-gradient(hsl(var(--border))_1px,transparent_1px),linear-gradient(90deg,hsl(var(--border))_1px,transparent_1px)] [background-size:42px_42px]" />
-                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,hsl(var(--background)/0.05),transparent_40%)]" />
-                      <div className="absolute left-5 top-20 z-10 rounded-lg border border-border bg-background/95 p-4 shadow-sm">
-                        <p className="mb-3 text-xs font-bold">Legenda</p>
-                        <div className="space-y-2 text-xs text-muted-foreground">
-                          <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-primary" />Entrega em andamento</div>
-                          <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-success" />Entregador disponível</div>
-                          <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-warning" />Nova solicitação</div>
-                          <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-destructive" />Alta demanda</div>
-                        </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="p-4 bg-background rounded-lg border">
+                        <p className="text-sm text-muted-foreground mb-1">Taxa da Plataforma (20%)</p>
+                        <p className="text-2xl font-bold text-green-600">
+                          R$ {financialStats.platformFees.toFixed(2)}
+                        </p>
                       </div>
-                      {[
-                        ['left-[24%] top-[18%]', Bike, 'primary'],
-                        ['left-[47%] top-[52%]', PackageCheck, 'primary'],
-                        ['left-[70%] top-[14%]', UserCheck, 'success'],
-                        ['left-[77%] top-[65%]', Bike, 'primary'],
-                        ['left-[58%] top-[47%]', UserCheck, 'success'],
-                        ['left-[35%] top-[71%]', UserCheck, 'success'],
-                        ['left-[69%] top-[68%]', Bike, 'warning'],
-                      ].map(([position, Icon, tone], index) => (
-                        <div key={index} className={`absolute ${position} z-10 flex h-9 w-9 items-center justify-center rounded-full shadow-md ${tone === 'success' ? 'bg-success text-success-foreground' : tone === 'warning' ? 'bg-warning text-warning-foreground' : 'bg-primary text-primary-foreground'}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                      ))}
-                      <div className="absolute left-[52%] top-[36%] z-10 flex h-12 w-12 items-center justify-center rounded-full bg-primary-dark text-primary-foreground shadow-md">{stats.activeDeliveries || 0}</div>
-                      <div className="absolute bottom-4 right-4 z-10 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-                        <button className="flex h-10 w-10 items-center justify-center hover:bg-secondary"><Plus className="h-4 w-4" /></button>
-                        <button className="flex h-10 w-10 items-center justify-center border-t border-border hover:bg-secondary"><Minus className="h-4 w-4" /></button>
-                        <button className="flex h-10 w-10 items-center justify-center border-t border-border hover:bg-secondary"><Route className="h-4 w-4" /></button>
+                      <div className="p-4 bg-background rounded-lg border">
+                        <p className="text-sm text-muted-foreground mb-1">Pago aos Entregadores (80%)</p>
+                        <p className="text-2xl font-bold text-blue-600">
+                          R$ {financialStats.driverEarnings.toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="p-4 bg-background rounded-lg border">
+                        <p className="text-sm text-muted-foreground mb-1">Volume Total Movimentado</p>
+                        <p className="text-2xl font-bold text-foreground">
+                          R$ {financialStats.totalVolume.toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
+              )}
 
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Resumo da operação</CardTitle>
-                    <button onClick={() => navigate('/admin/reports')} className="text-xs font-semibold text-primary">Ver relatório completo</button>
+              {/* Pending Approvals */}
+              {loading ? (
+                <Card>
+                  <CardHeader>
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-64 mt-2" />
                   </CardHeader>
-                  <CardContent className="space-y-5">
-                    {[
-                      ['Taxa de aceitação', `${stats.acceptanceRate.toFixed(1)}%`, '+2,7p', stats.acceptanceRate],
-                      ['Cancelamentos', `${stats.cancellationRate.toFixed(1)}%`, '-0,4p', stats.cancellationRate * 8],
-                      ['Tempo médio de entrega', '28 min', '-3 min', 68],
-                      ['Distância média', '4,2 km', '+0,3 km', 48],
-                    ].map(([label, value, delta, progress]) => (
-                      <div key={label as string}>
-                        <div className="mb-2 flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground">{label}</p>
-                            <p className="text-lg font-bold">{value}</p>
-                          </div>
-                          <span className="text-xs font-semibold text-success">{delta}</span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
-                          <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(Number(progress), 100)}%` }} />
-                        </div>
-                      </div>
-                    ))}
+                  <CardContent>
+                    <TableSkeleton />
                   </CardContent>
                 </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Atividades em tempo real</CardTitle>
-                    <button onClick={() => navigate('/admin/deliveries')} className="text-xs font-semibold text-primary">Ver todas</button>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    {recentActivities.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma atividade recente</p>
-                    ) : recentActivities.map((delivery, index) => (
-                      <div key={delivery.id} className="flex items-start gap-3 rounded-lg p-3 transition-colors hover:bg-secondary/70">
-                        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${delivery.status === 'delivered' ? 'bg-success/10 text-success' : delivery.status === 'cancelled' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
-                          {delivery.status === 'delivered' ? <CheckCircle2 className="h-4 w-4" /> : delivery.status === 'cancelled' ? <AlertTriangle className="h-4 w-4" /> : <PackageCheck className="h-4 w-4" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">{statusLabels[delivery.status]}</p>
-                          <p className="truncate text-xs text-muted-foreground">{delivery.delivery_address}</p>
-                        </div>
-                        <span className="whitespace-nowrap text-xs text-muted-foreground">{index === 0 ? 'Agora' : `${index + 1} min atrás`}</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-[0.9fr_0.72fr_0.72fr_0.78fr]">
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Gráfico de entregas</CardTitle>
-                    <Button variant="outline" size="sm">Diário</Button>
-                  </CardHeader>
-                  <CardContent className="h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                        <XAxis dataKey="hour" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-                        <Tooltip formatter={(value) => [`${value} entregas`, 'Total']} />
-                        <Area dataKey="entregas" type="monotone" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.12} strokeWidth={2} dot={false} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Entregas por status</CardTitle>
-                    <button onClick={() => navigate('/admin/deliveries')} className="text-xs font-semibold text-primary">Ver detalhes</button>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-[150px_1fr] items-center gap-4">
-                    <div className="relative h-[150px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={statusData} dataKey="value" innerRadius={54} outerRadius={72} paddingAngle={2}>
-                            {statusData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
-                          </Pie>
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <p className="text-xl font-bold">{stats.totalDeliveries.toLocaleString('pt-BR')}</p>
-                        <p className="text-xs text-muted-foreground">Total</p>
+              ) : (pendingDrivers.length > 0 || pendingRestaurants.length > 0) ? (
+                <Card className="border-2 border-orange-500/20 bg-orange-500/5">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-orange-500" />
+                          Aprovações Pendentes ({pendingDrivers.length + pendingRestaurants.length})
+                        </CardTitle>
+                        <CardDescription className="mt-2">
+                          Cadastros aguardando aprovação
+                        </CardDescription>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      {statusData.map((item) => (
-                        <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />{item.name}</span>
-                          <strong>{item.value} <span className="font-normal text-muted-foreground">({item.percent}%)</span></strong>
-                        </div>
-                      ))}
-                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs defaultValue="drivers">
+                      <TabsList>
+                        <TabsTrigger value="drivers">
+                          Entregadores ({pendingDrivers.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="restaurants">
+                          Solicitantes ({pendingRestaurants.length})
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="drivers" className="mt-4">
+                        {pendingDrivers.length === 0 ? (
+                          <p className="text-center py-8 text-muted-foreground">
+                            Nenhum entregador pendente
+                          </p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Nome</TableHead>
+                                <TableHead>Veículo</TableHead>
+                                <TableHead>Placa</TableHead>
+                                <TableHead>Telefone</TableHead>
+                                <TableHead className="text-right">Ações</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {pendingDrivers.map((driver) => (
+                                <TableRow key={driver.id}>
+                                  <TableCell className="font-medium">
+                                    {driver.profile_name}
+                                  </TableCell>
+                                  <TableCell className="capitalize">
+                                    {driver.vehicle_type}
+                                  </TableCell>
+                                  <TableCell>{driver.license_plate}</TableCell>
+                                  <TableCell>{driver.profile_phone}</TableCell>
+                                  <TableCell className="text-right space-x-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openDetailsDialog(driver, 'driver')}
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Ver
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleApprove(driver.id, 'driver')}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Aprovar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleReject(driver.id, 'driver')}
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Rejeitar
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="restaurants" className="mt-4">
+                        {pendingRestaurants.length === 0 ? (
+                          <p className="text-center py-8 text-muted-foreground">
+                            Nenhum solicitante pendente
+                          </p>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Nome do Negócio</TableHead>
+                                <TableHead>CNPJ</TableHead>
+                                <TableHead>Endereço</TableHead>
+                                <TableHead>Telefone</TableHead>
+                                <TableHead className="text-right">Ações</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {pendingRestaurants.map((restaurant) => (
+                                <TableRow key={restaurant.id}>
+                                  <TableCell className="font-medium">
+                                    {restaurant.business_name}
+                                  </TableCell>
+                                  <TableCell>{restaurant.cnpj || 'N/A'}</TableCell>
+                                  <TableCell className="max-w-xs truncate">
+                                    {restaurant.address}
+                                  </TableCell>
+                                  <TableCell>{restaurant.profile_phone}</TableCell>
+                                  <TableCell className="text-right space-x-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => openDetailsDialog(restaurant, 'restaurant')}
+                                    >
+                                      <Eye className="h-3 w-3 mr-1" />
+                                      Ver
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleApprove(restaurant.id, 'restaurant')}
+                                    >
+                                      <Check className="h-3 w-3 mr-1" />
+                                      Aprovar
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      onClick={() => handleReject(restaurant.id, 'restaurant')}
+                                    >
+                                      <X className="h-3 w-3 mr-1" />
+                                      Rejeitar
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                 </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Top regiões</CardTitle>
-                    <button onClick={() => navigate('/admin/reports')} className="text-xs font-semibold text-primary">Ver relatório</button>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {['Centro', 'Bom Pastor', 'Esplanada', 'Santa Cruz', 'Retiro'].map((region, index) => (
-                      <div key={region} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs font-bold text-muted-foreground">{index + 1}</span>
-                          <span className="font-medium">{region}</span>
-                        </div>
-                        <span className="text-muted-foreground">{Math.max(28, stats.totalDeliveries - index * 12)} entregas</span>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Notificações</CardTitle>
-                    <button onClick={() => navigate('/admin/disputes')} className="text-xs font-semibold text-primary">Ver todas</button>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {pendingTotal > 0 && <NotificationRow tone="warning" title="Cadastros pendentes" text={`${pendingTotal} aprovação(ões) aguardando`} />}
-                    {stats.cancellationRate > 0 && <NotificationRow tone="destructive" title="Problema na entrega" text="Há entregas canceladas para revisar" />}
-                    <NotificationRow tone="success" title="Novo cadastro" text="Novo entregador verificado" />
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-[1fr_0.8fr_0.58fr]">
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Entregas recentes</CardTitle>
-                    <button onClick={() => navigate('/admin/deliveries')} className="text-xs font-semibold text-primary">Ver todas</button>
-                  </CardHeader>
-                  <CardContent className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Origem</TableHead>
-                          <TableHead>Destino</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentDeliveries.length === 0 ? (
-                          <TableRow><TableCell colSpan={5} className="py-8 text-center text-muted-foreground">Nenhuma entrega encontrada</TableCell></TableRow>
-                        ) : recentDeliveries.map((delivery) => (
-                          <TableRow key={delivery.id}>
-                            <TableCell className="font-semibold text-primary">#{delivery.id.slice(0, 5)}</TableCell>
-                            <TableCell className="max-w-[160px] truncate">{delivery.pickup_address}</TableCell>
-                            <TableCell className="max-w-[160px] truncate">{delivery.delivery_address}</TableCell>
-                            <TableCell>{shortCurrency(Number(delivery.price_adjusted || delivery.price || 0))}</TableCell>
-                            <TableCell><Badge className={`${statusBadge[delivery.status]} hover:${statusBadge[delivery.status]}`}>{statusLabels[delivery.status]}</Badge></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Entregadores online</CardTitle>
-                    <button onClick={() => navigate('/admin/drivers')} className="text-xs font-semibold text-primary">Ver todos</button>
-                  </CardHeader>
-                  <CardContent className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Entregador</TableHead>
-                          <TableHead>Avaliação</TableHead>
-                          <TableHead>Entregas hoje</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {onlineDrivers.length === 0 ? (
-                          <TableRow><TableCell colSpan={4} className="py-8 text-center text-muted-foreground">Nenhum entregador online</TableCell></TableRow>
-                        ) : onlineDrivers.map((driver, index) => (
-                          <TableRow key={driver.id}>
-                            <TableCell className="font-medium">Entregador {index + 1}</TableCell>
-                            <TableCell><span className="flex items-center gap-1"><Star className="h-4 w-4 fill-warning text-warning" />{Number(driver.rating || 4.9).toFixed(1)}</span></TableCell>
-                            <TableCell>{driver.total_deliveries || Math.max(1, 12 - index)}</TableCell>
-                            <TableCell><Badge className="bg-success/10 text-success hover:bg-success/10">Online</Badge></TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/70 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-base">Faturamento</CardTitle>
-                    <button onClick={() => navigate('/admin/reports')} className="text-xs font-semibold text-primary">Ver relatório</button>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FinanceLine label="Total bruto" value={shortCurrency(stats.grossRevenue)} highlight />
-                    <FinanceLine label="Taxas da plataforma" value={`-${shortCurrency(stats.platformFees)}`} />
-                    <FinanceLine label="Repasses" value={shortCurrency(stats.driverEarnings)} />
-                    <div className="border-t border-border pt-4">
-                      <FinanceLine label="Total líquido" value={shortCurrency(stats.platformFees)} highlight tone="primary" />
-                    </div>
-                    <Button className="w-full" onClick={() => navigate('/admin/reports')}>Ver relatório financeiro</Button>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {pendingTotal > 0 && (
-                <Card className="border-warning/30 bg-warning/5 shadow-sm">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-5 w-5 text-warning" />Aprovações pendentes</CardTitle>
-                    <Badge className="bg-warning/10 text-warning hover:bg-warning/10">{pendingTotal}</Badge>
-                  </CardHeader>
-                  <CardContent className="grid gap-3 lg:grid-cols-2">
-                    {pendingDrivers.map((driver) => (
-                      <PendingRow key={driver.id} title={driver.profile_name} subtitle={`${driver.vehicle_type} • ${driver.license_plate || 'Sem placa'}`} onView={() => setDialog({ type: 'driver', item: driver })} onApprove={() => handleApprove(driver.id, 'driver')} onReject={() => handleReject(driver.id, 'driver')} />
-                    ))}
-                    {pendingRestaurants.map((restaurant) => (
-                      <PendingRow key={restaurant.id} title={restaurant.business_name} subtitle={restaurant.address} onView={() => setDialog({ type: 'restaurant', item: restaurant })} onApprove={() => handleApprove(restaurant.id, 'restaurant')} onReject={() => handleReject(restaurant.id, 'restaurant')} />
-                    ))}
+              ) : (
+                <Card>
+                  <CardContent className="py-8">
+                    <p className="text-center text-muted-foreground flex items-center justify-center gap-2">
+                      <Check className="h-5 w-5 text-green-500" />
+                      Todas as aprovações estão em dia
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -766,95 +741,112 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <Dialog open={dialog !== null} onOpenChange={(open) => !open && setDialog(null)}>
+      {/* Details Dialog */}
+      <Dialog open={dialogType !== null} onOpenChange={(open) => !open && setDialogType(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{dialog?.type === 'driver' ? 'Detalhes do entregador' : 'Detalhes do cliente'}</DialogTitle>
-            <DialogDescription>Revise as informações antes de aprovar ou rejeitar.</DialogDescription>
+            <DialogTitle>
+              {dialogType === 'driver' ? 'Detalhes do Entregador' : 'Detalhes do Solicitante'}
+            </DialogTitle>
+            <DialogDescription>
+              Informações completas do cadastro
+            </DialogDescription>
           </DialogHeader>
-          {dialog && (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Detail label="Nome" value={dialog.type === 'driver' ? dialog.item.profile_name : dialog.item.business_name} />
-              <Detail label="Telefone" value={dialog.type === 'driver' ? dialog.item.profile_phone : dialog.item.profile_phone} />
-              {dialog.type === 'driver' ? (
-                <>
-                  <Detail label="Veículo" value={dialog.item.vehicle_type} />
-                  <Detail label="Placa" value={dialog.item.license_plate || 'N/A'} />
-                </>
-              ) : (
-                <>
-                  <Detail label="CNPJ" value={dialog.item.cnpj || 'N/A'} />
-                  <Detail label="Endereço" value={dialog.item.address} />
-                </>
-              )}
-              <Detail label="Cadastrado em" value={new Date(dialog.item.created_at).toLocaleDateString('pt-BR')} />
+
+          {selectedItem && dialogType === 'driver' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Nome</label>
+                  <p className="text-foreground">{selectedItem.profile_name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Telefone</label>
+                  <p className="text-foreground flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    {selectedItem.profile_phone}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Tipo de Veículo</label>
+                  <p className="text-foreground capitalize">{selectedItem.vehicle_type}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Placa</label>
+                  <p className="text-foreground">{selectedItem.license_plate || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Cadastrado em</label>
+                  <p className="text-foreground">
+                    {new Date(selectedItem.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
+
+          {selectedItem && dialogType === 'restaurant' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Nome do Negócio</label>
+                  <p className="text-foreground">{selectedItem.business_name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">CNPJ</label>
+                  <p className="text-foreground">{selectedItem.cnpj || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Telefone</label>
+                  <p className="text-foreground flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    {selectedItem.profile_phone}
+                  </p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Cadastrado em</label>
+                  <p className="text-foreground">
+                    {new Date(selectedItem.created_at).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">Endereço</label>
+                  <p className="text-foreground flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    {selectedItem.address}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDialog(null)}>Fechar</Button>
-            {dialog && (
+            <Button
+              variant="outline"
+              onClick={() => setDialogType(null)}
+            >
+              Fechar
+            </Button>
+            {selectedItem && (
               <>
-                <Button onClick={() => handleApprove(dialog.item.id, dialog.type)}><Check className="h-4 w-4" />Aprovar</Button>
-                <Button variant="destructive" onClick={() => handleReject(dialog.item.id, dialog.type)}><X className="h-4 w-4" />Rejeitar</Button>
+                <Button
+                  onClick={() => handleApprove(selectedItem.id, dialogType!)}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Aprovar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleReject(selectedItem.id, dialogType!)}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Rejeitar
+                </Button>
               </>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </SidebarProvider>
-  );
-}
-
-function NotificationRow({ tone, title, text }: { tone: 'warning' | 'destructive' | 'success'; title: string; text: string }) {
-  const toneClass = {
-    warning: 'bg-warning/10 text-warning',
-    destructive: 'bg-destructive/10 text-destructive',
-    success: 'bg-success/10 text-success',
-  }[tone];
-
-  return (
-    <div className="flex items-start gap-3 rounded-lg p-3 hover:bg-secondary/70">
-      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${toneClass}`}>
-        {tone === 'success' ? <UserCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold">{title}</p>
-        <p className="truncate text-xs text-muted-foreground">{text}</p>
-      </div>
-    </div>
-  );
-}
-
-function FinanceLine({ label, value, highlight, tone = 'foreground' }: { label: string; value: string; highlight?: boolean; tone?: 'foreground' | 'primary' }) {
-  return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <span className={highlight ? 'font-semibold text-foreground' : 'text-muted-foreground'}>{label}</span>
-      <span className={`${highlight ? 'font-bold' : 'font-medium'} ${tone === 'primary' ? 'text-primary' : 'text-foreground'}`}>{value}</span>
-    </div>
-  );
-}
-
-function PendingRow({ title, subtitle, onView, onApprove, onReject }: { title: string; subtitle: string; onView: () => void; onApprove: () => void; onReject: () => void }) {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <p className="truncate font-semibold">{title}</p>
-        <p className="truncate text-sm text-muted-foreground">{subtitle}</p>
-      </div>
-      <div className="flex shrink-0 gap-2">
-        <Button size="sm" variant="outline" onClick={onView}><Eye className="h-4 w-4" />Ver</Button>
-        <Button size="sm" onClick={onApprove}><Check className="h-4 w-4" />Aprovar</Button>
-        <Button size="sm" variant="destructive" onClick={onReject}><X className="h-4 w-4" /></Button>
-      </div>
-    </div>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="text-foreground">{value}</p>
-    </div>
   );
 }

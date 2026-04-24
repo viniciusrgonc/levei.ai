@@ -57,12 +57,19 @@ export default function AdminTransactions() {
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [platformFeePercent, setPlatformFeePercent] = useState(20);
+  const [driverCommissionPercent, setDriverCommissionPercent] = useState(80);
 
   useEffect(() => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+    if (!user) { navigate('/auth'); return; }
+    supabase.from('platform_settings').select('key, value').then(({ data }) => {
+      if (data) {
+        const fee = data.find(s => s.key === 'platform_fee_percentage');
+        const comm = data.find(s => s.key === 'driver_commission_percentage');
+        if (fee) setPlatformFeePercent(parseFloat(fee.value));
+        if (comm) setDriverCommissionPercent(parseFloat(comm.value));
+      }
+    });
     fetchTransactions();
   }, [user, navigate, filter]);
 
@@ -117,7 +124,7 @@ export default function AdminTransactions() {
   const getTransactionBadge = (type: string) => {
     const badges: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' }> = {
       'delivery_payment': { label: 'Pagamento', variant: 'default' },
-      'platform_fee': { label: 'Taxa 20%', variant: 'secondary' },
+      'platform_fee': { label: `Taxa ${platformFeePercent}%`, variant: 'secondary' },
       'withdrawal': { label: 'Saque', variant: 'destructive' },
     };
     return badges[type] || { label: type, variant: 'default' };
@@ -180,7 +187,7 @@ export default function AdminTransactions() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Taxas (20%)</p>
+                        <p className="text-sm text-muted-foreground">Taxas ({platformFeePercent}%)</p>
                         <p className="text-2xl font-bold text-green-500">
                           R$ {stats.total_platform_fees.toFixed(2)}
                         </p>
@@ -194,7 +201,7 @@ export default function AdminTransactions() {
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-muted-foreground">Motoristas (80%)</p>
+                        <p className="text-sm text-muted-foreground">Motoristas ({driverCommissionPercent}%)</p>
                         <p className="text-2xl font-bold text-blue-500">
                           R$ {stats.total_driver_earnings.toFixed(2)}
                         </p>

@@ -51,6 +51,8 @@ export default function AdminFinancialReports() {
   const [error, setError] = useState<string | null>(null);
   const [dailyData, setDailyData] = useState<DailyRevenue[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyRevenue[]>([]);
+  const [platformFeeRate, setPlatformFeeRate] = useState(0.20);
+  const [driverCommissionRate, setDriverCommissionRate] = useState(0.80);
   const [stats, setStats] = useState<FinancialStats>({
     totalReceita: 0,
     totalTaxaPlataforma: 0,
@@ -60,6 +62,17 @@ export default function AdminFinancialReports() {
     crescimentoReceita: 0,
     totalAcumuladoPlataforma: 0,
   });
+
+  useEffect(() => {
+    supabase.from('platform_settings').select('key, value').then(({ data }) => {
+      if (data) {
+        const fee = data.find(s => s.key === 'platform_fee_percentage');
+        const comm = data.find(s => s.key === 'driver_commission_percentage');
+        if (fee) setPlatformFeeRate(parseFloat(fee.value) / 100);
+        if (comm) setDriverCommissionRate(parseFloat(comm.value) / 100);
+      }
+    });
+  }, []);
 
   const fetchFinancialData = async () => {
     setLoading(true);
@@ -146,8 +159,8 @@ export default function AdminFinancialReports() {
 
       setStats({
         totalReceita,
-        totalTaxaPlataforma: totalTaxaPlataforma || totalReceita * 0.20,
-        totalPagamentoEntregadores: totalPagamentoEntregadores || totalReceita * 0.80,
+        totalTaxaPlataforma: totalTaxaPlataforma || totalReceita * platformFeeRate,
+        totalPagamentoEntregadores: totalPagamentoEntregadores || totalReceita * driverCommissionRate,
         totalEntregas,
         ticketMedio,
         crescimentoReceita,
@@ -169,8 +182,8 @@ export default function AdminFinancialReports() {
           return {
             month: format(month, 'MMM yyyy', { locale: ptBR }),
             receita,
-            taxaPlataforma: receita * 0.20,
-            pagamentoEntregadores: receita * 0.80,
+            taxaPlataforma: receita * platformFeeRate,
+            pagamentoEntregadores: receita * driverCommissionRate,
           };
         });
         setMonthlyData(monthlyRevenue);
@@ -189,8 +202,8 @@ export default function AdminFinancialReports() {
           return {
             date: format(day, 'dd/MM', { locale: ptBR }),
             receita,
-            taxaPlataforma: receita * 0.20,
-            pagamentoEntregadores: receita * 0.80,
+            taxaPlataforma: receita * platformFeeRate,
+            pagamentoEntregadores: receita * driverCommissionRate,
           };
         });
         setDailyData(dailyRevenue);
@@ -213,8 +226,8 @@ export default function AdminFinancialReports() {
   const xAxisKey = period === '12m' ? 'month' : 'date';
 
   const pieData = [
-    { name: 'Taxa Plataforma (20%)', value: stats.totalTaxaPlataforma },
-    { name: 'Pagamento Entregadores (80%)', value: stats.totalPagamentoEntregadores },
+    { name: `Taxa Plataforma (${Math.round(platformFeeRate * 100)}%)`, value: stats.totalTaxaPlataforma },
+    { name: `Pagamento Entregadores (${Math.round(driverCommissionRate * 100)}%)`, value: stats.totalPagamentoEntregadores },
   ];
 
   const formatCurrency = (value: number) => {
@@ -523,7 +536,7 @@ export default function AdminFinancialReports() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-muted-foreground">Taxa Plataforma (20%)</p>
+                            <p className="text-sm text-muted-foreground">Taxa Plataforma ({Math.round(platformFeeRate * 100)}%)</p>
                             <p className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalTaxaPlataforma)}</p>
                             <p className="text-sm text-muted-foreground">{stats.totalEntregas} entregas</p>
                           </div>
@@ -542,7 +555,7 @@ export default function AdminFinancialReports() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-sm text-muted-foreground">Pago a Entregadores (80%)</p>
+                            <p className="text-sm text-muted-foreground">Pago a Entregadores ({Math.round(driverCommissionRate * 100)}%)</p>
                             <p className="text-2xl font-bold text-amber-600">{formatCurrency(stats.totalPagamentoEntregadores)}</p>
                             <p className="text-sm text-muted-foreground">Ticket médio: {formatCurrency(stats.ticketMedio)}</p>
                           </div>

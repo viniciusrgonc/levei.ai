@@ -93,11 +93,14 @@ export default function AdminDisputes() {
 
   const resolveDispute = async (disputeId: string, newStatus: 'resolved' | 'rejected') => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase
         .from('disputes')
         .update({
           status: newStatus,
           resolved_at: new Date().toISOString(),
+          resolved_by: user?.id ?? null,
+          description: selectedDispute?.description + (resolution ? `\n\n[Resolução Admin]: ${resolution}` : ''),
         })
         .eq('id', disputeId);
 
