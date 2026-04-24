@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAddFunds } from '@/hooks/useAddFunds';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BottomNav } from '@/components/BottomNav';
 
 interface Transaction {
   id: string;
@@ -269,6 +270,7 @@ export default function RestaurantWallet() {
           </main>
         </div>
       </div>
+      <BottomNav />
     </SidebarProvider>
   );
 }

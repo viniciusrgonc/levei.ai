@@ -155,16 +155,11 @@ export default function DeliveryTracking() {
 
   if (loading) {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full bg-primary">
-          <RestaurantSidebar />
-          <div className="flex-1 p-6 space-y-4">
-            <Skeleton className="h-12 w-full bg-white/10" />
-            <Skeleton className="h-64 w-full bg-white/10" />
-            <Skeleton className="h-32 w-full bg-white/10" />
-          </div>
-        </div>
-      </SidebarProvider>
+      <div className="min-h-screen bg-primary flex flex-col p-6 gap-4">
+        <Skeleton className="h-12 w-full bg-white/10" />
+        <Skeleton className="h-64 w-full bg-white/10" />
+        <Skeleton className="h-32 w-full bg-white/10" />
+      </div>
     );
   }
 
@@ -173,10 +168,7 @@ export default function DeliveryTracking() {
   /* ─── PENDING: radar search screen ─────────────────────────────────── */
   if (delivery.status === 'pending') {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full">
-          <RestaurantSidebar />
-          <div className="flex-1 flex flex-col bg-primary text-white">
+      <div className="min-h-screen flex flex-col bg-primary text-white">
             {/* Header */}
             <div className="flex items-center px-4 pt-10 pb-4 gap-3">
               <button
@@ -264,27 +256,21 @@ export default function DeliveryTracking() {
               </button>
             </div>
 
-            <BottomNav />
-          </div>
-        </div>
-
+        <BottomNav />
         <CancelDeliveryModal
           deliveryId={delivery.id}
           open={showCancelModal}
           onOpenChange={setShowCancelModal}
           onCancelled={() => { setShowCancelModal(false); fetchDelivery(); }}
         />
-      </SidebarProvider>
+      </div>
     );
   }
 
   /* ─── CANCELLED screen ─────────────────────────────────────────────── */
   if (delivery.status === 'cancelled') {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full">
-          <RestaurantSidebar />
-          <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50">
             <div className="flex items-center px-4 pt-10 pb-4 gap-3 bg-white border-b">
               <button
                 onClick={() => navigate('/restaurant/dashboard')}
@@ -308,19 +294,14 @@ export default function DeliveryTracking() {
               </button>
             </div>
             <BottomNav />
-          </div>
         </div>
-      </SidebarProvider>
     );
   }
 
   /* ─── DELIVERED screen ─────────────────────────────────────────────── */
   if (delivery.status === 'delivered') {
     return (
-      <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full">
-          <RestaurantSidebar />
-          <div className="flex-1 flex flex-col bg-gray-50">
+      <div className="min-h-screen flex flex-col bg-gray-50">
             <div className="flex items-center px-4 pt-10 pb-4 gap-3 bg-white border-b">
               <button
                 onClick={() => navigate('/restaurant/dashboard')}
@@ -362,10 +343,7 @@ export default function DeliveryTracking() {
                 Voltar ao início
               </button>
             </div>
-            <BottomNav />
-          </div>
-        </div>
-
+        <BottomNav />
         {showRatingModal && driver && (
           <RatingModal
             deliveryId={delivery.id}
@@ -375,7 +353,7 @@ export default function DeliveryTracking() {
             onSubmitted={() => { setShowRatingModal(false); setHasRated(true); }}
           />
         )}
-      </SidebarProvider>
+      </div>
     );
   }
 

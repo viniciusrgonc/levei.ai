@@ -13,6 +13,7 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import NotificationBell from '@/components/NotificationBell';
 import { RatingModal } from '@/components/RatingModal';
+import { BottomNav } from '@/components/BottomNav';
 
 type Delivery = {
   id: string;
@@ -337,6 +338,8 @@ export default function RestaurantHistory() {
           </main>
         </div>
       </div>
+
+      <BottomNav />
 
       {ratingModalData && (
         <RatingModal

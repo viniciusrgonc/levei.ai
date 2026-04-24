@@ -9,6 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, Star, Clock, Settings, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BottomNav } from '@/components/BottomNav';
 
 export default function RestaurantProfile() {
   const queryClient = useQueryClient();
@@ -234,6 +235,7 @@ export default function RestaurantProfile() {
           </Card>
         </div>
       )}
+      <BottomNav />
     </div>
   );
 }
