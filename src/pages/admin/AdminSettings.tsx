@@ -82,7 +82,7 @@ export default function AdminSettings() {
       for (const update of updates) {
         const { error } = await supabase
           .from('platform_settings')
-          .update({ value: update.value, updated_at: new Date().toISOString() })
+          .update({ value: update.value })
           .eq('key', update.key);
         if (error) throw error;
       }

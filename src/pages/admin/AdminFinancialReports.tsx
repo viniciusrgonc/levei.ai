@@ -253,7 +253,9 @@ export default function AdminFinancialReports() {
       return;
     }
 
-    const headers = ['Período', 'Receita Total (R$)', 'Taxa Plataforma 20% (R$)', 'Pagamento Entregadores 80% (R$)'];
+    const feeLabel = `${Math.round(platformFeeRate * 100)}%`;
+    const commLabel = `${Math.round(driverCommissionRate * 100)}%`;
+    const headers = ['Período', 'Receita Total (R$)', `Taxa Plataforma ${feeLabel} (R$)`, `Pagamento Entregadores ${commLabel} (R$)`];
     const rows = data.map(item => [
       (item as any)[dateKey],
       (item.receita).toFixed(2),
@@ -356,11 +358,11 @@ export default function AdminFinancialReports() {
             <div class="value">R$ ${stats.totalReceita.toFixed(2)}</div>
           </div>
           <div class="stat-card green">
-            <div class="label">Taxa Plataforma (20%)</div>
+            <div class="label">Taxa Plataforma (${Math.round(platformFeeRate * 100)}%)</div>
             <div class="value">R$ ${stats.totalTaxaPlataforma.toFixed(2)}</div>
           </div>
           <div class="stat-card amber">
-            <div class="label">Pago a Entregadores (80%)</div>
+            <div class="label">Pago a Entregadores (${Math.round(driverCommissionRate * 100)}%)</div>
             <div class="value">R$ ${stats.totalPagamentoEntregadores.toFixed(2)}</div>
           </div>
           <div class="stat-card">
@@ -375,8 +377,8 @@ export default function AdminFinancialReports() {
             <tr>
               <th>Período</th>
               <th>Receita Total</th>
-              <th>Taxa Plataforma (20%)</th>
-              <th>Pago a Entregadores (80%)</th>
+              <th>Taxa Plataforma (${Math.round(platformFeeRate * 100)}%)</th>
+              <th>Pago a Entregadores (${Math.round(driverCommissionRate * 100)}%)</th>
             </tr>
           </thead>
           <tbody>

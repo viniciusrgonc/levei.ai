@@ -146,9 +146,21 @@ export default function AdminDashboard() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [dialogType, setDialogType] = useState<'driver' | 'restaurant' | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [platformFeePercent, setPlatformFeePercent] = useState(20);
+  const [driverCommissionPercent, setDriverCommissionPercent] = useState(80);
 
   useEffect(() => {
     if (!user) return;
+
+    supabase.from('platform_settings').select('key, value').then(({ data }) => {
+      if (data) {
+        const fee = data.find(s => s.key === 'platform_fee_percentage');
+        const comm = data.find(s => s.key === 'driver_commission_percentage');
+        if (fee) setPlatformFeePercent(parseFloat(fee.value));
+        if (comm) setDriverCommissionPercent(parseFloat(comm.value));
+      }
+    });
+
     loadData();
 
     const channel = supabase
@@ -547,13 +559,13 @@ export default function AdminDashboard() {
                   <CardContent>
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="p-4 bg-background rounded-lg border">
-                        <p className="text-sm text-muted-foreground mb-1">Taxa da Plataforma (20%)</p>
+                        <p className="text-sm text-muted-foreground mb-1">Taxa da Plataforma ({platformFeePercent}%)</p>
                         <p className="text-2xl font-bold text-green-600">
                           R$ {financialStats.platformFees.toFixed(2)}
                         </p>
                       </div>
                       <div className="p-4 bg-background rounded-lg border">
-                        <p className="text-sm text-muted-foreground mb-1">Pago aos Entregadores (80%)</p>
+                        <p className="text-sm text-muted-foreground mb-1">Pago aos Entregadores ({driverCommissionPercent}%)</p>
                         <p className="text-2xl font-bold text-blue-600">
                           R$ {financialStats.driverEarnings.toFixed(2)}
                         </p>
