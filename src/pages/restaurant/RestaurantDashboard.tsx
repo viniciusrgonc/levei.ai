@@ -1,12 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Package, Wallet, MapPin, Eye, Clock, CheckCircle2, X, AlertCircle } from 'lucide-react';
-import NotificationBell from '@/components/NotificationBell';
+import { Button } from '@/components/ui/button';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { RestaurantSidebar } from '@/components/RestaurantSidebar';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
@@ -14,8 +11,25 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { useActiveDriver } from '@/hooks/useActiveDriver';
 import { ActiveDriverBanner } from '@/components/ActiveDriverBanner';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import NotificationBell from '@/components/NotificationBell';
+import { BottomNav } from '@/components/BottomNav';
 import { shortAddress } from '@/lib/utils';
+import leveiLogo from '@/assets/levei-logo.png';
+import {
+  Search,
+  ArrowRight,
+  Crosshair,
+  Map,
+  MapPin,
+  ChevronRight,
+  Clock,
+  Eye,
+  X,
+  Package,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+} from 'lucide-react';
 
 type Restaurant = {
   id: string;
@@ -36,12 +50,12 @@ type Delivery = {
   recipient_name: string | null;
 };
 
-const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
-  pending: { label: 'Aguardando entregador', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: '🕐' },
-  accepted: { label: 'Coleta em andamento', color: 'bg-blue-100 text-blue-800 border-blue-200', icon: '🚗' },
-  picked_up: { label: 'Em rota de entrega', color: 'bg-purple-100 text-purple-800 border-purple-200', icon: '📦' },
-  delivered: { label: 'Entregue', color: 'bg-green-100 text-green-800 border-green-200', icon: '✅' },
-  cancelled: { label: 'Cancelada', color: 'bg-red-100 text-red-800 border-red-200', icon: '❌' },
+const statusConfig: Record<string, { label: string; color: string; dot: string }> = {
+  pending:   { label: 'Aguardando entregador', color: 'bg-amber-100 text-amber-800 border-amber-200',   dot: 'bg-amber-400' },
+  accepted:  { label: 'Coleta em andamento',   color: 'bg-blue-100 text-blue-800 border-blue-200',      dot: 'bg-blue-400' },
+  picked_up: { label: 'Em rota de entrega',    color: 'bg-purple-100 text-purple-800 border-purple-200', dot: 'bg-purple-400' },
+  delivered: { label: 'Entregue',              color: 'bg-green-100 text-green-800 border-green-200',   dot: 'bg-green-400' },
+  cancelled: { label: 'Cancelada',             color: 'bg-red-100 text-red-800 border-red-200',         dot: 'bg-red-400' },
 };
 
 export default function RestaurantDashboard() {
@@ -53,18 +67,6 @@ export default function RestaurantDashboard() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
 
-  const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
-    e.stopPropagation();
-    setSelectedDeliveryId(deliveryId);
-    setCancelModalOpen(true);
-  };
-
-  const handleCancelSuccess = () => {
-    setCancelModalOpen(false);
-    setSelectedDeliveryId(null);
-    fetchDeliveries();
-  };
-
   const { activeDriver, noEligibleDriver, noEligibleReason } = useActiveDriver(restaurant?.id);
 
   useRealtimeDeliveries({
@@ -74,15 +76,8 @@ export default function RestaurantDashboard() {
     onInsert: () => fetchDeliveries(),
   });
 
-  useEffect(() => {
-    fetchRestaurant();
-  }, [user]);
-
-  useEffect(() => {
-    if (restaurant) {
-      fetchDeliveries();
-    }
-  }, [restaurant]);
+  useEffect(() => { fetchRestaurant(); }, [user]);
+  useEffect(() => { if (restaurant) fetchDeliveries(); }, [restaurant]);
 
   const fetchRestaurant = async () => {
     if (!user) return;
@@ -114,22 +109,39 @@ export default function RestaurantDashboard() {
   const activeDeliveries = deliveries.filter(d => ['pending', 'accepted', 'picked_up'].includes(d.status));
   const completedDeliveries = deliveries.filter(d => d.status === 'delivered');
 
+  const recentDestinations = useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const d of deliveries) {
+      if (d.delivery_address && !seen.has(d.delivery_address)) {
+        seen.add(d.delivery_address);
+        result.push(d.delivery_address);
+        if (result.length === 3) break;
+      }
+    }
+    return result;
+  }, [deliveries]);
+
+  const handleOpenCancelModal = (e: React.MouseEvent, deliveryId: string) => {
+    e.stopPropagation();
+    setSelectedDeliveryId(deliveryId);
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelSuccess = () => {
+    setCancelModalOpen(false);
+    setSelectedDeliveryId(null);
+    fetchDeliveries();
+  };
+
   if (loading) {
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full overflow-hidden">
+        <div className="min-h-screen flex w-full bg-background">
           <RestaurantSidebar />
-          <div className="flex-1 flex flex-col min-w-0">
-            <header className="sticky top-0 z-10 h-12 border-b bg-primary">
-              <div className="flex h-full items-center justify-between px-3">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger className="text-primary-foreground" />
-                  <Skeleton className="h-5 w-24 bg-primary-foreground/20" />
-                </div>
-                <NotificationBell />
-              </div>
-            </header>
-            <main className="flex-1 p-3 space-y-4">
+          <div className="flex-1 flex flex-col">
+            <div className="bg-primary h-48" />
+            <main className="p-4 space-y-4">
               <Skeleton className="h-12 w-full rounded-xl" />
               <Skeleton className="h-20 w-full rounded-xl" />
               <Skeleton className="h-40 w-full rounded-xl" />
@@ -144,216 +156,257 @@ export default function RestaurantDashboard() {
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full overflow-hidden bg-background">
+      <div className="min-h-screen flex w-full bg-gray-50">
         <RestaurantSidebar />
         <div className="flex-1 flex flex-col min-w-0">
 
-          <header className="sticky top-0 z-10 h-12 border-b bg-primary">
-            <div className="flex h-full items-center justify-between px-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10 flex-shrink-0" />
-                <h1 className="text-sm font-bold text-primary-foreground truncate">
-                  {restaurant.business_name}
-                </h1>
+          {/* ── HERO HEADER (dark) ── */}
+          <div className="bg-primary">
+            {/* Top bar */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <img src={leveiLogo} alt="Levei.ai" className="h-8 w-auto" />
+                <span className="text-primary-foreground font-bold text-lg leading-none">
+                  levei<span className="text-sky-400">.ai</span>
+                </span>
               </div>
-              <NotificationBell />
+              <div className="flex items-center gap-1">
+                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10 h-9 w-9" />
+                <NotificationBell />
+              </div>
             </div>
-          </header>
 
-          <main className="flex-1 p-3 space-y-4 overflow-y-auto pb-24">
+            {/* Headline + search */}
+            <div className="px-4 pt-2 pb-6 space-y-4">
+              <h1 className="text-2xl font-bold text-primary-foreground leading-snug">
+                Para onde vai<br />a entrega?
+              </h1>
 
-            {activeDriver && activeDriver.available && (
-              <ActiveDriverBanner
-                driverId={activeDriver.driver_id!}
-                parentDeliveryId={activeDriver.parent_delivery_id!}
-                currentCount={activeDriver.current_count!}
-                maxCount={activeDriver.max_count!}
-                timeRemainingMinutes={activeDriver.time_remaining_minutes!}
-                basePrice={activeDriver.base_price!}
-                pricePerKm={activeDriver.price_per_km!}
-                regularBasePrice={activeDriver.regular_base_price}
-                regularPricePerKm={activeDriver.regular_price_per_km}
-              />
+              {/* Search bar */}
+              <div
+                className="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 cursor-pointer shadow-sm"
+                onClick={() => navigate('/restaurant/new-delivery')}
+              >
+                <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                <span className="text-gray-400 text-sm flex-1">Digite o endereço de destino</span>
+                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <ArrowRight className="h-3.5 w-3.5 text-white" />
+                </div>
+              </div>
+
+              {/* Quick actions */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => navigate('/restaurant/new-delivery')}
+                  className="flex items-center justify-center gap-2 bg-white/10 border border-white/20 rounded-xl py-2.5 text-primary-foreground text-sm hover:bg-white/20 transition-colors"
+                >
+                  <Crosshair className="h-4 w-4" />
+                  Usar minha localização
+                </button>
+                <button
+                  onClick={() => navigate('/restaurant/new-delivery')}
+                  className="flex items-center justify-center gap-2 bg-white/10 border border-white/20 rounded-xl py-2.5 text-primary-foreground text-sm hover:bg-white/20 transition-colors"
+                >
+                  <Map className="h-4 w-4" />
+                  Selecionar do mapa
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── CONTENT ── */}
+          <main className="flex-1 overflow-y-auto pb-20">
+
+            {/* Active driver banner */}
+            {activeDriver?.available && (
+              <div className="px-4 pt-4">
+                <ActiveDriverBanner
+                  driverId={activeDriver.driver_id!}
+                  parentDeliveryId={activeDriver.parent_delivery_id!}
+                  currentCount={activeDriver.current_count!}
+                  maxCount={activeDriver.max_count!}
+                  timeRemainingMinutes={activeDriver.time_remaining_minutes!}
+                  basePrice={activeDriver.base_price!}
+                  pricePerKm={activeDriver.price_per_km!}
+                  regularBasePrice={activeDriver.regular_base_price}
+                  regularPricePerKm={activeDriver.regular_price_per_km}
+                />
+              </div>
             )}
 
             {noEligibleDriver && !activeDriver?.available && (
-              <Alert variant="default" className="border-muted-foreground/20">
-                <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                <AlertDescription className="text-sm">
-                  {noEligibleReason || 'Entregador em rota, mas a janela de tempo para adicionar entregas expirou.'}
-                </AlertDescription>
-              </Alert>
+              <div className="px-4 pt-4">
+                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">{noEligibleReason || 'Janela de tempo para adicionar entregas expirou.'}</p>
+                </div>
+              </div>
             )}
 
-            <Button
-              onClick={() => navigate('/restaurant/new-delivery')}
-              size="lg"
-              className="w-full gap-2 text-base shadow-lg h-12"
-            >
-              <Plus className="h-5 w-5" />
-              Nova Entrega
-            </Button>
-
-            <Card
-              className="cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/restaurant/wallet')}
-            >
-              <CardContent className="p-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Wallet className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Saldo disponível</p>
-                    <p className="text-xl font-bold">R$ {restaurant.wallet_balance.toFixed(2)}</p>
-                  </div>
+            {/* Últimos destinos */}
+            {recentDestinations.length > 0 && (
+              <section className="px-4 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold text-gray-900">Últimos destinos</h2>
+                  <button
+                    onClick={() => navigate('/restaurant/history')}
+                    className="text-blue-600 text-sm font-medium"
+                  >
+                    Ver todos
+                  </button>
                 </div>
-                <Button variant="outline" size="sm" className="flex-shrink-0 text-xs">
-                  Adicionar
-                </Button>
-              </CardContent>
-            </Card>
+                <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-50 overflow-hidden">
+                  {recentDestinations.map((address, i) => (
+                    <button
+                      key={i}
+                      onClick={() => navigate('/restaurant/new-delivery')}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{shortAddress(address)}</p>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{address}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
-            <section>
+            {/* Em andamento */}
+            <section className="px-4 pt-5">
               <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4 text-primary flex-shrink-0" />
-                <h2 className="text-base font-semibold">Em andamento</h2>
+                <h2 className="font-semibold text-gray-900">Em andamento</h2>
                 {activeDeliveries.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge className="bg-blue-100 text-blue-700 border-none text-xs h-5 px-2">
                     {activeDeliveries.length}
                   </Badge>
                 )}
               </div>
 
               {activeDeliveries.length === 0 ? (
-                <Card className="border-dashed">
-                  <CardContent className="p-6 text-center">
-                    <div className="w-12 h-12 rounded-full bg-muted mx-auto mb-3 flex items-center justify-center">
-                      <Package className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <h3 className="font-semibold mb-1 text-sm">Nenhuma entrega ativa</h3>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Clique em "Nova Entrega" para solicitar sua primeira entrega
-                    </p>
-                    <Button onClick={() => navigate('/restaurant/new-delivery')} variant="outline" size="sm">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Criar entrega
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="bg-white rounded-2xl shadow-sm border border-dashed border-gray-200 p-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                    <Package className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="font-semibold text-gray-700 text-sm mb-1">Nenhuma entrega ativa</p>
+                  <p className="text-xs text-gray-400 mb-4">
+                    Use a busca acima para solicitar sua primeira entrega
+                  </p>
+                  <button
+                    onClick={() => navigate('/restaurant/new-delivery')}
+                    className="inline-flex items-center gap-2 text-blue-600 text-sm font-medium"
+                  >
+                    <Layers className="h-4 w-4" />
+                    Criar entrega
+                  </button>
+                </div>
               ) : (
                 <div className="space-y-2">
                   {activeDeliveries.map((delivery) => {
                     const status = statusConfig[delivery.status] || statusConfig.pending;
                     return (
-                      <Card
+                      <div
                         key={delivery.id}
-                        className="cursor-pointer hover:shadow-md transition-all active:scale-[0.99]"
+                        className="bg-white rounded-2xl shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99]"
                         onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                       >
-                        <CardContent className="p-3">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                                <span className="text-base">{status.icon}</span>
-                                <Badge className={`${status.color} border font-medium text-xs`}>
-                                  {status.label}
-                                </Badge>
-                              </div>
-                              <p className="text-sm font-medium flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
-                                <span className="truncate">{shortAddress(delivery.delivery_address)}</span>
-                              </p>
-                              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                                <span>{delivery.distance_km?.toFixed(1)} km</span>
-                                <span>•</span>
-                                <span>
-                                  {new Date(delivery.created_at).toLocaleTimeString('pt-BR', {
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
-                              </div>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className={`w-2 h-2 rounded-full ${status.dot}`} />
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${status.color}`}>
+                                {status.label}
+                              </span>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-base font-bold text-primary">
-                                R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                              </p>
-                              <div className="flex flex-col gap-0.5 mt-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-7 text-xs px-2"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    navigate(`/restaurant/delivery/${delivery.id}`);
-                                  }}
+                            <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                              {shortAddress(delivery.delivery_address)}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {delivery.distance_km?.toFixed(1)} km · {new Date(delivery.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-base font-bold text-blue-600">
+                              R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                            </p>
+                            <div className="flex flex-col gap-1 mt-1">
+                              <button
+                                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                                onClick={(e) => { e.stopPropagation(); navigate(`/restaurant/delivery/${delivery.id}`); }}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Rastrear
+                              </button>
+                              {delivery.status === 'pending' && (
+                                <button
+                                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700"
+                                  onClick={(e) => handleOpenCancelModal(e, delivery.id)}
                                 >
-                                  <Eye className="h-3.5 w-3.5 mr-1" />
-                                  Rastrear
-                                </Button>
-                                {delivery.status === 'pending' && (
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-7 text-xs px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={(e) => handleOpenCancelModal(e, delivery.id)}
-                                  >
-                                    <X className="h-3.5 w-3.5 mr-1" />
-                                    Cancelar
-                                  </Button>
-                                )}
-                              </div>
+                                  <X className="h-3.5 w-3.5" />
+                                  Cancelar
+                                </button>
+                              )}
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
               )}
             </section>
 
+            {/* Concluídas recentemente */}
             {completedDeliveries.length > 0 && (
-              <section>
+              <section className="px-4 pt-5 pb-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-base font-semibold flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    Concluídas recentemente
+                  <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    Concluídas
                   </h2>
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/restaurant/history')}>
+                  <button
+                    onClick={() => navigate('/restaurant/history')}
+                    className="text-blue-600 text-sm font-medium"
+                  >
                     Ver todas
-                  </Button>
+                  </button>
                 </div>
-                <div className="space-y-2">
+                <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-50 overflow-hidden">
                   {completedDeliveries.slice(0, 3).map((delivery) => (
-                    <Card
+                    <button
                       key={delivery.id}
-                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
                       onClick={() => navigate(`/restaurant/delivery/${delivery.id}`)}
                     >
-                      <CardContent className="p-3 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="text-base flex-shrink-0">✅</span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {delivery.recipient_name || shortAddress(delivery.delivery_address)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(delivery.created_at).toLocaleDateString('pt-BR')}
-                            </p>
-                          </div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
                         </div>
-                        <p className="font-semibold text-green-600 flex-shrink-0 text-sm">
-                          R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                        </p>
-                      </CardContent>
-                    </Card>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {delivery.recipient_name || shortAddress(delivery.delivery_address)}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(delivery.created_at).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-semibold text-green-600 flex-shrink-0 ml-2">
+                        R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                      </p>
+                    </button>
                   ))}
                 </div>
               </section>
             )}
           </main>
+
+          <BottomNav />
         </div>
       </div>
 

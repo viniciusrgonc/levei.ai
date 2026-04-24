@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, MapPin, User, Phone, Navigation, Clock, CheckCircle2, Package, Loader2, Star, X, XCircle, LayoutDashboard, Camera } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, MessageCircle, Navigation, Clock, CheckCircle2, Package, Star, X, XCircle, ChevronRight } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -14,6 +13,8 @@ import { getGoogleMapsLink, formatAddress } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingModal } from '@/components/RatingModal';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { BottomNav } from '@/components/BottomNav';
+import leveiLogo from '@/assets/levei-logo.png';
 
 type Delivery = {
   id: string;
@@ -48,23 +49,11 @@ type Driver = {
   };
 };
 
-type DeliveryConfirmation = {
-  photo_url: string;
-  latitude: number;
-  longitude: number;
-  distance_meters: number | null;
-  is_within_radius: boolean | null;
-  confirmed_at: string;
-};
-
-const statusConfig: Record<string, { step: number; label: string; description: string; icon: string; color: string }> = {
-  pending: { step: 1, label: 'Aguardando entregador', description: 'Procurando entregador disponível...', icon: '🕐', color: 'text-amber-600' },
-  accepted: { step: 2, label: 'Coleta em andamento', description: 'Entregador a caminho da coleta', icon: '🚗', color: 'text-blue-600' },
-  picking_up: { step: 2, label: 'Coleta em andamento', description: 'Entregador a caminho da coleta', icon: '🚗', color: 'text-blue-600' },
-  picked_up: { step: 3, label: 'Em rota de entrega', description: 'Seu pacote está a caminho', icon: '📦', color: 'text-purple-600' },
-  delivering: { step: 3, label: 'Em rota de entrega', description: 'Seu pacote está a caminho', icon: '📦', color: 'text-purple-600' },
-  delivered: { step: 4, label: 'Entregue', description: 'Entrega finalizada com sucesso!', icon: '✅', color: 'text-green-600' },
-  cancelled: { step: 0, label: 'Cancelada', description: 'Esta entrega foi cancelada', icon: '❌', color: 'text-red-600' },
+const vehicleLabel: Record<string, string> = {
+  bike: 'Bicicleta',
+  motorcycle: 'Moto',
+  car: 'Carro',
+  truck: 'Van/Caminhão',
 };
 
 export default function DeliveryTracking() {
@@ -78,8 +67,6 @@ export default function DeliveryTracking() {
   const [hasRated, setHasRated] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [autoRatingChecked, setAutoRatingChecked] = useState(false);
-  const [confirmation, setConfirmation] = useState<DeliveryConfirmation | null>(null);
-  const [confirmationPhotoUrl, setConfirmationPhotoUrl] = useState<string | null>(null);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -120,24 +107,7 @@ export default function DeliveryTracking() {
       fetchDriver(data.driver_id);
       checkIfRated(data.id);
     }
-    if (data.status === 'delivered') fetchConfirmation(data.id);
     setLoading(false);
-  };
-
-  const fetchConfirmation = async (id: string) => {
-    const { data } = await (supabase as any)
-      .from('delivery_confirmations')
-      .select('photo_url, latitude, longitude, distance_meters, is_within_radius, confirmed_at')
-      .eq('delivery_id', id)
-      .maybeSingle();
-
-    if (!data) return;
-    setConfirmation(data);
-
-    const { data: signed } = await supabase.storage
-      .from('delivery-photos')
-      .createSignedUrl(data.photo_url, 60 * 10);
-    setConfirmationPhotoUrl(signed?.signedUrl ?? null);
   };
 
   const checkIfRated = async (deliveryId: string) => {
@@ -186,12 +156,12 @@ export default function DeliveryTracking() {
   if (loading) {
     return (
       <SidebarProvider defaultOpen={false}>
-        <div className="min-h-screen flex w-full overflow-hidden">
+        <div className="min-h-screen flex w-full bg-primary">
           <RestaurantSidebar />
-          <div className="flex-1 p-4 space-y-4 min-w-0">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-32 w-full" />
+          <div className="flex-1 p-6 space-y-4">
+            <Skeleton className="h-12 w-full bg-white/10" />
+            <Skeleton className="h-64 w-full bg-white/10" />
+            <Skeleton className="h-32 w-full bg-white/10" />
           </div>
         </div>
       </SidebarProvider>
@@ -200,278 +170,406 @@ export default function DeliveryTracking() {
 
   if (!delivery) return null;
 
-  const status = statusConfig[delivery.status] || statusConfig.pending;
-  const isActive = ['accepted', 'picked_up'].includes(delivery.status);
+  /* ─── PENDING: radar search screen ─────────────────────────────────── */
+  if (delivery.status === 'pending') {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 flex flex-col bg-primary text-white">
+            {/* Header */}
+            <div className="flex items-center px-4 pt-10 pb-4 gap-3">
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
+              >
+                <ArrowLeft className="h-5 w-5 text-white" />
+              </button>
+              <img src={leveiLogo} alt="Levei.ai" className="h-7 w-auto" />
+            </div>
+
+            {/* Radar animation */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
+              <div className="relative flex items-center justify-center">
+                {/* Animated rings */}
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="absolute rounded-full border-2 border-white/30 animate-ping"
+                    style={{
+                      width: `${(i + 1) * 80}px`,
+                      height: `${(i + 1) * 80}px`,
+                      animationDelay: `${i * 0.6}s`,
+                      animationDuration: '2s',
+                    }}
+                  />
+                ))}
+                {/* Static outer ring */}
+                {[1, 2, 3].map((i) => (
+                  <span
+                    key={`static-${i}`}
+                    className="absolute rounded-full border border-white/10"
+                    style={{
+                      width: `${i * 80}px`,
+                      height: `${i * 80}px`,
+                    }}
+                  />
+                ))}
+                {/* Center dot */}
+                <div className="relative z-10 w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl">
+                  <Package className="h-7 w-7 text-primary" />
+                </div>
+              </div>
+
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">Procurando entregador...</h2>
+                <p className="text-white/70 text-sm">Estamos encontrando o melhor entregador disponível perto de você</p>
+              </div>
+
+              <div className="flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
+                <Clock className="h-4 w-4 text-white/80" />
+                <span className="text-sm font-medium">Tempo médio: 1–2 min</span>
+              </div>
+
+              <div className="w-full bg-white/10 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-400/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white/60">Coleta</p>
+                    <p className="text-sm font-medium truncate">{formatAddress(delivery.pickup_address)}</p>
+                  </div>
+                </div>
+                <div className="border-l-2 border-dashed border-white/20 ml-4 h-3" />
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-red-400/20 flex items-center justify-center flex-shrink-0">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white/60">Destino</p>
+                    <p className="text-sm font-medium truncate">{formatAddress(delivery.delivery_address)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cancel button */}
+            <div className="px-4 pb-28">
+              <button
+                onClick={() => setShowCancelModal(true)}
+                className="w-full py-4 rounded-2xl border-2 border-white/30 text-white font-semibold text-base"
+              >
+                Cancelar busca
+              </button>
+            </div>
+
+            <BottomNav />
+          </div>
+        </div>
+
+        <CancelDeliveryModal
+          deliveryId={delivery.id}
+          open={showCancelModal}
+          onOpenChange={setShowCancelModal}
+          onCancelled={() => { setShowCancelModal(false); fetchDelivery(); }}
+        />
+      </SidebarProvider>
+    );
+  }
+
+  /* ─── CANCELLED screen ─────────────────────────────────────────────── */
+  if (delivery.status === 'cancelled') {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 flex flex-col bg-gray-50">
+            <div className="flex items-center px-4 pt-10 pb-4 gap-3 bg-white border-b">
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </button>
+              <span className="font-semibold text-gray-900">Entrega cancelada</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
+                <XCircle className="h-10 w-10 text-red-500" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Entrega Cancelada</h2>
+              <p className="text-gray-500 text-sm">Esta entrega foi cancelada e não está mais disponível.</p>
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className="mt-4 px-8 py-3 rounded-2xl bg-primary text-white font-semibold"
+              >
+                Voltar ao início
+              </button>
+            </div>
+            <BottomNav />
+          </div>
+        </div>
+      </SidebarProvider>
+    );
+  }
+
+  /* ─── DELIVERED screen ─────────────────────────────────────────────── */
+  if (delivery.status === 'delivered') {
+    return (
+      <SidebarProvider defaultOpen={false}>
+        <div className="min-h-screen flex w-full">
+          <RestaurantSidebar />
+          <div className="flex-1 flex flex-col bg-gray-50">
+            <div className="flex items-center px-4 pt-10 pb-4 gap-3 bg-white border-b">
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </button>
+              <span className="font-semibold text-gray-900">Entrega concluída</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-green-500" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">Entrega Concluída!</h2>
+              {delivery.delivered_at && (
+                <p className="text-gray-500 text-sm">
+                  Entregue em {new Date(delivery.delivered_at).toLocaleString('pt-BR')}
+                </p>
+              )}
+              {driver && !hasRated && (
+                <button
+                  onClick={() => setShowRatingModal(true)}
+                  className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-white font-semibold"
+                >
+                  <Star className="h-5 w-5" />
+                  Avaliar Entregador
+                </button>
+              )}
+              {hasRated && (
+                <p className="text-sm text-green-600 flex items-center gap-1.5">
+                  <Star className="h-4 w-4 fill-current" />
+                  Você já avaliou esta entrega
+                </p>
+              )}
+              <button
+                onClick={() => navigate('/restaurant/dashboard')}
+                className="px-8 py-3 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold"
+              >
+                Voltar ao início
+              </button>
+            </div>
+            <BottomNav />
+          </div>
+        </div>
+
+        {showRatingModal && driver && (
+          <RatingModal
+            deliveryId={delivery.id}
+            driverUserId={driver.user_id}
+            driverName={driver.profiles.full_name}
+            onClose={() => setShowRatingModal(false)}
+            onSubmitted={() => { setShowRatingModal(false); setHasRated(true); }}
+          />
+        )}
+      </SidebarProvider>
+    );
+  }
+
+  /* ─── ACTIVE (accepted / picking_up / picked_up / delivering) ─────── */
+  const isPickedUp = ['picked_up', 'delivering'].includes(delivery.status);
+
+  const statusLabel: Record<string, { title: string; subtitle: string; color: string }> = {
+    accepted:    { title: 'Entregador confirmado', subtitle: 'A caminho da coleta', color: 'text-blue-600' },
+    picking_up:  { title: 'Coletando pedido', subtitle: 'Entregador no local de coleta', color: 'text-orange-500' },
+    picked_up:   { title: 'Pedido coletado', subtitle: 'A caminho do destino', color: 'text-purple-600' },
+    delivering:  { title: 'Em rota de entrega', subtitle: 'Seu pedido está chegando', color: 'text-purple-600' },
+  };
+  const currentStatus = statusLabel[delivery.status] ?? statusLabel.accepted;
 
   return (
     <SidebarProvider defaultOpen={false}>
-      <div className="min-h-screen flex w-full overflow-hidden bg-background">
+      <div className="min-h-screen flex w-full">
         <RestaurantSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 flex flex-col bg-gray-50 min-w-0">
 
-          <header className="sticky top-0 z-10 h-12 border-b bg-background flex items-center px-3 gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 flex-shrink-0"
+          {/* Map — full bleed, no rounded corners */}
+          <div className="relative h-64 bg-gray-200">
+            <DeliveryMap
+              pickupLat={delivery.pickup_latitude}
+              pickupLng={delivery.pickup_longitude}
+              deliveryLat={delivery.delivery_latitude}
+              deliveryLng={delivery.delivery_longitude}
+              driverLat={currentLocation?.latitude}
+              driverLng={currentLocation?.longitude}
+              locationHistory={locationHistory}
+            />
+            {/* Back button overlay */}
+            <button
               onClick={() => navigate('/restaurant/dashboard')}
+              className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center z-10"
             >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-sm font-semibold truncate">Acompanhar Entrega</h1>
-              <p className="text-xs text-muted-foreground">#{delivery.id.slice(0, 8).toUpperCase()}</p>
+              <ArrowLeft className="h-5 w-5 text-gray-700" />
+            </button>
+            {/* Live badge */}
+            {currentLocation && (
+              <div className="absolute top-4 right-4 bg-white rounded-full px-3 py-1.5 shadow-md flex items-center gap-1.5 z-10">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs font-semibold text-gray-700">Ao vivo</span>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom sheet */}
+          <div className="flex-1 -mt-4 rounded-t-3xl bg-white shadow-lg overflow-auto pb-28">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-4" />
+
+            {/* Status pill */}
+            <div className="px-4 mb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-base font-bold ${currentStatus.color}`}>{currentStatus.title}</p>
+                  <p className="text-sm text-gray-500">{currentStatus.subtitle}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-primary">
+                    R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-gray-400">{delivery.distance_km.toFixed(1)} km</p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mt-3 flex items-center gap-1">
+                {[
+                  { label: 'Aceito', done: true },
+                  { label: 'Coleta', done: ['picking_up', 'picked_up', 'delivering'].includes(delivery.status) },
+                  { label: 'Entregue', done: false },
+                ].map((step, i, arr) => (
+                  <div key={step.label} className="flex items-center flex-1">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      step.done ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      {step.done ? <CheckCircle2 className="h-3 w-3" /> : i + 1}
+                    </div>
+                    {i < arr.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 ${step.done ? 'bg-primary' : 'bg-gray-100'}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-1 text-[10px] text-gray-400">
+                <span>Aceito</span>
+                <span>Coleta</span>
+                <span>Entregue</span>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-muted-foreground"
-              onClick={() => navigate('/restaurant/dashboard')}
-            >
-              <LayoutDashboard className="h-4 w-4 mr-1" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Button>
-            {['pending', 'accepted', 'picking_up', 'picked_up'].includes(delivery.status) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                onClick={() => setShowCancelModal(true)}
+
+            <div className="h-px bg-gray-100 mx-4" />
+
+            {/* Driver card */}
+            {driver && (
+              <div className="px-4 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xl font-bold text-primary">
+                      {driver.profiles.full_name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-gray-900 truncate">{driver.profiles.full_name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-0.5">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        <span className="text-xs text-gray-600 font-medium">{driver.rating?.toFixed(1) ?? '5.0'}</span>
+                      </div>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-xs text-gray-500">
+                        {vehicleLabel[driver.vehicle_type] ?? driver.vehicle_type}
+                      </span>
+                      <span className="text-gray-300">·</span>
+                      <span className="text-xs text-gray-500">{driver.license_plate}</span>
+                    </div>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {driver.profiles.phone && (
+                      <button
+                        onClick={handleCall}
+                        className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center"
+                      >
+                        <Phone className="h-4 w-4 text-white" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => toast({ title: 'Chat em breve', description: 'Funcionalidade disponível em breve.' })}
+                      className="w-10 h-10 rounded-full bg-primary flex items-center justify-center"
+                    >
+                      <MessageCircle className="h-4 w-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="h-px bg-gray-100 mx-4" />
+
+            {/* Route summary */}
+            <div className="px-4 py-4 space-y-3">
+              <button
+                className="w-full flex items-center gap-3 text-left"
+                onClick={() => openInMaps(delivery.pickup_latitude, delivery.pickup_longitude)}
               >
-                <X className="h-4 w-4 mr-1" />
-                <span className="hidden sm:inline">Cancelar</span>
-              </Button>
-            )}
-          </header>
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400">Coleta</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{formatAddress(delivery.pickup_address)}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+              </button>
 
-          <main className="flex-1 overflow-auto">
-            {isActive && (
-              <div className="h-48 sm:h-64 relative">
-                <DeliveryMap
-                  pickupLat={delivery.pickup_latitude}
-                  pickupLng={delivery.pickup_longitude}
-                  deliveryLat={delivery.delivery_latitude}
-                  deliveryLng={delivery.delivery_longitude}
-                  driverLat={currentLocation?.latitude}
-                  driverLng={currentLocation?.longitude}
-                  locationHistory={locationHistory}
-                />
-                {currentLocation && (
-                  <div className="absolute top-2 right-2 bg-background/95 backdrop-blur rounded-lg px-2 py-1.5 text-xs shadow-lg">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                      <span className="font-medium">Entregador em movimento</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              <div className="border-l-2 border-dashed border-gray-200 ml-4 h-3" />
 
-            <div className="p-3 space-y-3 pb-20">
-
-              <Card className="border-2">
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">{status.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <h2 className={`text-base font-bold ${status.color} truncate`}>{status.label}</h2>
-                      <p className="text-xs text-muted-foreground truncate">{status.description}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-bold text-primary">
-                        R$ {(delivery.price_adjusted || delivery.price).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 mt-4">
-                    {[1, 2, 3, 4].map((stepNum) => (
-                      <div key={stepNum} className="flex-1 flex items-center gap-1">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-                          stepNum <= status.step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {stepNum < status.step ? <CheckCircle2 className="h-3 w-3" /> : stepNum}
-                        </div>
-                        {stepNum < 4 && (
-                          <div className={`flex-1 h-0.5 rounded-full ${stepNum < status.step ? 'bg-primary' : 'bg-muted'}`} />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
-                    <span>Criado</span>
-                    <span>Aceito</span>
-                    <span>Coletado</span>
-                    <span>Entregue</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {driver ? (
-                <Card>
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <User className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{driver.profiles.full_name}</p>
-                        <p className="text-xs text-muted-foreground capitalize truncate">
-                          {driver.vehicle_type} • {driver.license_plate}
-                        </p>
-                      </div>
-                      {driver.profiles.phone && (
-                        <Button size="icon" variant="outline" onClick={handleCall} className="h-9 w-9 flex-shrink-0">
-                          <Phone className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : delivery.status === 'pending' ? (
-                <Card className="border-dashed">
-                  <CardContent className="p-6 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground mb-2" />
-                    <p className="font-medium text-sm">Procurando entregador...</p>
-                    <p className="text-xs text-muted-foreground">Aguarde enquanto buscamos um entregador disponível</p>
-                  </CardContent>
-                </Card>
-              ) : delivery.status === 'cancelled' ? (
-                <Card className="bg-red-50 border-red-200">
-                  <CardContent className="p-6 text-center">
-                    <XCircle className="h-10 w-10 text-red-600 mx-auto mb-2" />
-                    <h3 className="text-base font-bold text-red-800">Entrega Cancelada</h3>
-                    <p className="text-xs text-red-700 mt-1">Esta entrega foi cancelada e não está mais disponível.</p>
-                  </CardContent>
-                </Card>
-              ) : null}
-
-              <Card>
-                <CardContent className="p-3 space-y-3">
-                  <div
-                    className="flex items-start gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                    onClick={() => openInMaps(delivery.pickup_latitude, delivery.pickup_longitude)}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Coleta</p>
-                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{formatAddress(delivery.pickup_address)}</p>
-                    </div>
-                    <Navigation className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                  </div>
-
-                  <div className="border-l-2 border-dashed border-muted ml-4 h-3" />
-
-                  <div
-                    className="flex items-start gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
-                    onClick={() => openInMaps(delivery.delivery_latitude, delivery.delivery_longitude)}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                      <Navigation className="h-4 w-4 text-red-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">Entrega</p>
-                      <p className="text-xs sm:text-sm font-medium line-clamp-2">{formatAddress(delivery.delivery_address)}</p>
-                      {delivery.recipient_name && (
-                        <p className="text-xs text-muted-foreground">Para: {delivery.recipient_name}</p>
-                      )}
-                    </div>
-                    <Navigation className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <Clock className="h-4 w-4 mx-auto text-muted-foreground mb-0.5" />
-                    <p className="text-[10px] text-muted-foreground">Criado em</p>
-                    <p className="font-medium text-xs">
-                      {new Date(delivery.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-3 text-center">
-                    <Package className="h-4 w-4 mx-auto text-muted-foreground mb-0.5" />
-                    <p className="text-[10px] text-muted-foreground">Distância</p>
-                    <p className="font-medium text-xs">{delivery.distance_km.toFixed(1)} km</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {delivery.status === 'delivered' && (
-                <Card className="bg-green-50 border-green-200">
-                  <CardContent className="p-4 text-center">
-                    <CheckCircle2 className="h-10 w-10 text-green-600 mx-auto mb-2" />
-                    <h3 className="text-base font-bold text-green-800">Entrega Concluída!</h3>
-                    <p className="text-xs text-green-700 mt-1">
-                      Entregue em {delivery.delivered_at && new Date(delivery.delivered_at).toLocaleString('pt-BR')}
-                    </p>
-                    {driver && !hasRated && (
-                      <Button size="sm" className="mt-3 gap-2" onClick={() => setShowRatingModal(true)}>
-                        <Star className="h-4 w-4" />
-                        Avaliar Entregador
-                      </Button>
-                    )}
-                    {hasRated && (
-                      <p className="mt-3 text-xs text-green-600 flex items-center justify-center gap-1.5">
-                        <Star className="h-4 w-4 fill-current" />
-                        Você já avaliou esta entrega
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {delivery.status === 'delivered' && confirmation && (
-                <Card>
-                  <CardContent className="p-3 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Camera className="h-4 w-4 text-primary" />
-                      <h3 className="text-sm font-semibold">Comprovante de entrega</h3>
-                    </div>
-                    {confirmationPhotoUrl && (
-                      <img
-                        src={confirmationPhotoUrl}
-                        alt="Foto de confirmação da entrega"
-                        className="w-full max-h-72 rounded-lg object-cover border"
-                        loading="lazy"
-                      />
-                    )}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-muted-foreground">Horário</p>
-                        <p className="font-medium">{new Date(confirmation.confirmed_at).toLocaleString('pt-BR')}</p>
-                      </div>
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-muted-foreground">Localização</p>
-                        <p className="font-medium">{Number(confirmation.latitude).toFixed(5)}, {Number(confirmation.longitude).toFixed(5)}</p>
-                      </div>
-                      <div className="rounded-lg bg-muted p-2">
-                        <p className="text-muted-foreground">Distância do destino</p>
-                        <p className="font-medium">{Math.round(Number(confirmation.distance_meters || 0))} m</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              <button
+                className="w-full flex items-center gap-3 text-left"
+                onClick={() => openInMaps(delivery.delivery_latitude, delivery.delivery_longitude)}
+              >
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="h-4 w-4 text-red-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-gray-400">Destino</p>
+                  <p className="text-sm font-medium text-gray-800 truncate">{formatAddress(delivery.delivery_address)}</p>
+                  {delivery.recipient_name && (
+                    <p className="text-xs text-gray-400">Para: {delivery.recipient_name}</p>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-gray-300 flex-shrink-0" />
+              </button>
             </div>
-          </main>
+
+            {/* Cancel — only for early statuses */}
+            {['accepted', 'picking_up'].includes(delivery.status) && (
+              <div className="px-4 pb-4">
+                <button
+                  onClick={() => setShowCancelModal(true)}
+                  className="w-full py-3 rounded-2xl border-2 border-red-200 text-red-500 font-semibold text-sm flex items-center justify-center gap-2"
+                >
+                  <X className="h-4 w-4" />
+                  Cancelar entrega
+                </button>
+              </div>
+            )}
+          </div>
+
+          <BottomNav />
         </div>
       </div>
-
-      {showRatingModal && driver && (
-        <RatingModal
-          deliveryId={delivery.id}
-          driverUserId={driver.user_id}
-          driverName={driver.profiles.full_name}
-          onClose={() => setShowRatingModal(false)}
-          onSubmitted={() => { setShowRatingModal(false); setHasRated(true); }}
-        />
-      )}
 
       <CancelDeliveryModal
         deliveryId={delivery.id}
