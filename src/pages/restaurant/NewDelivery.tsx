@@ -39,11 +39,15 @@ const PRODUCT_TYPES = [
   { id: 'outro',      label: 'Outro',            icon: '🎁' },
 ];
 
-const categoryToVehicleType: Record<string, string> = {
-  Moto: 'motorcycle', Motocicleta: 'motorcycle',
-  Carro: 'car', Van: 'van', Caminhão: 'truck',
-  Utilitário: 'van', 'Serviço por Hora': 'hourly_service',
-};
+function inferVehicleType(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('moto') || n.includes('bike') || n.includes('bici')) return 'motorcycle';
+  if (n.includes('carro') || n.includes('car')) return 'car';
+  if (n.includes('van') || n.includes('util')) return 'van';
+  if (n.includes('caminhão') || n.includes('caminhao') || n.includes('truck')) return 'truck';
+  if (n.includes('hora') || n.includes('hour')) return 'hourly_service';
+  return 'motorcycle';
+}
 
 const vehicleIcon = (name: string) => {
   const n = name?.toLowerCase() || '';
@@ -222,7 +226,7 @@ export default function NewDelivery() {
     try {
       const vehicleType = isAdditionalDelivery
         ? parentDelivery?.vehicle_type
-        : categoryToVehicleType[selectedCategory!.name] || 'motorcycle';
+        : inferVehicleType(selectedCategory!.name);
       const basePrice = isAdditionalDelivery
         ? parentDelivery!.base_price + distance * parentDelivery!.price_per_km
         : selectedCategory!.base_price + distance * selectedCategory!.price_per_km;
@@ -392,7 +396,7 @@ export default function NewDelivery() {
                   <VehicleCategorySelector
                     onSelect={(_id, cat) => setSelectedCategory(cat)}
                     selectedCategoryId={selectedCategory?.id || null}
-                    distance={distance}
+                    distance={distance > 0 ? distance : undefined}
                   />
                 </div>
               </div>
@@ -538,15 +542,36 @@ export default function NewDelivery() {
                     </div>
                   </div>
 
-                  {/* Saldo insuficiente */}
-                  {restaurant && restaurant.wallet_balance < estimatedPrice && (
-                    <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3">
-                      <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-red-700">Saldo insuficiente</p>
-                        <p className="text-xs text-red-600 mt-0.5">
-                          Adicione R$ {(estimatedPrice - restaurant.wallet_balance).toFixed(2)} à sua carteira
+                  {/* Saldo disponível */}
+                  {restaurant && (
+                    <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
+                      restaurant.wallet_balance >= estimatedPrice
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {restaurant.wallet_balance >= estimatedPrice ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                        )}
+                        <span className={`text-sm font-medium ${
+                          restaurant.wallet_balance >= estimatedPrice ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          {restaurant.wallet_balance >= estimatedPrice ? 'Saldo disponível' : 'Saldo insuficiente'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${
+                          restaurant.wallet_balance >= estimatedPrice ? 'text-green-700' : 'text-red-700'
+                        }`}>
+                          R$ {restaurant.wallet_balance.toFixed(2)}
                         </p>
+                        {restaurant.wallet_balance < estimatedPrice && (
+                          <p className="text-xs text-red-500">
+                            Faltam R$ {(estimatedPrice - restaurant.wallet_balance).toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
