@@ -284,8 +284,9 @@ export default function NewDelivery() {
         <div className="flex-1 flex flex-col min-w-0">
 
           {/* ── HEADER ── */}
-          <header className="sticky top-0 z-10 h-14 border-b bg-white flex items-center gap-3 px-4 shadow-sm">
-            <button onClick={handleBack} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">
+          <header className="sticky top-0 z-10 border-b bg-white flex items-center gap-3 px-4 shadow-sm"
+            style={{ minHeight: 56, paddingTop: 'env(safe-area-inset-top)' }}>
+            <button onClick={handleBack} className="w-11 h-11 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors flex-shrink-0">
               <ArrowLeft className="h-5 w-5 text-gray-600" />
             </button>
             <div className="flex-1 min-w-0">
@@ -581,7 +582,8 @@ export default function NewDelivery() {
           </main>
 
           {/* ── FOOTER BUTTON ── */}
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg">
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-lg"
+            style={{ padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
             {step < totalSteps ? (
               <Button
                 className="w-full h-13 rounded-2xl text-base font-semibold bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
