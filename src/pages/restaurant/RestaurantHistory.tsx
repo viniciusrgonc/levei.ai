@@ -336,10 +336,9 @@ export default function RestaurantHistory() {
               </Card>
             </div>
           </main>
+          <BottomNav />
         </div>
       </div>
-
-      <BottomNav />
 
       {ratingModalData && (
         <RatingModal

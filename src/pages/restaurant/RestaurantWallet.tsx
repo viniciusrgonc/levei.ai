@@ -268,9 +268,9 @@ export default function RestaurantWallet() {
               </CardContent>
             </Card>
           </main>
+          <BottomNav />
         </div>
       </div>
-      <BottomNav />
     </SidebarProvider>
   );
 }
