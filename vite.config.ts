@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.png", "robots.txt"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png", "robots.txt"],
       manifest: {
         name: "Levei - Entregas sob demanda",
         short_name: "Levei",
