@@ -177,7 +177,7 @@ export default function DeliveryTracking() {
               >
                 <ArrowLeft className="h-5 w-5 text-white" />
               </button>
-              <img src={leveiLogo} alt="Levei.ai" className="h-7 w-auto" />
+              <img src={leveiLogo} alt="Levei.ai" className="h-8 w-8 rounded-xl object-cover" />
             </div>
 
             {/* Radar animation */}

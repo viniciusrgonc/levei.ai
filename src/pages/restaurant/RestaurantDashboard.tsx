@@ -163,13 +163,9 @@ export default function RestaurantDashboard() {
           {/* ── HERO HEADER (dark) ── */}
           <div className="bg-primary">
             {/* Top bar */}
-            <div className="flex items-center justify-between px-4 pt-4 pb-2">
-              <div className="flex items-center gap-2">
-                <img src={leveiLogo} alt="Levei.ai" className="h-8 w-auto" />
-                <span className="text-primary-foreground font-bold text-lg leading-none">
-                  levei<span className="text-sky-400">.ai</span>
-                </span>
-              </div>
+            <div className="flex items-center justify-between px-4 pb-2"
+              style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+              <img src={leveiLogo} alt="Levei.ai" className="h-10 w-10 rounded-xl object-cover" />
               <div className="flex items-center gap-1">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10 h-9 w-9" />
                 <NotificationBell />

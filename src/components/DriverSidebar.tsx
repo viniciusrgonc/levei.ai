@@ -41,7 +41,7 @@ export function DriverSidebar() {
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center justify-center">
-            <img src={leveiLogo} alt="Levei.ai" className={isCollapsed ? 'h-8 w-auto' : 'h-10 w-auto'} />
+            <img src={leveiLogo} alt="Levei.ai" className={isCollapsed ? 'h-8 w-8 rounded-lg object-cover' : 'h-10 w-10 rounded-xl object-cover'} />
           </div>
         </div>
 

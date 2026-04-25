@@ -21,7 +21,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-primary">
         <div className="flex flex-col items-center gap-4">
-          <img src={leveiLogo} alt="Levei.ai" className="h-16 w-auto animate-pulse" />
+          <img src={leveiLogo} alt="Levei.ai" className="h-16 w-16 rounded-2xl object-cover animate-pulse" />
           <p className="text-sm text-primary-foreground/60">Carregando...</p>
         </div>
       </div>
@@ -93,10 +93,7 @@ export default function Auth() {
 
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <img src={leveiLogo} alt="Levei.ai" className="h-9 w-auto" />
-            <span className="text-primary-foreground text-xl font-bold tracking-tight">
-              levei<span className="text-sky-400">.ai</span>
-            </span>
+            <img src={leveiLogo} alt="Levei.ai" className="h-10 w-10 rounded-xl object-cover" />
           </div>
 
           {/* Headline */}
@@ -142,10 +139,7 @@ export default function Auth() {
 
         {/* Mobile-only logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">
-          <img src={leveiLogo} alt="Levei.ai" className="h-10 w-auto" />
-          <span className="text-primary text-2xl font-bold">
-            levei<span className="text-sky-500">.ai</span>
-          </span>
+          <img src={leveiLogo} alt="Levei.ai" className="h-12 w-12 rounded-2xl object-cover" />
         </div>
 
         <div className="w-full max-w-sm">
