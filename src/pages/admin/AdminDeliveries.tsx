@@ -155,8 +155,8 @@ export default function AdminDeliveries() {
         <AdminSidebar />
         
         <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 h-16 border-b bg-primary backdrop-blur supports-[backdrop-filter]:bg-primary/95">
-            <div className="flex h-full items-center justify-between px-6">
+          <header className="sticky top-0 z-10 border-b bg-primary safe-top">
+            <div className="flex h-14 items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
                 <h1 className="text-xl font-bold text-primary-foreground">Gerenciar Entregas</h1>

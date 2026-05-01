@@ -196,8 +196,8 @@ export default function AdminDashboard() {
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="sticky top-0 z-10 bg-primary border-b border-primary/20">
-            <div className="flex h-16 items-center justify-between px-6">
+          <header className="sticky top-0 z-10 bg-primary border-b border-primary/20 safe-top">
+            <div className="flex h-14 items-center justify-between px-4 sm:px-6">
               <div className="flex items-center gap-4">
                 <SidebarTrigger className="text-primary-foreground hover:bg-white/10" />
                 <div className="flex items-center gap-3">

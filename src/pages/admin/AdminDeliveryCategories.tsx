@@ -159,7 +159,7 @@ export default function AdminDeliveryCategories() {
         <div className="flex-1 flex flex-col min-w-0">
 
           {/* ── Header ── */}
-          <header className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
+          <header className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm safe-top">
             <div className="flex items-center gap-3 px-4 h-14">
               <SidebarTrigger className="text-gray-500" />
               <div className="flex-1 min-w-0">
