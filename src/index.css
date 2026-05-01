@@ -1,0 +1,726 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 
+  LEVEI Design System
+  Inspirado em: Uber, Lalamove, iFood, 99 Entregas
+  Estilo: Minimalista, profissional, tecnológico
+  Todas as cores em HSL
+*/
+
+@layer base {
+  :root {
+    /* Brand Colors - Azul Moderno (Confiança e Tecnologia) */
+    --primary: 220 84% 50%; /* #1E6FEB - Azul vibrante principal */
+    --primary-light: 213 94% 58%; /* #3B8DF8 - Azul claro */
+    --primary-dark: 220 90% 28%; /* #0B3D91 - Azul profundo */
+    --primary-foreground: 0 0% 100%;
+
+    /* Neutral Colors - Clean e Moderno */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 13%; /* #1C2127 - Texto escuro */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 13%;
+
+    /* Secondary - Cinza suave off-white */
+    --secondary: 220 14% 96%; /* #F4F5F7 */
+    --secondary-foreground: 220 13% 35%; /* #505866 */
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%; /* #6B7280 */
+
+    --accent: 220 84% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Status Colors - Claros e Distintos */
+    --success: 145 63% 42%; /* #28A745 - Verde sucesso */
+    --success-foreground: 0 0% 100%;
+    --warning: 40 96% 50%; /* #F5A623 - Amarelo alerta */
+    --warning-foreground: 0 0% 100%;
+    --destructive: 4 72% 52%; /* #DC3545 - Vermelho erro */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Info */
+    --info: 200 94% 46%; /* #0096D6 */
+    --info-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 220 13% 90%; /* #E2E5E9 */
+    --input: 220 13% 90%;
+    --ring: 220 84% 50%;
+
+    --radius: 0.75rem; /* 12px - Mais arredondado */
+    
+    /* Shadows - Suaves e refinadas */
+    --shadow-xs: 0 1px 2px 0 hsl(220 13% 13% / 0.03);
+    --shadow-sm: 0 1px 3px 0 hsl(220 13% 13% / 0.06), 0 1px 2px -1px hsl(220 13% 13% / 0.03);
+    --shadow-md: 0 4px 6px -1px hsl(220 13% 13% / 0.08), 0 2px 4px -2px hsl(220 13% 13% / 0.04);
+    --shadow-lg: 0 10px 15px -3px hsl(220 13% 13% / 0.08), 0 4px 6px -4px hsl(220 13% 13% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(220 13% 13% / 0.1), 0 8px 10px -6px hsl(220 13% 13% / 0.05);
+    
+    /* Legacy aliases */
+    --shadow-card: var(--shadow-sm);
+    --shadow-elevated: var(--shadow-md);
+    --shadow-button: var(--shadow-xs);
+    
+    /* Transitions */
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Status Colors - Delivery System */
+    --status-pending: 220 9% 46%;
+    --status-accepted: 220 84% 50%;
+    --status-picking-up: 40 96% 50%;
+    --status-picked-up: 28 87% 55%;
+    --status-delivering: 213 94% 58%;
+    --status-delivered: 145 63% 42%;
+    --status-cancelled: 4 72% 52%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 13% 13%;
+    --sidebar-primary: 220 84% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 13% 13%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 220 84% 50%;
+  }
+
+  .dark {
+    /* Brand Colors - Dark Mode */
+    --primary: 213 94% 58%;
+    --primary-light: 213 94% 68%;
+    --primary-dark: 220 84% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --background: 220 16% 10%; /* #151921 */
+    --foreground: 220 14% 96%;
+
+    --card: 220 16% 14%; /* #1E232D */
+    --card-foreground: 220 14% 96%;
+
+    --popover: 220 16% 14%;
+    --popover-foreground: 220 14% 96%;
+
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 220 14% 90%;
+
+    --muted: 220 16% 18%;
+    --muted-foreground: 220 9% 60%;
+
+    --accent: 213 94% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 145 63% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 40 96% 50%;
+    --warning-foreground: 0 0% 100%;
+    --destructive: 4 72% 52%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --info: 200 94% 46%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 16% 22%;
+    --input: 220 16% 22%;
+    --ring: 213 94% 58%;
+
+    --status-pending: 220 9% 60%;
+    --status-accepted: 213 94% 58%;
+    --status-picking-up: 40 96% 50%;
+    --status-picked-up: 28 87% 55%;
+    --status-delivering: 213 94% 58%;
+    --status-delivered: 145 63% 42%;
+    --status-cancelled: 4 72% 52%;
+
+    --sidebar-background: 220 16% 10%;
+    --sidebar-foreground: 220 14% 96%;
+    --sidebar-primary: 213 94% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 16% 18%;
+    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-border: 220 16% 22%;
+    --sidebar-ring: 213 94% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Melhor legibilidade */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tight;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Focus visible para acessibilidade */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer components {
+  /* KPI Card - Destaque para métricas */
+  .kpi-card {
+    @apply rounded-xl border border-border bg-card p-5 shadow-[var(--shadow-sm)] transition-all duration-200;
+  }
+  
+  .kpi-card:hover {
+    @apply shadow-[var(--shadow-md)] -translate-y-0.5;
+  }
+
+  .kpi-value {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+  }
+
+  .kpi-label {
+    @apply text-sm font-medium text-muted-foreground;
+  }
+
+  /* Status Badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+
+  .status-badge-pending {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-badge-active {
+    @apply bg-primary/10 text-primary;
+  }
+
+  .status-badge-success {
+    @apply bg-success/10 text-success;
+  }
+
+  .status-badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+
+  .status-badge-error {
+    @apply bg-destructive/10 text-destructive;
+  }
+
+  /* Action Button - Para ações rápidas visíveis */
+  .action-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-sm)] transition-all duration-200;
+  }
+
+  .action-button:hover {
+    @apply bg-primary/90 shadow-[var(--shadow-md)] -translate-y-0.5;
+  }
+
+  .action-button:active {
+    @apply translate-y-0 shadow-[var(--shadow-xs)];
+  }
+
+  .action-button:disabled {
+    @apply opacity-50 pointer-events-none;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply mb-4 h-16 w-16 text-muted-foreground/40;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .empty-state-description {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  /* Touch friendly (mobile-first) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent;
+  }
+
+  /* Glass effect */
+  .glass {
+    @apply bg-background/80 backdrop-blur-lg;
+  }
+
+  /* Safe area padding for mobile - Enhanced for all devices */
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  }
+
+  .safe-top {
+    padding-top: max(env(safe-area-inset-top, 0px), 8px);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left, 0px);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  .safe-area-inset {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
+  /* Mobile-first responsive containers */
+  .container-mobile {
+    @apply w-full px-3 sm:px-4 md:px-6;
+  }
+
+  /* Compact header for mobile */
+  .header-mobile {
+    @apply h-12 sm:h-14 md:h-16;
+  }
+
+  /* Mobile-first card padding */
+  .card-content-mobile {
+    @apply p-3 sm:p-4 md:p-5;
+  }
+
+  /* Mobile-first section spacing */
+  .section-mobile {
+    @apply py-4 sm:py-6 md:py-8;
+  }
+
+  /* Full width cards on mobile */
+  .card-full-mobile {
+    @apply rounded-none sm:rounded-xl border-x-0 sm:border-x;
+  }
+
+  /* Responsive text sizing */
+  .text-responsive-xs {
+    @apply text-[10px] sm:text-xs;
+  }
+
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-xl sm:text-2xl;
+  }
+
+  .text-responsive-3xl {
+    @apply text-2xl sm:text-3xl;
+  }
+
+  /* Fixed bottom bar with safe area */
+  .fixed-bottom-bar {
+    @apply fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+  }
+
+  /* Floating header with safe area */
+  .floating-header {
+    @apply absolute top-0 left-0 right-0 z-[1000];
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* Fullscreen map container */
+  .map-fullscreen {
+    @apply absolute inset-0;
+    height: 100%;
+    height: 100dvh;
+  }
+
+  /* Flex layout for mobile screens */
+  .flex-mobile-column {
+    @apply flex flex-col min-h-screen;
+    min-height: 100dvh;
+  }
+
+  /* Scroll container with flex-grow */
+  .scroll-container {
+    @apply flex-1 overflow-auto;
+  }
+
+  /* Card with dynamic height */
+  .card-dynamic {
+    @apply w-full;
+    height: auto;
+    min-height: fit-content;
+  }
+
+  /* Button height for mobile touch */
+  .btn-touch {
+    @apply h-12 sm:h-14 min-h-[48px];
+  }
+
+  /* Responsive gap */
+  .gap-responsive {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+
+  /* Responsive padding */
+  .p-responsive {
+    @apply p-3 sm:p-4 md:p-6;
+  }
+
+  /* Responsive margin */
+  .m-responsive {
+    @apply m-3 sm:m-4 md:m-6;
+  }
+
+  /* Icon sizes responsive */
+  .icon-responsive-sm {
+    @apply w-4 h-4 sm:w-5 sm:h-5;
+  }
+
+  .icon-responsive-md {
+    @apply w-5 h-5 sm:w-6 sm:h-6;
+  }
+
+  .icon-responsive-lg {
+    @apply w-6 h-6 sm:w-8 sm:h-8;
+  }
+
+  /* Avatar sizes responsive */
+  .avatar-responsive-sm {
+    @apply w-8 h-8 sm:w-10 sm:h-10;
+  }
+
+  .avatar-responsive-md {
+    @apply w-10 h-10 sm:w-12 sm:h-12;
+  }
+
+  .avatar-responsive-lg {
+    @apply w-12 h-12 sm:w-16 sm:h-16;
+  }
+}
+
+/* Animações suaves */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  font-family: inherit;
+  border-radius: var(--radius);
+  z-index: 1;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: hsl(220 16% 10% / 0.6) !important;
+  color: hsl(0 0% 100% / 0.8) !important;
+  border-radius: 4px;
+  padding: 2px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: hsl(0 0% 100% / 0.9) !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+.leaflet-control-zoom a {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border: none !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: hsl(var(--secondary)) !important;
+}
+
+/* Scrollbar estilizada */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* Mobile viewport height fix */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+  .h-screen {
+    height: 100dvh;
+  }
+}
+
+/* Prevent overscroll on iOS */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure body stretches to fill viewport */
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Fix for iOS input zoom */
+@media screen and (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Responsive aspect ratios for maps */
+.map-aspect-responsive {
+  aspect-ratio: 16/9;
+}
+
+@media (min-width: 640px) {
+  .map-aspect-responsive {
+    aspect-ratio: 21/9;
+  }
+}
+
+/* Bottom sheet animation for mobile */
+@keyframes slide-up-sheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up-sheet {
+  animation: slide-up-sheet 0.3s ease-out;
+}
+
+/* Responsive grid for cards */
+.grid-responsive-cards {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4;
+}
+
+/* Mobile-optimized layout utilities */
+.layout-mobile-safe {
+  @apply min-h-screen flex flex-col;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.content-scroll-safe {
+  @apply flex-1 overflow-auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* No overflow on mobile - prevents horizontal scroll */
+.no-overflow-x {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Container that respects viewport */
+.viewport-container {
+  @apply w-full;
+  max-width: 100vw;
+  max-width: 100dvw;
+}
+
+/* Responsive footer button */
+.footer-button-safe {
+  @apply sticky bottom-0 left-0 right-0 p-3 sm:p-4 bg-background border-t border-border;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+}
+
+/* Map container that doesn't exceed viewport */
+.map-container-safe {
+  @apply w-full rounded-lg border overflow-hidden;
+  aspect-ratio: 4/3;
+  max-height: 50vh;
+}
+
+@media (min-width: 640px) {
+  .map-container-safe {
+    max-height: 400px;
+  }
+}
+
+/* Prevent content from being cut off */
+.content-safe {
+  @apply w-full max-w-full px-3 sm:px-4;
+}
+
+/* Responsive wizard steps */
+.wizard-steps {
+  @apply flex gap-1;
+}
+
+.wizard-step {
+  @apply h-1 sm:h-1.5 flex-1 rounded-full transition-colors;
+}
+
+/* Mobile form layout */
+.form-mobile {
+  @apply space-y-3 sm:space-y-4;
+}
+
+.form-mobile label {
+  @apply text-xs sm:text-sm font-medium;
+}
+
+.form-mobile input,
+.form-mobile select,
+.form-mobile textarea {
+  @apply text-base; /* Prevents iOS zoom */
+}
+
+/* ── Safe Area Insets (iPhone notch / Dynamic Island / home indicator) ── */
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+  /* Combined: padding-bottom = fixed amount + safe area */
+  .pb-nav-safe {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* ── Global mobile touch targets ── */
+button, a, [role="button"] {
+  min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Prevent iOS text size adjustment ── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
