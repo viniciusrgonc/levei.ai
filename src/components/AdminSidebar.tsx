@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent } from 'lucide-react';
 import leveiLogo from '@/assets/levei-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -65,6 +65,11 @@ const menuItems = [
     title: 'Múltiplas Entregas',
     url: '/admin/batch-settings',
     icon: Layers,
+  },
+  {
+    title: 'Tipos de Taxa',
+    url: '/admin/fee-types',
+    icon: Percent,
   },
   {
     title: 'Disputas',

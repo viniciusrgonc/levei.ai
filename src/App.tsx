@@ -43,6 +43,7 @@ import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
 import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
 import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
+import AdminFeeTypes from "./pages/admin/AdminFeeTypes";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
 
@@ -328,6 +329,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminBatchSettings />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/fee-types"
+              element={
+                <AdminRoute>
+                  <AdminFeeTypes />
                 </AdminRoute>
               }
             />
