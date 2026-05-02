@@ -174,7 +174,7 @@ export default function ReturnInProgress() {
   const handleConfirmReturn = async () => {
     if (!deliveryId || !driverId || !delivery) return;
 
-    // Busca o status mais recente do banco (não confia só no estado local)
+    // Busca o status mais recente do banco
     const { data: fresh } = await supabase
       .from('deliveries')
       .select('status')
@@ -192,32 +192,30 @@ export default function ReturnInProgress() {
       return;
     }
 
-    // Garante que o status é 'returning' antes de chamar completeDelivery
-    if (currentStatus !== 'returning') {
-      console.log('[ReturnInProgress] Status incorreto, corrigindo para returning...');
-      const { error: fixErr } = await supabase
-        .from('deliveries')
-        .update({ status: 'returning' })
-        .eq('id', deliveryId);
+    // A edge function no Supabase só aceita 'picked_up' para finalizar.
+    // Revertemos o status para 'picked_up' antes de chamar completeDelivery,
+    // registrando o returned_at para manter o histórico do retorno.
+    console.log('[ReturnInProgress] Preparando finalização — revertendo para picked_up...');
 
-      if (fixErr) {
-        console.error('[ReturnInProgress] Erro ao corrigir status:', fixErr);
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível confirmar o status da entrega. Tente novamente.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      console.log('[ReturnInProgress] Status corrigido para returning ✓');
-    }
-
-    // Registra returned_at e finaliza
-    await supabase
+    const { error: revertErr } = await supabase
       .from('deliveries')
-      .update({ returned_at: new Date().toISOString() })
+      .update({
+        status: 'picked_up',
+        returned_at: new Date().toISOString(),
+      })
       .eq('id', deliveryId);
 
+    if (revertErr) {
+      console.error('[ReturnInProgress] Erro ao preparar finalização:', revertErr);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível confirmar o retorno. Tente novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    console.log('[ReturnInProgress] Chamando completeDelivery...');
     await completeDelivery(deliveryId, driverId, Number(delivery.price));
   };
 
