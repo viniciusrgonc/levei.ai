@@ -213,12 +213,21 @@ export default function DeliveryInProgress() {
   const handleCompleteDelivery = async () => {
     if (!deliveryId || !driverId || !delivery) return;
     if (delivery.requires_return) {
-      const { error } = await supabase
-        .from('deliveries').update({ status: 'returning' }).eq('id', deliveryId);
+      console.log('[DeliveryInProgress] Atualizando status para returning...');
+      const { error, data: updated } = await supabase
+        .from('deliveries')
+        .update({ status: 'returning' })
+        .eq('id', deliveryId)
+        .select('status')
+        .single();
+
       if (error) {
-        toast({ title: 'Erro', description: 'Não foi possível confirmar', variant: 'destructive' });
+        console.error('[DeliveryInProgress] Erro ao atualizar status:', error);
+        toast({ title: 'Erro', description: 'Não foi possível confirmar o retorno', variant: 'destructive' });
         return;
       }
+
+      console.log('[DeliveryInProgress] Status atualizado para:', updated?.status);
       navigate(`/driver/return/${deliveryId}`, { replace: true });
     } else {
       await completeDelivery(deliveryId, driverId, Number(delivery.price));

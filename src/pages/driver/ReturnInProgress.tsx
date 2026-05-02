@@ -134,28 +134,90 @@ export default function ReturnInProgress() {
       navigate('/driver/dashboard');
       return;
     }
-    if (data.status !== 'returning') {
-      // Redirect to appropriate screen based on status
-      if (['accepted', 'picking_up'].includes(data.status)) {
-        navigate(`/driver/pickup/${deliveryId}`, { replace: true });
-      } else if (['picked_up', 'delivering'].includes(data.status)) {
-        navigate(`/driver/delivery/${deliveryId}`, { replace: true });
-      } else {
-        navigate('/driver/dashboard');
-      }
+
+    console.log('[ReturnInProgress] Status atual ao carregar:', data.status);
+
+    // Aceita 'returning' ou 'picked_up' com requires_return (recupera fluxo interrompido)
+    if (data.status === 'returning') {
+      setDelivery(data);
+      setLoading(false);
       return;
     }
-    setDelivery(data);
-    setLoading(false);
+
+    // Se status é picked_up e a entrega requer retorno, forçamos para 'returning'
+    if (data.status === 'picked_up' && data.requires_return) {
+      console.log('[ReturnInProgress] Forçando status para returning...');
+      const { error: fixErr } = await supabase
+        .from('deliveries')
+        .update({ status: 'returning' })
+        .eq('id', deliveryId!);
+      if (!fixErr) {
+        data.status = 'returning';
+        setDelivery(data);
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Redireciona baseado no status atual
+    if (['accepted', 'picking_up'].includes(data.status)) {
+      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
+    } else if (['picked_up', 'delivering'].includes(data.status)) {
+      navigate(`/driver/delivery/${deliveryId}`, { replace: true });
+    } else if (data.status === 'delivered') {
+      navigate('/driver/dashboard', { replace: true });
+    } else {
+      navigate('/driver/dashboard');
+    }
   };
 
   const handleConfirmReturn = async () => {
     if (!deliveryId || !driverId || !delivery) return;
-    // Mark returned_at and then trigger payment via completeDelivery
+
+    // Busca o status mais recente do banco (não confia só no estado local)
+    const { data: fresh } = await supabase
+      .from('deliveries')
+      .select('status')
+      .eq('id', deliveryId)
+      .single();
+
+    console.log('[ReturnInProgress] Status atual antes de finalizar:', fresh?.status);
+
+    const currentStatus = fresh?.status as string | undefined;
+
+    // Se já foi finalizada, mostra sucesso diretamente
+    if (currentStatus === 'delivered') {
+      setEarnings(Number(delivery.price_adjusted || delivery.price) * 0.8);
+      setShowSuccess(true);
+      return;
+    }
+
+    // Garante que o status é 'returning' antes de chamar completeDelivery
+    if (currentStatus !== 'returning') {
+      console.log('[ReturnInProgress] Status incorreto, corrigindo para returning...');
+      const { error: fixErr } = await supabase
+        .from('deliveries')
+        .update({ status: 'returning' })
+        .eq('id', deliveryId);
+
+      if (fixErr) {
+        console.error('[ReturnInProgress] Erro ao corrigir status:', fixErr);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível confirmar o status da entrega. Tente novamente.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      console.log('[ReturnInProgress] Status corrigido para returning ✓');
+    }
+
+    // Registra returned_at e finaliza
     await supabase
       .from('deliveries')
       .update({ returned_at: new Date().toISOString() })
       .eq('id', deliveryId);
+
     await completeDelivery(deliveryId, driverId, Number(delivery.price));
   };
 

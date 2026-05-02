@@ -148,18 +148,23 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check valid status — both 'picked_up' (normal) and 'returning' (return delivery) are valid
-    if (!['picked_up', 'returning'].includes(currentDelivery.status)) {
+    // Check valid status — 'picked_up' (normal), 'returning' (com retorno) e 'delivering' (compatibilidade)
+    const VALID_COMPLETE_STATUSES = ['picked_up', 'returning', 'delivering']
+
+    console.log(`[Complete-Delivery] ${requestId} - Current status: ${currentDelivery.status}`)
+
+    if (!VALID_COMPLETE_STATUSES.includes(currentDelivery.status)) {
       if (currentDelivery.status === 'delivered') {
         return successResponse(
           { delivery: currentDelivery, already_completed: true },
           'Entrega já foi finalizada'
         )
       }
+      console.error(`[Complete-Delivery] ${requestId} - Invalid status: ${currentDelivery.status}`)
       return errorResponse(
         ErrorCodes.DELIVERY_WRONG_STATUS,
-        'A entrega não está no status correto para finalização',
-        { current_status: currentDelivery.status }
+        `A entrega está no status "${currentDelivery.status}" e não pode ser finalizada agora.`,
+        { current_status: currentDelivery.status, valid_statuses: VALID_COMPLETE_STATUSES }
       )
     }
 
