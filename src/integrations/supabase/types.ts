@@ -331,6 +331,7 @@ export type Database = {
       }
       drivers: {
         Row: {
+          accepted_product_types: string[]
           created_at: string
           drivers_license_url: string | null
           earnings_balance: number
@@ -349,6 +350,7 @@ export type Database = {
           vehicle_type: Database["public"]["Enums"]["vehicle_type"]
         }
         Insert: {
+          accepted_product_types?: string[]
           created_at?: string
           drivers_license_url?: string | null
           earnings_balance?: number
@@ -367,6 +369,7 @@ export type Database = {
           vehicle_type: Database["public"]["Enums"]["vehicle_type"]
         }
         Update: {
+          accepted_product_types?: string[]
           created_at?: string
           drivers_license_url?: string | null
           earnings_balance?: number
