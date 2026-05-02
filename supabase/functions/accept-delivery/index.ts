@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     // === 3. DRIVER AUTHORIZATION ===
     const { data: driver, error: driverError } = await supabaseClient
       .from('drivers')
-      .select('id, user_id, is_available, latitude, longitude, vehicle_type')
+      .select('id, user_id, is_available, latitude, longitude, vehicle_type, accepted_product_types')
       .eq('id', driver_id)
       .single()
 
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     // === 4. FETCH DELIVERY ===
     const { data: delivery, error: deliveryError } = await supabaseClient
       .from('deliveries')
-      .select('id, status, driver_id, pickup_latitude, pickup_longitude, vehicle_category, restaurant_id')
+      .select('id, status, driver_id, pickup_latitude, pickup_longitude, vehicle_category, restaurant_id, product_type')
       .eq('id', delivery_id)
       .single()
 
@@ -162,6 +162,21 @@ Deno.serve(async (req) => {
         'Esta entrega não está mais disponível',
         { current_status: delivery.status }
       )
+    }
+
+    // === 6.5. PRODUCT TYPE COMPATIBILITY CHECK ===
+    const deliveryProductType = delivery.product_type as string | null
+    const driverAcceptedTypes = (driver.accepted_product_types as string[]) || []
+
+    if (deliveryProductType && driverAcceptedTypes.length > 0) {
+      if (!driverAcceptedTypes.includes(deliveryProductType)) {
+        console.log(`[Accept-Delivery] ${requestId} - Product type incompatible: delivery="${deliveryProductType}", driver accepts=${JSON.stringify(driverAcceptedTypes)}`)
+        return errorResponse(
+          ErrorCodes.DELIVERY_UNAVAILABLE,
+          `Você não aceita entregas do tipo "${deliveryProductType}". Configure suas categorias nas Configurações.`,
+          { product_type: deliveryProductType, accepted_types: driverAcceptedTypes }
+        )
+      }
     }
 
     // === 7. RADIUS CHECK ===

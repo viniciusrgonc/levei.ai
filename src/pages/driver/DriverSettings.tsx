@@ -8,37 +8,56 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Bike, Shield, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Loader2, Bike, Shield, ArrowLeft, ChevronRight, Package, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import leveiLogo from '@/assets/levei-logo.png';
 import NotificationBell from '@/components/NotificationBell';
+import { PRODUCT_TYPES } from '@/lib/productTypes';
 
 export default function DriverSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingCategories, setSavingCategories] = useState(false);
   const [isAvailable, setIsAvailable] = useState(false);
   const [vehicleType, setVehicleType] = useState('motorcycle');
   const [licensePlate, setLicensePlate] = useState('');
   const [driverId, setDriverId] = useState<string | null>(null);
+  const [acceptedProductTypes, setAcceptedProductTypes] = useState<string[]>([]);
 
   useEffect(() => { if (user) fetchSettings(); }, [user]);
 
   const fetchSettings = async () => {
     const { data } = await supabase
-      .from('drivers').select('id, is_available, vehicle_type, license_plate')
-      .eq('user_id', user?.id).single();
+      .from('drivers')
+      .select('id, is_available, vehicle_type, license_plate, accepted_product_types')
+      .eq('user_id', user?.id)
+      .single();
+
     if (data) {
       setDriverId(data.id);
       setIsAvailable(data.is_available);
       setVehicleType(data.vehicle_type as string);
       setLicensePlate(data.license_plate || '');
+      setAcceptedProductTypes((data.accepted_product_types as string[]) || []);
     }
     setLoading(false);
   };
 
   const handleToggleAvailability = async (checked: boolean) => {
+    // Bloqueia ficar online se não tiver categorias configuradas
+    if (checked && acceptedProductTypes.length === 0) {
+      toast({
+        title: '⚠️ Configure suas categorias',
+        description: 'Selecione ao menos um tipo de entrega que você aceita antes de ficar disponível.',
+        variant: 'destructive',
+      });
+      // Rola para a seção de categorias
+      document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+      return;
+    }
+
     setIsAvailable(checked);
     const { error } = await supabase
       .from('drivers').update({ is_available: checked }).eq('user_id', user?.id);
@@ -48,6 +67,35 @@ export default function DriverSettings() {
     } else {
       toast({ title: checked ? 'Você está disponível!' : 'Você está offline' });
     }
+  };
+
+  const handleToggleProductType = (key: string) => {
+    setAcceptedProductTypes(prev =>
+      prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setAcceptedProductTypes(PRODUCT_TYPES.map(t => t.key));
+  };
+
+  const handleClearAll = () => {
+    setAcceptedProductTypes([]);
+  };
+
+  const handleSaveCategories = async () => {
+    setSavingCategories(true);
+    const { error } = await supabase
+      .from('drivers')
+      .update({ accepted_product_types: acceptedProductTypes })
+      .eq('user_id', user?.id);
+
+    if (error) {
+      toast({ title: 'Erro ao salvar categorias', variant: 'destructive' });
+    } else {
+      toast({ title: '✅ Categorias salvas!' });
+    }
+    setSavingCategories(false);
   };
 
   const handleSaveVehicle = async (e: React.FormEvent) => {
@@ -72,10 +120,14 @@ export default function DriverSettings() {
         <div className="px-4 space-y-3 mt-4">
           <Skeleton className="h-20 rounded-2xl" />
           <Skeleton className="h-40 rounded-2xl" />
+          <Skeleton className="h-64 rounded-2xl" />
         </div>
       </div>
     );
   }
+
+  const allSelected = acceptedProductTypes.length === PRODUCT_TYPES.length;
+  const noneSelected = acceptedProductTypes.length === 0;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -133,6 +185,108 @@ export default function DriverSettings() {
               onCheckedChange={handleToggleAvailability}
               className="flex-shrink-0 data-[state=checked]:bg-green-500"
             />
+          </div>
+
+          {/* Aviso se sem categorias */}
+          {noneSelected && (
+            <div className="mx-4 mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700">
+                Configure as categorias abaixo antes de ficar disponível.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Categorias aceitas */}
+        <div id="categories-section" className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                Categorias que aceito entregar
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Selecione os tipos de entrega que você consegue fazer
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Badge de contagem */}
+              {acceptedProductTypes.length > 0 ? (
+                <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  {acceptedProductTypes.length}/{PRODUCT_TYPES.length}
+                </span>
+              ) : (
+                <span className="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                  Nenhuma
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+            <button
+              onClick={allSelected ? handleClearAll : handleSelectAll}
+              className="text-xs font-medium text-primary underline underline-offset-2"
+            >
+              {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
+            </button>
+            <span className="text-xs text-gray-400">
+              {acceptedProductTypes.length} selecionada{acceptedProductTypes.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="px-4 pb-4 space-y-1">
+            {PRODUCT_TYPES.map((type) => {
+              const selected = acceptedProductTypes.includes(type.key);
+              return (
+                <button
+                  key={type.key}
+                  onClick={() => handleToggleProductType(type.key)}
+                  className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl border-2 transition-all text-left ${
+                    selected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-transparent bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  {/* Ícone */}
+                  <span className="text-xl flex-shrink-0">{type.icon}</span>
+
+                  {/* Label */}
+                  <span className={`flex-1 text-sm font-medium ${
+                    selected ? 'text-primary' : 'text-gray-700'
+                  }`}>
+                    {type.label}
+                  </span>
+
+                  {/* Check indicator */}
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                    selected
+                      ? 'bg-primary border-primary'
+                      : 'border-gray-300 bg-white'
+                  }`}>
+                    {selected && (
+                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Save button */}
+          <div className="px-4 pb-4">
+            <button
+              onClick={handleSaveCategories}
+              disabled={savingCategories}
+              className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {savingCategories
+                ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</>
+                : <><CheckCircle2 className="h-4 w-4" />Salvar categorias</>
+              }
+            </button>
           </div>
         </div>
 

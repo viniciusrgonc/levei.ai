@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { DEFAULT_ACCEPTED_TYPES } from '@/lib/productTypes';
 
 // ── Haversine ─────────────────────────────────────────────────────────────
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -35,6 +36,7 @@ interface DriverInfo {
   lat: number;
   lng: number;
   radiusKm: number;
+  acceptedProductTypes: string[]; // tipos de produto aceitos pelo motoboy
 }
 
 interface UseNearbyDeliveriesProps {
@@ -43,11 +45,11 @@ interface UseNearbyDeliveriesProps {
   maxDistanceKm?: number;
 }
 
-// ── Query fn 1: driver location + configured radius ───────────────────────
+// ── Query fn 1: driver location + radius + accepted product types ──────────
 async function fetchDriverInfo(driverId: string, maxDistanceKm: number): Promise<DriverInfo | null> {
   const { data } = await supabase
     .from('drivers')
-    .select('latitude, longitude, vehicle_type')
+    .select('latitude, longitude, vehicle_type, accepted_product_types')
     .eq('id', driverId)
     .single();
 
@@ -66,10 +68,19 @@ async function fetchDriverInfo(driverId: string, maxDistanceKm: number): Promise
     }
   }
 
-  return { lat: Number(data.latitude), lng: Number(data.longitude), radiusKm };
+  // Usa categorias configuradas; se vazio, aplica fallback de segurança
+  const raw = (data.accepted_product_types as string[]) || [];
+  const acceptedProductTypes = raw.length > 0 ? raw : DEFAULT_ACCEPTED_TYPES;
+
+  return {
+    lat: Number(data.latitude),
+    lng: Number(data.longitude),
+    radiusKm,
+    acceptedProductTypes,
+  };
 }
 
-// ── Query fn 2: pending deliveries filtered by radius ─────────────────────
+// ── Query fn 2: pending deliveries filtered by radius + product type ───────
 async function fetchNearbyDeliveries(info: DriverInfo): Promise<Delivery[]> {
   const { data } = await supabase
     .from('deliveries')
@@ -87,7 +98,16 @@ async function fetchNearbyDeliveries(info: DriverInfo): Promise<Delivery[]> {
         Number(d.pickup_latitude), Number(d.pickup_longitude)
       ),
     }))
-    .filter((d) => d.distanceFromDriver <= info.radiusKm)
+    .filter((d) => {
+      // Filtro 1: raio de distância
+      if (d.distanceFromDriver > info.radiusKm) return false;
+
+      // Filtro 2: compatibilidade de tipo de produto
+      // Se a entrega não tem product_type definido, ela aparece para todos
+      if (!d.product_type) return true;
+
+      return info.acceptedProductTypes.includes(d.product_type);
+    })
     .sort((a, b) => a.distanceFromDriver - b.distanceFromDriver);
 }
 
@@ -100,21 +120,21 @@ export function useNearbyDeliveries({
   const queryClient = useQueryClient();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // 1️⃣ Driver info (location + radius) — cached 5 min, rare to change
+  // 1️⃣ Driver info (location + radius + accepted types) — cached 5 min
   const { data: driverInfo } = useQuery({
     queryKey: ['driver-info', driverId],
     queryFn: () => fetchDriverInfo(driverId, maxDistanceKm),
     enabled: isAvailable && !!driverId,
-    staleTime: 5 * 60 * 1000,   // 5 min — position rarely changes mid-shift
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
 
-  // 2️⃣ Nearby deliveries — depends on location; stale after 30s
+  // 2️⃣ Nearby deliveries — filtered by location + product type
   const { data: deliveries = [], isLoading } = useQuery({
     queryKey: ['nearby-deliveries', driverId, driverInfo?.lat, driverInfo?.lng, driverInfo?.radiusKm],
     queryFn: () => fetchNearbyDeliveries(driverInfo!),
     enabled: isAvailable && !!driverInfo,
-    staleTime: 30 * 1000,        // 30s — deliveries change frequently
+    staleTime: 30 * 1000,
     gcTime: 2 * 60 * 1000,
   });
 
@@ -147,5 +167,6 @@ export function useNearbyDeliveries({
     loading: isLoading,
     driverLocation: driverInfo ? { lat: driverInfo.lat, lng: driverInfo.lng } : null,
     radiusKm: driverInfo?.radiusKm ?? maxDistanceKm,
+    acceptedProductTypes: driverInfo?.acceptedProductTypes ?? [],
   };
 }
