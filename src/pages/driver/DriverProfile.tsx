@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Loader2, Star, Camera, History, Wallet, Settings, LogOut, ChevronRight,
+  Loader2, Star, Camera, History, Wallet, Settings, LogOut, ChevronRight, UserPen,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 
@@ -96,7 +96,8 @@ export default function DriverProfile() {
   const menuItems = [
     { icon: History,  label: 'Minhas entregas',  onClick: () => navigate('/driver/history') },
     { icon: Wallet,   label: 'Ganhos',            onClick: () => navigate('/driver/wallet') },
-    { icon: Settings, label: 'Configurações',     onClick: () => setIsEditing(!isEditing) },
+    { icon: UserPen,  label: 'Editar perfil',     onClick: () => setIsEditing(!isEditing) },
+    { icon: Settings, label: 'Configurações',     onClick: () => navigate('/driver/settings') },
   ];
 
   if (isLoading) {

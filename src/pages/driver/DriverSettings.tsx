@@ -29,18 +29,24 @@ export default function DriverSettings() {
   useEffect(() => { if (user) fetchSettings(); }, [user]);
 
   const fetchSettings = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('drivers')
       .select('id, is_available, vehicle_type, license_plate, accepted_product_types')
       .eq('user_id', user?.id)
       .single();
+
+    console.log('[DriverSettings] fetchSettings result:', data, error);
 
     if (data) {
       setDriverId(data.id);
       setIsAvailable(data.is_available);
       setVehicleType(data.vehicle_type as string);
       setLicensePlate(data.license_plate || '');
-      setAcceptedProductTypes((data.accepted_product_types as string[]) || []);
+      const tipos = Array.isArray(data.accepted_product_types)
+        ? (data.accepted_product_types as string[])
+        : [];
+      console.log('[DriverSettings] Categorias do motoboy:', tipos);
+      setAcceptedProductTypes(tipos);
     }
     setLoading(false);
   };
@@ -85,12 +91,14 @@ export default function DriverSettings() {
 
   const handleSaveCategories = async () => {
     setSavingCategories(true);
+    console.log('[DriverSettings] Salvando categorias:', acceptedProductTypes);
     const { error } = await supabase
       .from('drivers')
       .update({ accepted_product_types: acceptedProductTypes })
       .eq('user_id', user?.id);
 
     if (error) {
+      console.error('[DriverSettings] Erro ao salvar categorias:', error);
       toast({ title: 'Erro ao salvar categorias', variant: 'destructive' });
     } else {
       toast({ title: '✅ Categorias salvas!' });
