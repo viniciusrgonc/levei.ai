@@ -70,8 +70,8 @@ export default function NewDelivery() {
   // Endereço de destino pré-preenchido vindo do ConfirmDelivery
   const prefilledTo = searchParams.get('to') || '';
 
-  // Se vier com ?to= pré-preenchido, começa no step 2 já com o endereço
-  const [step, setStep] = useState(prefilledTo ? 2 : 1);
+  // Se vier com ?to= pré-preenchido, pula step 2 (já confirmado na tela anterior) e vai direto ao step 3
+  const [step, setStep] = useState(prefilledTo ? 3 : 1);
   const totalSteps = 5;
 
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
@@ -94,6 +94,7 @@ export default function NewDelivery() {
   const [productType, setProductType] = useState('');
   // Inicializa o destino com o valor pré-preenchido (vindo do ConfirmDelivery)
   const [prefilledDeliveryAddress] = useState(prefilledTo);
+  const [geocodingDelivery, setGeocodingDelivery] = useState(!!prefilledTo);
   const [distance, setDistance] = useState<number>(0);
   const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [requiresReturn, setRequiresReturn] = useState(false);
@@ -128,21 +129,24 @@ export default function NewDelivery() {
 
   useEffect(() => { fetchRestaurant(); }, [user]);
 
-  // Pré-preenche o endereço de entrega se veio via query param
+  // Pré-preenche e geocodifica o endereço de entrega se veio via query param
   useEffect(() => {
-    if (prefilledDeliveryAddress) {
-      setDeliveryAddress(prefilledDeliveryAddress);
-      // Geocodifica o endereço para obter lat/lng
-      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(prefilledDeliveryAddress)}&format=json&limit=1`)
-        .then(r => r.json())
-        .then(data => {
-          if (data?.[0]) {
-            setDeliveryLat(parseFloat(data[0].lat));
-            setDeliveryLng(parseFloat(data[0].lon));
-          }
-        })
-        .catch(() => {/* silently fail — user can adjust on step 2 */});
-    }
+    if (!prefilledDeliveryAddress) return;
+    setDeliveryAddress(prefilledDeliveryAddress);
+    setGeocodingDelivery(true);
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(prefilledDeliveryAddress)}&format=json&limit=1`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.[0]) {
+          setDeliveryLat(parseFloat(data[0].lat));
+          setDeliveryLng(parseFloat(data[0].lon));
+        } else {
+          // Geocoding falhou — volta ao step 2 para o usuário ajustar
+          setStep(2);
+        }
+      })
+      .catch(() => { setStep(2); }) // em caso de erro, mostra step 2
+      .finally(() => setGeocodingDelivery(false));
   }, [prefilledDeliveryAddress]);
 
   useEffect(() => {
@@ -231,7 +235,8 @@ export default function NewDelivery() {
     switch (step) {
       case 1: return !!(pickupLat && pickupLng && pickupAddress);
       case 2: return !!(deliveryLat && deliveryLng && deliveryAddress);
-      case 3: return isAdditionalDelivery || selectedCategory !== null;
+      // No step 3 com prefilledTo, aguarda geocoding antes de continuar
+      case 3: return (isAdditionalDelivery || selectedCategory !== null) && !geocodingDelivery;
       case 4: return productType !== '';
       case 5: return true;
       default: return false;
@@ -245,6 +250,11 @@ export default function NewDelivery() {
   };
 
   const handleBack = () => {
+    // Se veio do ConfirmDelivery com endereço pré-preenchido e está no step 3, volta à tela anterior
+    if (prefilledTo && step === 3) {
+      navigate(-1);
+      return;
+    }
     let prev = step - 1;
     if (isAdditionalDelivery && prev === 3) prev = 2;
     if (isAdditionalDelivery && prev === 1) { navigate('/restaurant/dashboard'); return; }
@@ -309,8 +319,18 @@ export default function NewDelivery() {
     );
   }
 
-  const displayStep = isAdditionalDelivery ? step - 1 : step;
-  const displayTotal = isAdditionalDelivery ? totalSteps - 1 : totalSteps;
+  // Se veio com endereço pré-preenchido, step 2 é pulado: ajusta contagem visual
+  const skipStep2 = !!prefilledTo;
+  const displayStep = isAdditionalDelivery
+    ? step - 1
+    : skipStep2 && step >= 3
+      ? step - 1   // step 3→2, 4→3, 5→4
+      : step;
+  const displayTotal = isAdditionalDelivery
+    ? totalSteps - 1
+    : skipStep2
+      ? totalSteps - 1  // mostra X de 4 (pulou step 2)
+      : totalSteps;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -413,9 +433,14 @@ export default function NewDelivery() {
             <div className="p-4 space-y-4" style={{ position: 'relative', zIndex: 10 }}>
               <div className="text-center pb-1">
                 <h2 className="text-lg font-bold text-gray-900">Escolha o veículo ideal</h2>
-                {distance > 0 && (
+                {geocodingDelivery ? (
+                  <p className="text-sm text-gray-400 mt-0.5 flex items-center justify-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Calculando rota...
+                  </p>
+                ) : distance > 0 ? (
                   <p className="text-sm text-gray-500 mt-0.5">Rota de <span className="font-semibold text-gray-900">{distance.toFixed(1)} km</span></p>
-                )}
+                ) : null}
               </div>
 
               <VehicleCategorySelector
