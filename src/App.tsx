@@ -44,6 +44,7 @@ import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
 import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
 import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
 import AdminFeeTypes from "./pages/admin/AdminFeeTypes";
+import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
 
@@ -234,6 +235,14 @@ const App = () => (
                 <DriverRoute>
                   <DriverSettings />
                 </DriverRoute>
+              }
+            />
+            <Route
+              path="/chat/:deliveryId"
+              element={
+                <ProtectedRoute>
+                  <DeliveryChat />
+                </ProtectedRoute>
               }
             />
             <Route

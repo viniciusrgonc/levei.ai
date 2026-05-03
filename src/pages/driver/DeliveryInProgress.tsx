@@ -523,7 +523,7 @@ export default function DeliveryInProgress() {
                     WhatsApp
                   </button>
                   <button
-                    onClick={() => toast({ title: 'Chat em breve', description: 'Disponível em breve.' })}
+                    onClick={() => navigate(`/chat/${deliveryId}?role=driver`)}
                     className="flex-1 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center gap-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 active:bg-gray-100"
                   >
                     <Headphones className="h-4 w-4 text-blue-500" />

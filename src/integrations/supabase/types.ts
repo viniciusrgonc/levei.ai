@@ -50,6 +50,44 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_messages: {
+        Row: {
+          id: string
+          delivery_id: string
+          sender_id: string
+          sender_role: string
+          message: string
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          delivery_id: string
+          sender_id: string
+          sender_role: string
+          message: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          delivery_id?: string
+          sender_id?: string
+          sender_role?: string
+          message?: string
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_messages_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "deliveries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       deliveries: {
         Row: {
           accepted_at: string | null

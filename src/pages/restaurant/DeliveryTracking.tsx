@@ -445,7 +445,7 @@ export default function DeliveryTracking() {
                   </button>
                 )}
                 <button
-                  onClick={() => toast({ title: 'Chat em breve', description: 'Funcionalidade disponível em breve.' })}
+                  onClick={() => navigate(`/chat/${deliveryId}?role=restaurant`)}
                   className="w-10 h-10 rounded-full bg-primary flex items-center justify-center"
                 >
                   <MessageCircle className="h-4 w-4 text-white" />
