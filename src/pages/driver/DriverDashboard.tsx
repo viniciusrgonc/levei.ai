@@ -9,6 +9,7 @@ import {
   MapPin, Package, Navigation, Star, TrendingUp,
   ChevronRight, Clock, Wifi, WifiOff, Search,
 } from 'lucide-react';
+import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { DivIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -105,6 +106,10 @@ export default function DriverDashboard() {
     onSuccess: (id) => navigate(`/driver/pickup/${id}`, { replace: true }),
   });
 
+  // ── Notification card state ───────────────────────────────────────────────
+  const [notificationDelivery, setNotificationDelivery] = useState<any | null>(null);
+  const seenDeliveryIds = useRef<Set<string>>(new Set());
+
   // ── Geolocation ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -167,6 +172,19 @@ export default function DriverDashboard() {
     else if (activeDelivery.status === 'returning')
       navigate(`/driver/return/${activeDelivery.id}`, { replace: true });
   }, [activeDelivery]);
+
+  // ── Detect new deliveries → show notification card ───────────────────────
+  useEffect(() => {
+    const online = driver?.is_available ?? false;
+    const deliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
+    if (!online || deliveries.length === 0) return;
+
+    const newDelivery = deliveries.find((d: any) => !seenDeliveryIds.current.has(d.id));
+    if (newDelivery && !notificationDelivery) {
+      seenDeliveryIds.current.add(newDelivery.id);
+      setNotificationDelivery(newDelivery);
+    }
+  }, [availableDeliveries, driver?.is_available, notificationDelivery]);
 
   // ── Toggle availability ───────────────────────────────────────────────────
   const toggleAvailability = async (available: boolean) => {
@@ -437,6 +455,19 @@ export default function DriverDashboard() {
           </div>
         </button>
       </div>
+
+      {/* ── NOTIFICATION CARD ── */}
+      {notificationDelivery && (
+        <DeliveryNotificationCard
+          delivery={notificationDelivery}
+          accepting={accepting}
+          onAccept={() => {
+            handleAccept(notificationDelivery.id);
+            setNotificationDelivery(null);
+          }}
+          onDecline={() => setNotificationDelivery(null)}
+        />
+      )}
 
       {/* ── BOTTOM NAV ── */}
       <DriverBottomNav />
