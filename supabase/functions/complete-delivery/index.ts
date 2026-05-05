@@ -218,6 +218,17 @@ Deno.serve(async (req) => {
     console.log(`  - Platform Fee (20%): R$${result.platform_fee}`)
     console.log(`  - Is Last Delivery: ${result.is_last_delivery}`)
 
+    // === 6b. INCREMENT DRIVER POINTS (+10 per delivery, non-blocking) ===
+    supabaseClient
+      .rpc('increment_driver_points', { p_driver_id: driver_id, p_points: 10 })
+      .then(({ error: pointsError }) => {
+        if (pointsError) {
+          console.error(`[Complete-Delivery] ${requestId} - Points increment error:`, pointsError.message)
+        } else {
+          console.log(`[Complete-Delivery] ${requestId} - +10 points awarded to driver ${driver_id}`)
+        }
+      })
+
     // === 7. GET UPDATED DELIVERY ===
     const { data: updatedDelivery } = await supabaseClient
       .from('deliveries')

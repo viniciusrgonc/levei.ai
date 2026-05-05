@@ -384,7 +384,9 @@ export type Database = {
           license_plate: string | null
           longitude: number | null
           pending_balance: number
+          points: number
           rating: number | null
+          referral_code: string | null
           total_deliveries: number | null
           updated_at: string
           user_id: string
@@ -403,7 +405,9 @@ export type Database = {
           license_plate?: string | null
           longitude?: number | null
           pending_balance?: number
+          points?: number
           rating?: number | null
+          referral_code?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id: string
@@ -422,7 +426,9 @@ export type Database = {
           license_plate?: string | null
           longitude?: number | null
           pending_balance?: number
+          points?: number
           rating?: number | null
+          referral_code?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id?: string

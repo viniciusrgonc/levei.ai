@@ -10,6 +10,7 @@ import {
   ChevronRight, Clock, Wifi, WifiOff, Search,
 } from 'lucide-react';
 import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
+import { DriverDrawer } from '@/components/DriverDrawer';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { DivIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -22,6 +23,21 @@ import { DriverBottomNav } from '@/components/DriverBottomNav';
 import leveiLogo from '@/assets/levei-logo.png';
 
 // ── Query functions ────────────────────────────────────────────────────────
+async function fetchDriverProfile(userId: string) {
+  const { data: profileData } = await supabase
+    .from('profiles').select('full_name, avatar_url').eq('id', userId).maybeSingle();
+  const { data: driverData } = await supabase
+    .from('drivers').select('rating, points, referral_code, total_deliveries').eq('user_id', userId).maybeSingle();
+  return {
+    name: profileData?.full_name ?? '',
+    avatarUrl: profileData?.avatar_url ?? null,
+    rating: driverData?.rating ?? null,
+    points: driverData?.points ?? 0,
+    referralCode: driverData?.referral_code ?? null,
+    totalDeliveries: driverData?.total_deliveries ?? 0,
+  };
+}
+
 async function fetchDriver(userId: string) {
   const { data, error } = await supabase
     .from('drivers').select('*').eq('user_id', userId).single();
@@ -106,6 +122,9 @@ export default function DriverDashboard() {
     onSuccess: (id) => navigate(`/driver/pickup/${id}`, { replace: true }),
   });
 
+  // ── Drawer state ──────────────────────────────────────────────────────────
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   // ── Notification card state ───────────────────────────────────────────────
   const [notificationDelivery, setNotificationDelivery] = useState<any | null>(null);
   const seenDeliveryIds = useRef<Set<string>>(new Set());
@@ -122,6 +141,13 @@ export default function DriverDashboard() {
   }, []);
 
   // ── Queries ───────────────────────────────────────────────────────────────
+  const { data: driverProfile } = useQuery({
+    queryKey: ['driver-profile', user?.id],
+    queryFn: () => fetchDriverProfile(user!.id),
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: driver, isLoading: driverLoading, error: driverError } = useQuery({
     queryKey: ['driver', user?.id],
     queryFn: () => fetchDriver(user!.id),
@@ -268,9 +294,22 @@ export default function DriverDashboard() {
         className="absolute left-0 right-0 z-20 flex items-center justify-between px-4"
         style={{ top: 0, paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
       >
-        {/* Logo + status */}
+        {/* Logo/Avatar + status */}
         <div className="flex items-center gap-2.5">
-          <img src={leveiLogo} alt="Levei" className="h-9 w-9 rounded-xl object-cover shadow-lg" />
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="active:scale-90 transition-transform"
+          >
+            {driverProfile?.avatarUrl ? (
+              <img
+                src={driverProfile.avatarUrl}
+                alt={driverProfile.name}
+                className="h-9 w-9 rounded-xl object-cover shadow-lg border-2 border-white/40"
+              />
+            ) : (
+              <img src={leveiLogo} alt="Levei" className="h-9 w-9 rounded-xl object-cover shadow-lg" />
+            )}
+          </button>
           <div
             className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-lg backdrop-blur-md ${
               isOnline
@@ -455,6 +494,20 @@ export default function DriverDashboard() {
           </div>
         </button>
       </div>
+
+      {/* ── DRAWER ── */}
+      <DriverDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        profile={driverProfile ?? {
+          name: '',
+          avatarUrl: null,
+          rating: driver?.rating ?? null,
+          points: driver?.points ?? 0,
+          referralCode: driver?.referral_code ?? null,
+          totalDeliveries: 0,
+        }}
+      />
 
       {/* ── NOTIFICATION CARD ── */}
       {notificationDelivery && (

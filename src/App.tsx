@@ -27,6 +27,7 @@ import DriverWallet from "./pages/driver/DriverWallet";
 import DriverHistory from "./pages/driver/DriverHistory";
 import DriverProfile from "./pages/driver/DriverProfile";
 import DriverSettings from "./pages/driver/DriverSettings";
+import DriverRewards from "./pages/driver/DriverRewards";
 import AvailableDeliveries from "./pages/driver/AvailableDeliveries";
 import PickupInProgress from "./pages/driver/PickupInProgress";
 import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
@@ -234,6 +235,14 @@ const App = () => (
               element={
                 <DriverRoute>
                   <DriverSettings />
+                </DriverRoute>
+              }
+            />
+            <Route
+              path="/driver/rewards"
+              element={
+                <DriverRoute>
+                  <DriverRewards />
                 </DriverRoute>
               }
             />
