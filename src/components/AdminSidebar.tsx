@@ -1,4 +1,5 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import leveiLogo from '@/assets/levei-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -90,6 +91,11 @@ export function AdminSidebar() {
   const currentPath = location.pathname;
   const isCollapsed = state === 'collapsed';
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
   const isActive = (path: string) => currentPath === path;
 
   return (
@@ -107,8 +113,8 @@ export function AdminSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent className="border-r border-sidebar-border">
-        <SidebarGroup>
+      <SidebarContent className="border-r border-sidebar-border flex flex-col">
+        <SidebarGroup className="flex-1">
           {!isCollapsed && (
             <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3">
               Administração
@@ -129,6 +135,24 @@ export function AdminSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Sair — fixo no rodapé do sidebar */}
+        <SidebarGroup className="border-t border-sidebar-border mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu className="px-2 py-1">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={handleLogout}
+                  tooltip="Sair"
+                  className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                >
+                  <LogOut className="h-5 w-5 shrink-0" />
+                  <span>Sair</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
