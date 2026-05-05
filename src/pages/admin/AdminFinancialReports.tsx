@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -434,14 +435,11 @@ export default function AdminFinancialReports() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-gray-50">
         <AdminSidebar />
-        <main className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 flex flex-col min-w-0">
+          <AdminPageHeader title="Relatórios Financeiros" showBack showLogout />
+          <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Relatórios Financeiros</h1>
-                <p className="text-muted-foreground">Análise detalhada de receitas e transações</p>
-              </div>
+            <div className="flex flex-col sm:flex-row justify-end items-start sm:items-center gap-4">
               <div className="flex items-center gap-3">
                 <Select value={period} onValueChange={(v: any) => setPeriod(v)}>
                   <SelectTrigger className="w-[150px]">
@@ -718,6 +716,7 @@ export default function AdminFinancialReports() {
             )}
           </div>
         </main>
+        </div>
       </div>
     </SidebarProvider>
   );

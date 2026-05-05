@@ -81,17 +81,26 @@ export function CancelDeliveryModal({
     setIsLoading(true);
 
     try {
+      // Fetch driver user_id before cancelling (so we can notify them)
+      const { data: deliveryData } = await supabase
+        .from('deliveries')
+        .select('driver_id, drivers!inner(user_id)')
+        .eq('id', deliveryId)
+        .maybeSingle();
+
+      const driverUserId = (deliveryData as any)?.drivers?.user_id as string | undefined;
+
       const { data: rawResult, error } = await supabase
-        .rpc('refund_delivery_funds', { 
+        .rpc('refund_delivery_funds', {
           p_delivery_id: deliveryId,
           p_cancellation_reason: cancellationReason || 'Cancelado pelo solicitante'
         });
 
       if (error) throw error;
-      
-      const result = rawResult as { 
-        success: boolean; 
-        error?: string; 
+
+      const result = rawResult as {
+        success: boolean;
+        error?: string;
         refunded_amount?: number;
         penalty_amount?: number;
       } | null;
@@ -100,8 +109,30 @@ export function CancelDeliveryModal({
         throw new Error(result?.error || 'Erro ao cancelar entrega');
       }
 
+      // Notify driver if delivery was already accepted
+      if (driverUserId) {
+        // In-app notification
+        supabase.rpc('create_notification', {
+          p_user_id: driverUserId,
+          p_title: 'Entrega cancelada',
+          p_message: 'O restaurante cancelou uma entrega que estava sob sua responsabilidade.',
+          p_type: 'delivery_cancelled',
+          p_delivery_id: deliveryId,
+        }).catch((e: any) => console.error('Notification error:', e));
+
+        // Push notification
+        supabase.functions.invoke('send-push', {
+          body: {
+            user_id: driverUserId,
+            title: 'Entrega cancelada',
+            message: 'O restaurante cancelou a entrega. Verifique seu painel.',
+            url: '/motoboy/dashboard',
+          },
+        }).catch((e: any) => console.error('Push error:', e));
+      }
+
       const hasPenalty = (result.penalty_amount ?? 0) > 0;
-      
+
       toast({
         title: 'Entrega cancelada',
         description: hasPenalty

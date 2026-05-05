@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSidebar } from '@/components/AdminSidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -152,22 +153,15 @@ export default function AdminFeeTypes() {
         <AdminSidebar />
         <div className="flex-1 flex flex-col min-w-0">
 
-          {/* ── Header ── */}
-          <header className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm safe-top">
-            <div className="flex items-center gap-3 px-4 h-14">
-              <SidebarTrigger className="text-gray-500" />
-              <div className="flex-1 min-w-0">
-                <h1 className="font-semibold text-gray-900">Tipos de Taxa</h1>
-              </div>
-              <button
-                onClick={openCreate}
-                className="flex items-center gap-2 h-9 px-4 rounded-xl bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar
-              </button>
-            </div>
-          </header>
+          <AdminPageHeader title="Tipos de Taxa" showBack showLogout>
+            <button
+              onClick={openCreate}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl bg-white/15 text-white text-sm font-semibold hover:bg-white/25 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Adicionar
+            </button>
+          </AdminPageHeader>
 
           <main className="flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl mx-auto w-full">
 

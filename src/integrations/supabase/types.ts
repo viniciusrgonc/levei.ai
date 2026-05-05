@@ -95,6 +95,7 @@ export type Database = {
           cancelled_at: string | null
           created_at: string
           delivered_at: string | null
+          scheduled_at: string | null
           delivery_address: string
           delivery_latitude: number
           delivery_longitude: number
@@ -131,6 +132,7 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
+          scheduled_at?: string | null
           delivery_address: string
           delivery_latitude: number
           delivery_longitude: number
@@ -167,6 +169,7 @@ export type Database = {
           cancelled_at?: string | null
           created_at?: string
           delivered_at?: string | null
+          scheduled_at?: string | null
           delivery_address?: string
           delivery_latitude?: number
           delivery_longitude?: number
@@ -830,12 +833,14 @@ export type Database = {
     Enums: {
       app_role: "admin" | "restaurant" | "driver"
       delivery_status:
+        | "scheduled"
         | "pending"
         | "accepted"
         | "picking_up"
         | "picked_up"
         | "delivering"
         | "delivered"
+        | "returning"
         | "cancelled"
       financial_status: "blocked" | "refunded" | "transferring" | "paid"
       transaction_type:
@@ -981,12 +986,14 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "restaurant", "driver"],
       delivery_status: [
+        "scheduled",
         "pending",
         "accepted",
         "picking_up",
         "picked_up",
         "delivering",
         "delivered",
+        "returning",
         "cancelled",
       ],
       financial_status: ["blocked", "refunded", "transferring", "paid"],

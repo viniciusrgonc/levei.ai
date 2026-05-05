@@ -4,8 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter,
@@ -17,7 +18,6 @@ import {
   Phone, MapPin, Wallet, CheckCircle2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import leveiLogo from '@/assets/levei-logo.png';
 
 interface Stats {
   totalDrivers: number; approvedDrivers: number; pendingDrivers: number;
@@ -195,31 +195,16 @@ export default function AdminDashboard() {
         <AdminSidebar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Header */}
-          <header className="sticky top-0 z-10 bg-primary border-b border-primary/20 safe-top">
-            <div className="flex h-14 items-center justify-between px-4 sm:px-6">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-primary-foreground hover:bg-white/10" />
-                <div className="flex items-center gap-3">
-                  <img src={leveiLogo} alt="Levei" className="h-8 w-8 rounded-lg object-cover" />
-                  <div>
-                    <p className="text-sm font-bold text-white leading-none">Painel Admin</p>
-                    <p className="text-[10px] text-white/50 mt-0.5">
-                      Atualizado às {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={loadData}
-                disabled={loading}
-                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </button>
-            </div>
-          </header>
+          <AdminPageHeader title="Painel Admin" showLogout>
+            <button
+              onClick={loadData}
+              disabled={loading}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+          </AdminPageHeader>
 
           <main className="flex-1 overflow-auto p-6">
             <div className="max-w-7xl mx-auto space-y-6">

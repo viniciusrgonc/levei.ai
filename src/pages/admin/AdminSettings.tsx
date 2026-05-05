@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Settings, DollarSign, Percent, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
@@ -135,14 +136,7 @@ export default function AdminSettings() {
         <AdminSidebar />
 
         <div className="flex-1 flex flex-col">
-          <header className="sticky top-0 z-10 border-b bg-primary safe-top">
-            <div className="flex h-14 items-center justify-between px-4 sm:px-6">
-              <div className="flex items-center gap-4">
-                <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-                <h1 className="text-xl font-bold text-primary-foreground">Configurações do Sistema</h1>
-              </div>
-            </div>
-          </header>
+          <AdminPageHeader title="Configurações do Sistema" showBack showLogout />
 
           <main className="flex-1 p-6 overflow-auto">
             <div className="max-w-5xl mx-auto space-y-6">

@@ -1,9 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Package, Wallet, User } from 'lucide-react';
+import { Home, Package, Wallet, User, CalendarClock } from 'lucide-react';
 
 const tabs = [
   { label: 'Início', icon: Home, path: '/restaurant/dashboard' },
   { label: 'Entregas', icon: Package, path: '/restaurant/history' },
+  { label: 'Agendar', icon: CalendarClock, path: '/restaurant/scheduling' },
   { label: 'Carteira', icon: Wallet, path: '/restaurant/wallet' },
   { label: 'Perfil', icon: User, path: '/restaurant/profile' },
 ];
@@ -30,10 +31,10 @@ export function BottomNav() {
               }`}
             >
               <tab.icon
-                className="h-6 w-6"
+                className="h-5 w-5"
                 strokeWidth={isActive ? 2.5 : 1.8}
               />
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[9px] font-medium">{tab.label}</span>
             </button>
           );
         })}

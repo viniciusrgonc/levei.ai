@@ -21,6 +21,8 @@ import {
   Truck,
   Package,
   Edit2,
+  CalendarClock,
+  Zap,
 } from 'lucide-react';
 import LocationPicker from '@/components/LocationPicker';
 import VehicleCategorySelector, { DeliveryCategory } from '@/components/VehicleCategorySelector';
@@ -98,6 +100,21 @@ export default function NewDelivery() {
   const [distance, setDistance] = useState<number>(0);
   const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [requiresReturn, setRequiresReturn] = useState(false);
+
+  // Agendamento
+  const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledTime, setScheduledTime] = useState('');
+
+  // Data mínima para agendamento (amanhã)
+  const minScheduleDate = new Date();
+  minScheduleDate.setDate(minScheduleDate.getDate());
+  const minDateStr = minScheduleDate.toISOString().split('T')[0];
+
+  const scheduledAt = scheduleMode === 'later' && scheduledDate && scheduledTime
+    ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+    : null;
+  const isScheduleValid = scheduleMode === 'now' || (!!scheduledDate && !!scheduledTime && !!scheduledAt && new Date(scheduledAt) > new Date());
 
   // ── Tipos de produto carregados do banco ──
   const { data: productTypes = [] } = useQuery<ProductTypeSetting[]>({
@@ -238,7 +255,7 @@ export default function NewDelivery() {
       // No step 3 com prefilledTo, aguarda geocoding antes de continuar
       case 3: return (isAdditionalDelivery || selectedCategory !== null) && !geocodingDelivery;
       case 4: return productType !== '';
-      case 5: return true;
+      case 5: return isScheduleValid;
       default: return false;
     }
   };
@@ -278,18 +295,21 @@ export default function NewDelivery() {
       const basePrice = isAdditionalDelivery
         ? parentDelivery!.base_price + distance * parentDelivery!.price_per_km
         : selectedCategory!.base_price + distance * selectedCategory!.price_per_km;
+      const deliveryStatus = isAdditionalDelivery ? 'accepted' : (scheduleMode === 'later' ? 'scheduled' : 'pending');
+
       const { data, error } = await supabase.from('deliveries').insert([{
         restaurant_id: restaurant.id, pickup_address: pickupAddress, pickup_latitude: pickupLat,
         pickup_longitude: pickupLng, delivery_address: deliveryAddress, delivery_latitude: deliveryLat,
         delivery_longitude: deliveryLng, recipient_name: recipientName || null,
         recipient_phone: recipientPhone || null, distance_km: distance, price: basePrice,
         price_adjusted: estimatedPrice, vehicle_category: vehicleType as any, product_type: productType,
-        status: isAdditionalDelivery ? 'accepted' : 'pending',
+        status: deliveryStatus as any,
         driver_id: isAdditionalDelivery ? parentDelivery?.driver_id : null,
         is_additional_delivery: isAdditionalDelivery,
         parent_delivery_id: isAdditionalDelivery ? parentDelivery?.id : null,
         accepted_at: isAdditionalDelivery ? new Date().toISOString() : null,
         requires_return: requiresReturn,
+        scheduled_at: scheduledAt,
       }]).select().single();
       if (error) throw error;
       const { data: blockResult, error: blockError } = await supabase.rpc('block_delivery_funds', {
@@ -300,9 +320,14 @@ export default function NewDelivery() {
         await supabase.from('deliveries').delete().eq('id', data.id);
         throw new Error(result?.error || 'Erro ao bloquear fundos');
       }
-      toast({ title: isAdditionalDelivery ? '✅ Entrega adicionada!' : '✅ Entrega criada!',
-        description: `R$ ${estimatedPrice.toFixed(2)} bloqueado.` });
-      navigate(`/restaurant/delivery/${data.id}`);
+      if (scheduleMode === 'later') {
+        const scheduledDate = new Date(scheduledAt!);
+        toast({ title: '📅 Entrega agendada!', description: `Para ${scheduledDate.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}. R$ ${estimatedPrice.toFixed(2)} bloqueado.` });
+        navigate('/restaurant/scheduling');
+      } else {
+        toast({ title: isAdditionalDelivery ? '✅ Entrega adicionada!' : '✅ Entrega criada!', description: `R$ ${estimatedPrice.toFixed(2)} bloqueado.` });
+        navigate(`/restaurant/delivery/${data.id}`);
+      }
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Erro', description: error.message });
     } finally { setSubmitting(false); }
@@ -646,6 +671,71 @@ export default function NewDelivery() {
                 </div>
               </div>
 
+              {/* Agendamento — só para entregas normais (não adicionais) */}
+              {!isAdditionalDelivery && (
+                <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
+                  <p className="text-sm font-semibold text-gray-800">Quando enviar?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setScheduleMode('now')}
+                      className={`flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 transition-all ${
+                        scheduleMode === 'now'
+                          ? 'border-blue-600 bg-blue-50'
+                          : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                      }`}
+                    >
+                      <Zap className={`h-5 w-5 ${scheduleMode === 'now' ? 'text-blue-600' : 'text-gray-400'}`} />
+                      <span className={`text-sm font-semibold ${scheduleMode === 'now' ? 'text-blue-700' : 'text-gray-600'}`}>Agora</span>
+                      <span className="text-xs text-gray-400">Publicar imediatamente</span>
+                    </button>
+                    <button
+                      onClick={() => setScheduleMode('later')}
+                      className={`flex flex-col items-center gap-1.5 py-4 rounded-xl border-2 transition-all ${
+                        scheduleMode === 'later'
+                          ? 'border-indigo-600 bg-indigo-50'
+                          : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                      }`}
+                    >
+                      <CalendarClock className={`h-5 w-5 ${scheduleMode === 'later' ? 'text-indigo-600' : 'text-gray-400'}`} />
+                      <span className={`text-sm font-semibold ${scheduleMode === 'later' ? 'text-indigo-700' : 'text-gray-600'}`}>Agendar</span>
+                      <span className="text-xs text-gray-400">Escolher data e hora</span>
+                    </button>
+                  </div>
+
+                  {scheduleMode === 'later' && (
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500 font-medium">Data</label>
+                        <input
+                          type="date"
+                          value={scheduledDate}
+                          min={minDateStr}
+                          onChange={(e) => setScheduledDate(e.target.value)}
+                          className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs text-gray-500 font-medium">Hora</label>
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="w-full h-11 rounded-xl border border-gray-200 px-3 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400"
+                        />
+                      </div>
+                      {scheduledAt && new Date(scheduledAt) <= new Date() && (
+                        <p className="col-span-2 text-xs text-red-500">⚠️ Escolha uma data e hora no futuro</p>
+                      )}
+                      {scheduledAt && new Date(scheduledAt) > new Date() && (
+                        <p className="col-span-2 text-xs text-indigo-600 font-medium">
+                          📅 Agendado para {new Date(scheduledAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Saldo disponível */}
               {restaurant && (
                 <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
@@ -706,13 +796,17 @@ export default function NewDelivery() {
           </>
         ) : (
           <Button
-            className="w-full rounded-2xl text-base font-semibold bg-blue-600 hover:bg-blue-700 flex items-center justify-center gap-2"
+            className={`w-full rounded-2xl text-base font-semibold flex items-center justify-center gap-2 ${
+              scheduleMode === 'later' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'
+            }`}
             style={{ height: 52 }}
             onClick={handleSubmit}
-            disabled={submitting || !!(restaurant && restaurant.wallet_balance < estimatedPrice)}
+            disabled={submitting || !!(restaurant && restaurant.wallet_balance < estimatedPrice) || !isScheduleValid}
           >
             {submitting ? (
-              <><Loader2 className="h-5 w-5 animate-spin" />Criando...</>
+              <><Loader2 className="h-5 w-5 animate-spin" />Salvando...</>
+            ) : scheduleMode === 'later' ? (
+              <><CalendarClock className="h-5 w-5" />Agendar entrega · R$ {estimatedPrice.toFixed(2)}</>
             ) : (
               <><Package className="h-5 w-5" />Solicitar entrega · R$ {estimatedPrice.toFixed(2)}</>
             )}

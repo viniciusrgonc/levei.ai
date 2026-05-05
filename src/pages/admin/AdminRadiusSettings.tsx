@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -82,12 +83,10 @@ export default function AdminRadiusSettings() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
-        <main className="flex-1 p-6">
+        <div className="flex-1 flex flex-col min-w-0">
+          <AdminPageHeader title="Raio de Entregas" showBack showLogout />
+          <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Raio de Entregas</h1>
-              <p className="text-muted-foreground">Configure o raio máximo de visualização de entregas por tipo de veículo</p>
-            </div>
 
             {/* Info card */}
             <Card className="border-primary/20 bg-primary/5">
@@ -177,6 +176,7 @@ export default function AdminRadiusSettings() {
             </Card>
           </div>
         </main>
+        </div>
       </div>
     </SidebarProvider>
   );

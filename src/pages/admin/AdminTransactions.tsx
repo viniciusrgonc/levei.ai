@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import NotificationBell from '@/components/NotificationBell';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -159,13 +160,9 @@ export default function AdminTransactions() {
         <AdminSidebar />
         
         <div className="flex-1 flex flex-col">
-          <header className="border-b bg-primary safe-top">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
-              <h1 className="text-xl font-bold text-primary-foreground">Transações</h1>
-            </div>
+          <AdminPageHeader title="Transações" showBack showLogout>
             <NotificationBell />
-          </header>
+          </AdminPageHeader>
 
           <main className="flex-1 p-6 bg-background overflow-auto">
             <div className="max-w-6xl mx-auto space-y-6">

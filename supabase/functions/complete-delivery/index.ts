@@ -235,13 +235,26 @@ Deno.serve(async (req) => {
 
       if (restaurantData?.user_id) {
         console.log(`[Complete-Delivery] ${requestId} - Sending notification to restaurant`)
+        const notifTitle = 'Entrega Concluída! ✅'
+        const notifMessage = `Entrega finalizada com sucesso. R$${result.total_amount.toFixed(2)} debitado.`
+
         await supabaseClient.rpc('create_notification', {
           p_user_id: restaurantData.user_id,
-          p_title: 'Entrega Concluída! ✅',
-          p_message: `Entrega finalizada com sucesso. R$${result.total_amount.toFixed(2)} debitado.`,
+          p_title: notifTitle,
+          p_message: notifMessage,
           p_type: 'delivery_completed',
           p_delivery_id: delivery_id
         })
+
+        // Envia push notification (non-blocking)
+        supabaseClient.functions.invoke('send-push', {
+          body: {
+            user_id: restaurantData.user_id,
+            title: notifTitle,
+            message: notifMessage,
+            url: `/restaurant/delivery/${delivery_id}`,
+          },
+        }).catch((e: Error) => console.error(`[Complete-Delivery] ${requestId} - Push error:`, e?.message))
       }
     } catch (notifError) {
       console.error(`[Complete-Delivery] ${requestId} - Notification error:`, notifError)

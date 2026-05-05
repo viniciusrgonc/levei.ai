@@ -266,13 +266,27 @@ Deno.serve(async (req) => {
 
       if (restaurantData?.user_id) {
         const driverName = profileData?.full_name || 'Entregador'
+        const notifTitle = 'Entrega Aceita'
+        const notifMessage = `O entregador ${driverName} aceitou sua entrega!`
+
         await supabaseClient.rpc('create_notification', {
           p_user_id: restaurantData.user_id,
-          p_title: 'Entrega Aceita',
-          p_message: `O entregador ${driverName} aceitou sua entrega!`,
+          p_title: notifTitle,
+          p_message: notifMessage,
           p_type: 'delivery_accepted',
           p_delivery_id: delivery_id
         })
+
+        // Envia push notification (non-blocking)
+        supabaseClient.functions.invoke('send-push', {
+          body: {
+            user_id: restaurantData.user_id,
+            title: notifTitle,
+            message: notifMessage,
+            url: `/restaurant/delivery/${delivery_id}`,
+          },
+        }).catch((e: Error) => console.error(`[Accept-Delivery] ${requestId} - Push error:`, e?.message))
+
         console.log(`[Accept-Delivery] ${requestId} - Notification sent`)
       }
     } catch (notifError) {

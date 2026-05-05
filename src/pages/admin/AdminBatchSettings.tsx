@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -79,12 +80,10 @@ export default function AdminBatchSettings() {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AdminSidebar />
-        <main className="flex-1 p-6">
+        <div className="flex-1 flex flex-col min-w-0">
+          <AdminPageHeader title="Múltiplas Entregas" showBack showLogout />
+          <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-6xl mx-auto space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold">Múltiplas Entregas</h1>
-              <p className="text-muted-foreground">Configure limites e preços para entregas em lote por veículo</p>
-            </div>
 
             {/* Info card */}
             <Card className="border-primary/20 bg-primary/5">
@@ -217,6 +216,7 @@ export default function AdminBatchSettings() {
             </Card>
           </div>
         </main>
+        </div>
       </div>
     </SidebarProvider>
   );

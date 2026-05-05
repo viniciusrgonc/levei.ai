@@ -5,6 +5,7 @@
  */
 
 export type DeliveryStatus =
+  | 'scheduled'    // Agendada — aguardando o horário programado
   | 'pending'      // Disponível para aceitar
   | 'accepted'     // Aceito - Indo para coleta
   | 'picking_up'   // A caminho da coleta (driver)
@@ -27,6 +28,14 @@ interface StatusConfig {
 }
 
 const STATUS_MAP: Record<DeliveryStatus, StatusConfig> = {
+  scheduled: {
+    label: 'Agendada',
+    icon: '📅',
+    color: 'text-indigo-600',
+    badge: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    dot: 'bg-indigo-400',
+    variant: 'secondary',
+  },
   pending: {
     label: 'Aguardando entregador',
     icon: '🕐',
@@ -152,6 +161,7 @@ export function isReturning(status: string): boolean {
 
 export function getNextPossibleStatuses(status: DeliveryStatus): DeliveryStatus[] {
   const transitions: Record<DeliveryStatus, DeliveryStatus[]> = {
+    scheduled: ['pending', 'cancelled'],
     pending: ['accepted', 'cancelled'],
     accepted: ['picking_up', 'picked_up', 'cancelled'],
     picking_up: ['picked_up', 'cancelled'],
