@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import NotificationBell from '@/components/NotificationBell';
+import { BottomNav } from '@/components/BottomNav';
 import { toast } from '@/hooks/use-toast';
 import { User, Mail, Phone, Lock, Save } from 'lucide-react';
 
@@ -83,7 +84,7 @@ export default function RestaurantAccount() {
             <NotificationBell />
           </header>
 
-          <main className="flex-1 p-6 bg-background overflow-auto animate-fade-in">
+          <main className="flex-1 p-6 pb-24 bg-background overflow-auto animate-fade-in">
             <div className="max-w-4xl mx-auto space-y-6">
               {/* Personal Information */}
               <Card className="animate-fade-in hover:shadow-lg transition-all duration-300">
@@ -168,6 +169,7 @@ export default function RestaurantAccount() {
               </Card>
             </div>
           </main>
+          <BottomNav />
     </div>
   );
 }
