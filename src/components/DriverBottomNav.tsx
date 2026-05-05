@@ -1,9 +1,8 @@
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Map, Wallet, History, User } from 'lucide-react';
+import { Home, Wallet, History, User } from 'lucide-react';
 
 const tabs = [
   { label: 'Início',    icon: Home,    path: '/driver/dashboard' },
-  { label: 'Mapa',      icon: Map,     path: '/driver/map' },
   { label: 'Ganhos',    icon: Wallet,  path: '/driver/wallet' },
   { label: 'Histórico', icon: History, path: '/driver/history' },
   { label: 'Perfil',    icon: User,    path: '/driver/profile' },
