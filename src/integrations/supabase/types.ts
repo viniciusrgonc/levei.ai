@@ -387,6 +387,7 @@ export type Database = {
           points: number
           rating: number | null
           referral_code: string | null
+          referred_by: string | null
           total_deliveries: number | null
           updated_at: string
           user_id: string
@@ -408,6 +409,7 @@ export type Database = {
           points?: number
           rating?: number | null
           referral_code?: string | null
+          referred_by?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id: string
@@ -429,10 +431,47 @@ export type Database = {
           points?: number
           rating?: number | null
           referral_code?: string | null
+          referred_by?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id?: string
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          id: string
+          referrer_driver_id: string
+          referred_driver_id: string
+          referral_code: string
+          status: 'pending' | 'validated' | 'rewarded'
+          referred_deliveries: number
+          created_at: string
+          validated_at: string | null
+          rewarded_at: string | null
+        }
+        Insert: {
+          id?: string
+          referrer_driver_id: string
+          referred_driver_id: string
+          referral_code: string
+          status?: 'pending' | 'validated' | 'rewarded'
+          referred_deliveries?: number
+          created_at?: string
+          validated_at?: string | null
+          rewarded_at?: string | null
+        }
+        Update: {
+          id?: string
+          referrer_driver_id?: string
+          referred_driver_id?: string
+          referral_code?: string
+          status?: 'pending' | 'validated' | 'rewarded'
+          referred_deliveries?: number
+          created_at?: string
+          validated_at?: string | null
+          rewarded_at?: string | null
         }
         Relationships: []
       }

@@ -28,6 +28,7 @@ import DriverHistory from "./pages/driver/DriverHistory";
 import DriverProfile from "./pages/driver/DriverProfile";
 import DriverSettings from "./pages/driver/DriverSettings";
 import DriverRewards from "./pages/driver/DriverRewards";
+import DriverReferral from "./pages/driver/DriverReferral";
 import AvailableDeliveries from "./pages/driver/AvailableDeliveries";
 import PickupInProgress from "./pages/driver/PickupInProgress";
 import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
@@ -243,6 +244,14 @@ const App = () => (
               element={
                 <DriverRoute>
                   <DriverRewards />
+                </DriverRoute>
+              }
+            />
+            <Route
+              path="/driver/referral"
+              element={
+                <DriverRoute>
+                  <DriverReferral />
                 </DriverRoute>
               }
             />

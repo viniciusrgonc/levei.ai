@@ -229,6 +229,15 @@ Deno.serve(async (req) => {
         }
       })
 
+    // === 6c. PROCESS REFERRAL COMPLETION (non-blocking) ===
+    supabaseClient
+      .rpc('process_referral_completion', { p_referred_driver_id: driver_id })
+      .then(({ error: refError }) => {
+        if (refError) {
+          console.error(`[Complete-Delivery] ${requestId} - Referral process error:`, refError.message)
+        }
+      })
+
     // === 7. GET UPDATED DELIVERY ===
     const { data: updatedDelivery } = await supabaseClient
       .from('deliveries')
