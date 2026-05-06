@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   ArrowLeft, CalendarClock, Plus, Zap, Clock, MapPin,
-  ChevronRight, Loader2, CalendarDays, AlertCircle, Package,
+  ChevronRight, Loader2, CalendarDays, Package,
 } from 'lucide-react'
 import { formatAddress } from '@/lib/utils'
 
@@ -413,15 +413,6 @@ export default function RestaurantScheduling() {
           </div>
         )}
 
-        {/* ── Aviso sobre ativação manual ────────────────────────────── */}
-        {deliveries.length > 0 && (
-          <div className="mx-4 mt-4 flex items-start gap-3 p-4 bg-amber-50 rounded-xl border border-amber-200">
-            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-700">
-              <strong>Ativação manual:</strong> No horário agendado, use "Publicar agora" para disponibilizar a entrega aos motoboys.
-            </p>
-          </div>
-        )}
       </main>
 
       {/* FAB — nova entrega agendada */}

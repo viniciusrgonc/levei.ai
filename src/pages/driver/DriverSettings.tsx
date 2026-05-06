@@ -1,240 +1,328 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Bike, Shield, ArrowLeft, ChevronRight, Package, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Loader2, ArrowLeft, CheckCircle2, AlertCircle,
+  Shield, Bike, Car, Truck, ChevronRight, Settings2,
+} from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
-import leveiLogo from '@/assets/levei-logo.png';
-import NotificationBell from '@/components/NotificationBell';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
+import { useState } from 'react';
 
+// ── Vehicle options ───────────────────────────────────────────────────────────
+const VEHICLE_OPTIONS = [
+  { value: 'motorcycle', label: 'Moto',          icon: '🏍️' },
+  { value: 'bicycle',    label: 'Bicicleta',      icon: '🚲' },
+  { value: 'car',        label: 'Carro',          icon: '🚗' },
+  { value: 'van',        label: 'Van',            icon: '🚐' },
+  { value: 'truck',      label: 'Caminhão',       icon: '🚚' },
+  { value: 'hourly_service', label: 'Por hora',   icon: '⏱️' },
+];
+
+// ── Query ─────────────────────────────────────────────────────────────────────
+async function fetchSettings(userId: string) {
+  const { data, error } = await supabase
+    .from('drivers')
+    .select('id, is_available, vehicle_type, license_plate, accepted_product_types')
+    .eq('user_id', userId)
+    .single();
+  if (error) throw error;
+  return {
+    id: data.id as string,
+    isAvailable: data.is_available,
+    vehicleType: (data.vehicle_type as string) ?? 'motorcycle',
+    licensePlate: data.license_plate ?? '',
+    acceptedProductTypes: Array.isArray(data.accepted_product_types)
+      ? (data.accepted_product_types as string[])
+      : [],
+  };
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function DriverSettings() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savingCategories, setSavingCategories] = useState(false);
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [vehicleType, setVehicleType] = useState('motorcycle');
+  const queryClient = useQueryClient();
+
+  // Local state for editable fields
   const [licensePlate, setLicensePlate] = useState('');
-  const [driverId, setDriverId] = useState<string | null>(null);
+  const [vehicleType, setVehicleType] = useState('motorcycle');
   const [acceptedProductTypes, setAcceptedProductTypes] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
-  useEffect(() => { if (user) fetchSettings(); }, [user]);
+  // ── Query ──────────────────────────────────────────────────────────────────
+  const { data, isLoading } = useQuery({
+    queryKey: ['driver-settings', user?.id],
+    queryFn: () => fetchSettings(user!.id),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
+    onSuccess: (d) => {
+      if (!hydrated) {
+        setLicensePlate(d.licensePlate);
+        setVehicleType(d.vehicleType);
+        setAcceptedProductTypes(d.acceptedProductTypes);
+        setHydrated(true);
+      }
+    },
+  } as any);
 
-  const fetchSettings = async () => {
-    const { data, error } = await supabase
-      .from('drivers')
-      .select('id, is_available, vehicle_type, license_plate, accepted_product_types')
-      .eq('user_id', user?.id)
-      .single();
+  // ── Mutations ──────────────────────────────────────────────────────────────
+  const toggleAvailability = useMutation({
+    mutationFn: async (checked: boolean) => {
+      if (checked && acceptedProductTypes.length === 0) {
+        throw new Error('NO_CATEGORIES');
+      }
+      const { error } = await supabase
+        .from('drivers').update({ is_available: checked }).eq('user_id', user?.id);
+      if (error) throw error;
+      return checked;
+    },
+    onSuccess: (checked) => {
+      queryClient.setQueryData(['driver-settings', user?.id], (old: any) =>
+        old ? { ...old, isAvailable: checked } : old
+      );
+      queryClient.invalidateQueries({ queryKey: ['driver-profile'] });
+      toast({ title: checked ? '✅ Você está disponível!' : 'Você está offline' });
+    },
+    onError: (err: any) => {
+      if (err.message === 'NO_CATEGORIES') {
+        toast({
+          title: '⚠️ Configure suas categorias',
+          description: 'Selecione ao menos um tipo de entrega antes de ficar disponível.',
+          variant: 'destructive',
+        });
+        document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        toast({ title: 'Erro ao atualizar disponibilidade', variant: 'destructive' });
+      }
+    },
+  });
 
-    console.log('[DriverSettings] fetchSettings result:', data, error);
+  const saveCategories = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ accepted_product_types: acceptedProductTypes })
+        .eq('user_id', user?.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['driver-settings', user?.id] });
+      toast({ title: '✅ Categorias salvas!' });
+    },
+    onError: () => toast({ title: 'Erro ao salvar categorias', variant: 'destructive' }),
+  });
 
-    if (data) {
-      setDriverId(data.id);
-      setIsAvailable(data.is_available);
-      setVehicleType(data.vehicle_type as string);
-      setLicensePlate(data.license_plate || '');
-      const tipos = Array.isArray(data.accepted_product_types)
-        ? (data.accepted_product_types as string[])
-        : [];
-      console.log('[DriverSettings] Categorias do motoboy:', tipos);
-      setAcceptedProductTypes(tipos);
-    }
-    setLoading(false);
-  };
+  const saveVehicle = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('drivers')
+        .update({ vehicle_type: vehicleType as any, license_plate: licensePlate || null })
+        .eq('user_id', user?.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['driver-settings', user?.id] });
+      toast({ title: '✅ Veículo atualizado!' });
+    },
+    onError: () => toast({ title: 'Erro ao salvar veículo', variant: 'destructive' }),
+  });
 
-  const handleToggleAvailability = async (checked: boolean) => {
-    // Bloqueia ficar online se não tiver categorias configuradas
-    if (checked && acceptedProductTypes.length === 0) {
-      toast({
-        title: '⚠️ Configure suas categorias',
-        description: 'Selecione ao menos um tipo de entrega que você aceita antes de ficar disponível.',
-        variant: 'destructive',
-      });
-      // Rola para a seção de categorias
-      document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
-      return;
-    }
-
-    setIsAvailable(checked);
-    const { error } = await supabase
-      .from('drivers').update({ is_available: checked }).eq('user_id', user?.id);
-    if (error) {
-      setIsAvailable(!checked);
-      toast({ title: 'Erro ao atualizar disponibilidade', variant: 'destructive' });
-    } else {
-      toast({ title: checked ? 'Você está disponível!' : 'Você está offline' });
-    }
-  };
-
-  const handleToggleProductType = (key: string) => {
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const toggleProductType = (key: string) =>
     setAcceptedProductTypes(prev =>
       prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]
     );
-  };
 
-  const handleSelectAll = () => {
-    setAcceptedProductTypes(PRODUCT_TYPES.map(t => t.key));
-  };
+  const allSelected = acceptedProductTypes.length === PRODUCT_TYPES.length;
+  const noneSelected = acceptedProductTypes.length === 0;
+  const isAvailable = data?.isAvailable ?? false;
 
-  const handleClearAll = () => {
-    setAcceptedProductTypes([]);
-  };
-
-  const handleSaveCategories = async () => {
-    setSavingCategories(true);
-    console.log('[DriverSettings] Salvando categorias:', acceptedProductTypes);
-    const { error } = await supabase
-      .from('drivers')
-      .update({ accepted_product_types: acceptedProductTypes })
-      .eq('user_id', user?.id);
-
-    if (error) {
-      console.error('[DriverSettings] Erro ao salvar categorias:', error);
-      toast({ title: 'Erro ao salvar categorias', variant: 'destructive' });
-    } else {
-      toast({ title: '✅ Categorias salvas!' });
-    }
-    setSavingCategories(false);
-  };
-
-  const handleSaveVehicle = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const { error } = await supabase
-      .from('drivers')
-      .update({ vehicle_type: vehicleType as any, license_plate: licensePlate || null })
-      .eq('user_id', user?.id);
-    if (error) {
-      toast({ title: 'Erro ao salvar veículo', variant: 'destructive' });
-    } else {
-      toast({ title: 'Dados do veículo atualizados!' });
-    }
-    setSaving(false);
-  };
-
-  if (loading) {
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="bg-primary h-40" />
-        <div className="px-4 space-y-3 mt-4">
-          <Skeleton className="h-20 rounded-2xl" />
-          <Skeleton className="h-40 rounded-2xl" />
-          <Skeleton className="h-64 rounded-2xl" />
+        <div className="bg-primary h-36" />
+        <div className="px-4 pt-4 space-y-3">
+          {[80, 300, 220, 100].map((h, i) => (
+            <div key={i} className={`bg-white rounded-2xl animate-pulse`} style={{ height: h }} />
+          ))}
         </div>
       </div>
     );
   }
 
-  const allSelected = acceptedProductTypes.length === PRODUCT_TYPES.length;
-  const noneSelected = acceptedProductTypes.length === 0;
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
       {/* ── HERO ── */}
-      <div className="bg-primary">
+      <div className="bg-gradient-to-br from-primary to-primary/80">
         <div
-          className="flex items-center justify-between px-4 pb-2"
+          className="flex items-center gap-3 px-4 pb-2"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
         >
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/driver/profile')}
-              className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center"
-            >
-              <ArrowLeft className="h-5 w-5 text-white" />
-            </button>
-            <img src={leveiLogo} alt="Levei" className="h-8 w-8 rounded-lg object-cover" />
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition-transform flex-shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-white font-bold text-xl leading-tight">Configurações</h1>
+            <p className="text-white/60 text-xs">Veículo, disponibilidade e categorias</p>
           </div>
-          <NotificationBell />
+          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+            <Settings2 className="h-4.5 w-4.5 text-white/70" style={{ width: 18, height: 18 }} />
+          </div>
         </div>
-        <div className="px-4 pt-2 pb-5">
-          <h1 className="text-2xl font-bold text-white">Configurações</h1>
+
+        {/* Status strip */}
+        <div className="flex items-center gap-3 px-4 pb-4 pt-2">
+          <div className={`flex items-center gap-1.5 rounded-full px-3 py-1 ${
+            isAvailable ? 'bg-green-500/20' : 'bg-white/10'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-green-400' : 'bg-white/40'}`} />
+            <span className="text-white text-xs font-semibold">
+              {isAvailable ? 'Online' : 'Offline'}
+            </span>
+          </div>
+          <div className="bg-white/10 rounded-full px-3 py-1">
+            <span className="text-white/70 text-xs">
+              {acceptedProductTypes.length}/{PRODUCT_TYPES.length} categorias
+            </span>
+          </div>
         </div>
       </div>
 
       {/* ── CONTENT ── */}
-      <main className="flex-1 overflow-y-auto pb-24 px-4 pt-4 space-y-4">
+      <main className="flex-1 overflow-y-auto pb-28 px-4 pt-4 space-y-4">
 
-        {/* Disponibilidade */}
+        {/* ── Disponibilidade ── */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-50">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-              Disponibilidade
-            </p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Disponibilidade</p>
           </div>
+
           <div className="px-4 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
                 isAvailable ? 'bg-green-100' : 'bg-gray-100'
               }`}>
-                <Bike className={`h-5 w-5 ${isAvailable ? 'text-green-600' : 'text-gray-400'}`} />
+                <Bike className={`h-5 w-5 transition-colors ${isAvailable ? 'text-green-600' : 'text-gray-400'}`} />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-semibold text-gray-900">
                   {isAvailable ? 'Disponível para entregas' : 'Offline'}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {isAvailable ? 'Recebendo novas entregas' : 'Ative para receber entregas'}
+                  {isAvailable ? 'Recebendo novas solicitações' : 'Ative para receber entregas'}
                 </p>
               </div>
             </div>
             <Switch
               checked={isAvailable}
-              onCheckedChange={handleToggleAvailability}
+              onCheckedChange={(v) => toggleAvailability.mutate(v)}
+              disabled={toggleAvailability.isPending}
               className="flex-shrink-0 data-[state=checked]:bg-green-500"
             />
           </div>
 
-          {/* Aviso se sem categorias */}
           {noneSelected && (
             <div className="mx-4 mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
               <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-amber-700 leading-relaxed">
                 Configure as categorias abaixo antes de ficar disponível.
               </p>
             </div>
           )}
         </div>
 
-        {/* Categorias aceitas */}
+        {/* ── Tipo de veículo ── */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-50">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tipo de veículo</p>
+          </div>
+
+          <div className="px-4 pt-3 pb-1 grid grid-cols-3 gap-2">
+            {VEHICLE_OPTIONS.map((v) => {
+              const selected = vehicleType === v.value;
+              return (
+                <button
+                  key={v.value}
+                  onClick={() => setVehicleType(v.value)}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all ${
+                    selected
+                      ? 'border-primary bg-primary/5'
+                      : 'border-transparent bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <span className="text-2xl leading-none">{v.icon}</span>
+                  <span className={`text-[11px] font-semibold leading-tight text-center ${
+                    selected ? 'text-primary' : 'text-gray-600'
+                  }`}>{v.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="px-4 pt-2 pb-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="licensePlate" className="text-xs text-gray-500">
+                Placa do veículo <span className="text-gray-400">(opcional)</span>
+              </Label>
+              <Input
+                id="licensePlate"
+                value={licensePlate}
+                onChange={(e) => setLicensePlate(e.target.value.toUpperCase())}
+                placeholder="ABC-1234"
+                className="rounded-xl border-gray-200 uppercase font-mono"
+                maxLength={8}
+              />
+            </div>
+
+            <button
+              onClick={() => saveVehicle.mutate()}
+              disabled={saveVehicle.isPending}
+              className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 transition-opacity"
+            >
+              {saveVehicle.isPending
+                ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</>
+                : <><CheckCircle2 className="h-4 w-4" />Salvar veículo</>
+              }
+            </button>
+          </div>
+        </div>
+
+        {/* ── Categorias aceitas ── */}
         <div id="categories-section" className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Categorias que aceito entregar
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                Categorias que aceito
               </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Selecione os tipos de entrega que você consegue fazer
-              </p>
+              <p className="text-xs text-gray-400 mt-0.5">Tipos de entrega que você consegue fazer</p>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Badge de contagem */}
-              {acceptedProductTypes.length > 0 ? (
-                <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                  {acceptedProductTypes.length}/{PRODUCT_TYPES.length}
-                </span>
-              ) : (
-                <span className="text-xs font-semibold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
-                  Nenhuma
-                </span>
-              )}
-            </div>
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              noneSelected
+                ? 'bg-red-100 text-red-600'
+                : 'bg-primary/10 text-primary'
+            }`}>
+              {noneSelected ? 'Nenhuma' : `${acceptedProductTypes.length}/${PRODUCT_TYPES.length}`}
+            </span>
           </div>
 
           <div className="px-4 pt-3 pb-2 flex items-center justify-between">
             <button
-              onClick={allSelected ? handleClearAll : handleSelectAll}
-              className="text-xs font-medium text-primary underline underline-offset-2"
+              onClick={() => allSelected
+                ? setAcceptedProductTypes([])
+                : setAcceptedProductTypes(PRODUCT_TYPES.map(t => t.key))
+              }
+              className="text-xs font-semibold text-primary"
             >
               {allSelected ? 'Desmarcar todas' : 'Selecionar todas'}
             </button>
@@ -243,34 +331,25 @@ export default function DriverSettings() {
             </span>
           </div>
 
-          <div className="px-4 pb-4 space-y-1">
+          <div className="px-4 pb-2 space-y-1.5">
             {PRODUCT_TYPES.map((type) => {
               const selected = acceptedProductTypes.includes(type.key);
               return (
                 <button
                   key={type.key}
-                  onClick={() => handleToggleProductType(type.key)}
+                  onClick={() => toggleProductType(type.key)}
                   className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl border-2 transition-all text-left ${
                     selected
                       ? 'border-primary bg-primary/5'
                       : 'border-transparent bg-gray-50 hover:bg-gray-100'
                   }`}
                 >
-                  {/* Ícone */}
-                  <span className="text-xl flex-shrink-0">{type.icon}</span>
-
-                  {/* Label */}
-                  <span className={`flex-1 text-sm font-medium ${
-                    selected ? 'text-primary' : 'text-gray-700'
-                  }`}>
+                  <span className="text-xl flex-shrink-0 leading-none">{type.icon}</span>
+                  <span className={`flex-1 text-sm font-medium ${selected ? 'text-primary' : 'text-gray-700'}`}>
                     {type.label}
                   </span>
-
-                  {/* Check indicator */}
                   <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                    selected
-                      ? 'bg-primary border-primary'
-                      : 'border-gray-300 bg-white'
+                    selected ? 'bg-primary border-primary' : 'border-gray-300 bg-white'
                   }`}>
                     {selected && (
                       <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
@@ -283,14 +362,13 @@ export default function DriverSettings() {
             })}
           </div>
 
-          {/* Save button */}
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-4 pt-2">
             <button
-              onClick={handleSaveCategories}
-              disabled={savingCategories}
-              className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
+              onClick={() => saveCategories.mutate()}
+              disabled={saveCategories.isPending}
+              className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2 transition-opacity"
             >
-              {savingCategories
+              {saveCategories.isPending
                 ? <><Loader2 className="h-4 w-4 animate-spin" />Salvando...</>
                 : <><CheckCircle2 className="h-4 w-4" />Salvar categorias</>
               }
@@ -298,71 +376,23 @@ export default function DriverSettings() {
           </div>
         </div>
 
-        {/* Veículo */}
+        {/* ── Segurança ── */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-50">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-              Dados do veículo
-            </p>
-          </div>
-          <form onSubmit={handleSaveVehicle} className="px-4 py-4 space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="vehicleType" className="text-xs text-gray-500">Tipo de veículo</Label>
-              <Select value={vehicleType} onValueChange={setVehicleType}>
-                <SelectTrigger className="rounded-xl border-gray-200">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="motorcycle">Motocicleta</SelectItem>
-                  <SelectItem value="car">Carro</SelectItem>
-                  <SelectItem value="bicycle">Bicicleta</SelectItem>
-                  <SelectItem value="van">Van</SelectItem>
-                  <SelectItem value="truck">Caminhão</SelectItem>
-                  <SelectItem value="hourly_service">Serviço por hora</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="licensePlate" className="text-xs text-gray-500">
-                Placa do veículo (opcional)
-              </Label>
-              <Input
-                id="licensePlate"
-                value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value)}
-                placeholder="ABC-1234"
-                disabled={saving}
-                className="rounded-xl border-gray-200"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Salvar alterações
-            </button>
-          </form>
-        </div>
-
-        {/* Segurança */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
               Privacidade e segurança
             </p>
           </div>
           {[
             { label: 'Alterar senha' },
             { label: 'Gerenciar privacidade' },
-          ].map((item) => (
+          ].map((item, i, arr) => (
             <button
               key={item.label}
-              onClick={() => toast({ title: 'Em breve!' })}
-              className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-none"
+              onClick={() => toast({ title: '🚀 Em breve!' })}
+              className={`w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors ${
+                i < arr.length - 1 ? 'border-b border-gray-50' : ''
+              }`}
               style={{ minHeight: 44 }}
             >
               <div className="flex items-center gap-3">

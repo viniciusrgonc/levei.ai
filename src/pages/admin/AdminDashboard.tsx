@@ -15,7 +15,7 @@ import {
 import {
   Users, PackageCheck, TrendingUp, AlertCircle, Check, X,
   DollarSign, Clock, RefreshCw, Eye, Truck, Building2,
-  Phone, MapPin, Wallet, CheckCircle2,
+  Phone, MapPin, Wallet, CheckCircle2, Map,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -229,6 +229,30 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
+
+              {/* ── Quick access: Live Map ── */}
+              <button
+                onClick={() => navigate('/admin/driver-map')}
+                className="w-full flex items-center justify-between bg-gradient-to-r from-primary to-primary/80 rounded-2xl px-5 py-4 shadow-sm hover:opacity-95 active:scale-[0.99] transition-all text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <Map className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-white font-bold text-sm">Mapa ao Vivo</p>
+                    <p className="text-white/60 text-xs">Ver posição de todos os motoboys em tempo real</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!loading && (
+                    <span className="text-xs font-bold bg-white/20 text-white px-2.5 py-1 rounded-full">
+                      {stats.approvedDrivers} motoristas
+                    </span>
+                  )}
+                  <Eye className="h-4 w-4 text-white/60" />
+                </div>
+              </button>
 
               {/* Financial */}
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
