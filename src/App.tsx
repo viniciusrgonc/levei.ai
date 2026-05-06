@@ -48,6 +48,7 @@ import AdminFinancialReports from "./pages/admin/AdminFinancialReports";
 import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
 import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
 import AdminFeeTypes from "./pages/admin/AdminFeeTypes";
+import AdminDriverMap from "./pages/admin/AdminDriverMap";
 import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
@@ -382,6 +383,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminFeeTypes />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/driver-map"
+              element={
+                <AdminRoute>
+                  <AdminDriverMap />
                 </AdminRoute>
               }
             />
