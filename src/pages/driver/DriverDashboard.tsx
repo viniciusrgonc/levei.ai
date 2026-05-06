@@ -84,29 +84,39 @@ function driverIcon(online: boolean) {
   const color = online ? '#3b82f6' : '#6b7280';
   return new DivIcon({
     html: renderToStaticMarkup(
-      <div style={{ position: 'relative', width: 48, height: 48 }}>
+      <div style={{ position: 'relative', width: 56, height: 56 }}>
         {online && (
-          <div style={{
-            position: 'absolute', inset: 0, borderRadius: '50%',
-            background: `${color}33`,
-            animation: 'ping 1.5s cubic-bezier(0,0,0.2,1) infinite',
-          }} />
+          <>
+            {/* Outer pulse ring — slow */}
+            <div style={{
+              position: 'absolute', inset: -2, borderRadius: '50%',
+              background: `${color}22`,
+              animation: 'ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite',
+            }} />
+            {/* Inner pulse ring — faster, offset */}
+            <div style={{
+              position: 'absolute', inset: 4, borderRadius: '50%',
+              background: `${color}30`,
+              animation: 'ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite 0.8s',
+            }} />
+          </>
         )}
+        {/* Core dot */}
         <div style={{
-          position: 'absolute', inset: 8, borderRadius: '50%',
+          position: 'absolute', inset: 10, borderRadius: '50%',
           background: color, border: '3px solid white',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
           </svg>
         </div>
       </div>
     ),
     className: '',
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
+    iconSize: [56, 56],
+    iconAnchor: [28, 28],
   });
 }
 
@@ -284,12 +294,18 @@ export default function DriverDashboard() {
         )}
       </MapContainer>
 
+      {/* ── OVERLAY escuro leve (melhora contraste da UI) ── */}
+      <div
+        className="absolute inset-0 z-[1] pointer-events-none"
+        style={{ background: 'rgba(0,0,0,0.15)' }}
+      />
+
       {/* ── GRADIENTE topo ── */}
       <div
         className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
         style={{
           height: 160,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.60) 0%, transparent 100%)',
         }}
       />
 
@@ -323,7 +339,7 @@ export default function DriverDashboard() {
           )}
         </button>
 
-        {/* Rating + bell */}
+        {/* Right: rating + bell + toggle agrupados */}
         <div className="flex items-center gap-2">
           {driver?.rating && (
             <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-full px-2.5 py-1.5 shadow">
@@ -333,37 +349,36 @@ export default function DriverDashboard() {
               </span>
             </div>
           )}
-          <div className="bg-black/40 backdrop-blur-md rounded-full shadow text-white">
-            <NotificationBell />
+
+          {/* Bell + toggle numa cápsula só */}
+          <div className="flex items-center bg-black/40 backdrop-blur-md rounded-2xl shadow overflow-hidden">
+            <div className="text-white">
+              <NotificationBell />
+            </div>
+            <div className="w-px self-stretch bg-white/15 mx-0.5" />
+            <button
+              onClick={() => toggleAvailability(!isOnline)}
+              className={`flex items-center gap-1.5 px-3 py-2 transition-all active:scale-95 ${
+                isOnline ? 'text-green-400' : 'text-gray-300'
+              }`}
+            >
+              {isOnline ? (
+                <>
+                  <Wifi className="h-3.5 w-3.5 flex-shrink-0" />
+                  <div className="leading-none text-left">
+                    <p className="text-[11px] font-bold text-white">Online</p>
+                    <p className="text-[9px] text-white/60 mt-0.5">{radiusKm} km</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3.5 w-3.5" />
+                  <span className="text-[11px] font-semibold text-white/70">Offline</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* ── TOGGLE Online/Offline ── */}
-      <div className="absolute z-20" style={{ top: 'calc(env(safe-area-inset-top) + 62px)', right: 16 }}>
-        <button
-          onClick={() => toggleAvailability(!isOnline)}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 ${
-            isOnline
-              ? 'bg-green-500/95 text-white'
-              : 'bg-gray-800/95 text-gray-200'
-          }`}
-        >
-          {isOnline ? (
-            <>
-              <Wifi className="h-4 w-4 flex-shrink-0" />
-              <div className="text-left leading-none">
-                <p className="text-xs font-bold">Online</p>
-                <p className="text-[10px] opacity-80 mt-0.5">Raio: {radiusKm} km</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <WifiOff className="h-4 w-4" />
-              <span className="text-sm font-semibold">Offline</span>
-            </>
-          )}
-        </button>
       </div>
 
       {/* ── CARD DE GANHOS (flutuante) ── */}
@@ -371,6 +386,20 @@ export default function DriverDashboard() {
         className="absolute left-4 right-4 z-20"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
       >
+
+        {/* "Buscando entregas..." — visível quando online e sem entregas */}
+        {isOnline && safeDeliveries.length === 0 && !notificationDelivery && (
+          <div className="mb-3 flex justify-center">
+            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 shadow">
+              <div className="flex gap-0.5 items-end h-3">
+                <span className="w-1 bg-green-400 rounded-full" style={{ height: '40%', animation: 'bar-bounce 1.2s ease-in-out infinite 0s' }} />
+                <span className="w-1 bg-green-400 rounded-full" style={{ height: '80%', animation: 'bar-bounce 1.2s ease-in-out infinite 0.2s' }} />
+                <span className="w-1 bg-green-400 rounded-full" style={{ height: '55%', animation: 'bar-bounce 1.2s ease-in-out infinite 0.4s' }} />
+              </div>
+              <p className="text-white/80 text-xs font-medium tracking-wide">Buscando entregas...</p>
+            </div>
+          </div>
+        )}
 
         {/* Entregas disponíveis quando online */}
         {isOnline && safeDeliveries.length > 0 && (
@@ -495,10 +524,15 @@ export default function DriverDashboard() {
       {/* ── BOTTOM NAV ── */}
       <DriverBottomNav />
 
-      {/* Keyframe ping para o marker */}
       <style>{`
-        @keyframes ping {
-          75%, 100% { transform: scale(2); opacity: 0; }
+        @keyframes ping-slow {
+          0%   { transform: scale(1);   opacity: 0.6; }
+          75%  { transform: scale(2.2); opacity: 0;   }
+          100% { transform: scale(2.2); opacity: 0;   }
+        }
+        @keyframes bar-bounce {
+          0%, 100% { transform: scaleY(1);   }
+          50%       { transform: scaleY(2.2); }
         }
       `}</style>
     </div>
