@@ -351,7 +351,7 @@ export default function DriverDashboard() {
           )}
 
           {/* Bell + toggle numa cápsula só */}
-          <div className="flex items-center bg-black/40 backdrop-blur-md rounded-2xl shadow overflow-hidden">
+          <div className="flex items-center bg-black/40 backdrop-blur-md rounded-2xl shadow" style={{ overflow: 'visible' }}>
             <div className="text-white">
               <NotificationBell />
             </div>
