@@ -96,6 +96,7 @@ export default function DriverProfile() {
   const menuItems = [
     { icon: History,  label: 'Minhas entregas',  onClick: () => navigate('/driver/history') },
     { icon: Wallet,   label: 'Ganhos',            onClick: () => navigate('/driver/wallet') },
+    { icon: Star,     label: 'Avaliações',        onClick: () => navigate('/driver/ratings') },
     { icon: UserPen,  label: 'Editar perfil',     onClick: () => setIsEditing(!isEditing) },
     { icon: Settings, label: 'Configurações',     onClick: () => navigate('/driver/settings') },
   ];
