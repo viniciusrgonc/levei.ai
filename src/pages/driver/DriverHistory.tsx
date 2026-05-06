@@ -4,11 +4,9 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Package, Search, Loader2 } from 'lucide-react';
+import { MapPin, Package, Search, Loader2, ArrowLeft } from 'lucide-react';
 import { getStatusConfig } from '@/lib/deliveryStatus';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
-import leveiLogo from '@/assets/levei-logo.png';
-import NotificationBell from '@/components/NotificationBell';
 
 const PAGE_SIZE = 15;
 
@@ -77,7 +75,7 @@ export default function DriverHistory() {
         setStats({
           total: data.length,
           delivered: delivered.length,
-          earned: delivered.reduce((s, d) => s + Number(d.price), 0),
+          earned: delivered.reduce((s, d) => s + Number(d.price) * 0.8, 0),
         });
       });
   }, [driverId]);
@@ -150,21 +148,25 @@ export default function DriverHistory() {
       {/* ── HERO ── */}
       <div className="bg-primary">
         <div
-          className="flex items-center justify-between px-4 pb-2"
+          className="flex items-center gap-3 px-4 pb-2"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
         >
-          <img src={leveiLogo} alt="Levei" className="h-10 w-10 rounded-xl object-cover" />
-          <NotificationBell />
+          <button
+            onClick={() => navigate(-1)}
+            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition-transform flex-shrink-0"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </button>
+          <h1 className="text-white font-bold text-xl flex-1">Histórico</h1>
         </div>
 
         <div className="px-4 pt-2 pb-5">
-          <h1 className="text-2xl font-bold text-white">Histórico</h1>
           {/* KPIs */}
           <div className="grid grid-cols-3 gap-2 mt-3">
             {[
               { label: 'Total',     value: stats.total },
               { label: 'Entregues', value: stats.delivered },
-              { label: 'Ganhos',    value: `R$ ${stats.earned.toFixed(2)}` },
+              { label: 'Ganhos (80%)', value: `R$ ${stats.earned.toFixed(2)}` },
             ].map((kpi) => (
               <div key={kpi.label} className="bg-white/10 border border-white/20 rounded-xl p-3 text-center">
                 <p className="text-white font-bold text-lg leading-none">{kpi.value}</p>

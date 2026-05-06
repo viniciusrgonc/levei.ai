@@ -1,84 +1,133 @@
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Bike, Store, Zap, Shield, Clock } from "lucide-react";
+import { ArrowRight, Bike, Store, Zap, Shield, Clock, MapPin, Star } from "lucide-react";
+import leveiLogo from "@/assets/levei-logo.png";
 
 const Hero = () => {
   const navigate = useNavigate();
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-16 bg-background overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.04),transparent_50%),radial-gradient(circle_at_70%_80%,hsl(var(--primary)/0.03),transparent_50%)]" />
-      
-      <div className="container mx-auto px-6 py-16 md:py-24 relative z-10">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 border border-border bg-card rounded-full px-4 py-2 shadow-xs animate-fade-in">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-foreground">Entregas sob demanda</span>
-          </div>
-          
-          {/* Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-foreground animate-fade-in" style={{ animationDelay: '100ms' }}>
-            Conecte entregadores e{' '}
-            <span className="text-gradient">solicitantes</span>
-            {' '}em uma plataforma simples
-          </h1>
-          
-          {/* Description */}
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed animate-fade-in" style={{ animationDelay: '200ms' }}>
-            Sistema objetivo e profissional para gestão de entregas. Transparência, eficiência e controle total.
-          </p>
-          
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-4 animate-fade-in" style={{ animationDelay: '300ms' }}>
-            <Button 
-              size="lg" 
-              className="w-full sm:w-auto min-w-[200px]"
-              onClick={() => navigate('/auth')}
-            >
-              <Bike className="w-4 h-4" />
-              Sou Entregador
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="lg" 
-              className="w-full sm:w-auto min-w-[200px]"
-              onClick={() => navigate('/auth')}
-            >
-              <Store className="w-4 h-4" />
-              Sou Solicitante
-            </Button>
-          </div>
+    <div className="min-h-screen flex flex-col bg-white">
 
-          {/* Features */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-12 animate-fade-in" style={{ animationDelay: '400ms' }}>
-            <div className="flex flex-col items-center gap-3 p-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-primary" />
+      {/* ── Hero principal ── */}
+      <div className="relative flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-primary via-primary/95 to-primary/80 px-6 pt-24 pb-16 overflow-hidden">
+        {/* Background dots */}
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+        />
+
+        {/* Floating pills */}
+        <div className="absolute top-28 left-4 flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 hidden sm:flex">
+          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+          <span className="text-white/90 text-xs font-medium">12 motoboys online</span>
+        </div>
+        <div className="absolute top-28 right-4 flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 hidden sm:flex">
+          <Star className="h-3 w-3 text-yellow-300 fill-yellow-300" />
+          <span className="text-white/90 text-xs font-medium">4.9 avaliação</span>
+        </div>
+
+        {/* Logo */}
+        <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-xl mb-6 relative z-10">
+          <img src={leveiLogo} alt="Levei.ai" className="w-full h-full object-cover" />
+        </div>
+
+        {/* Badge */}
+        <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 mb-5 relative z-10">
+          <Zap className="w-3.5 h-3.5 text-yellow-300" />
+          <span className="text-white text-xs font-semibold">Entregas sob demanda · BH e região</span>
+        </div>
+
+        {/* Heading */}
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white text-center leading-tight max-w-lg relative z-10">
+          Sua entrega,<br />
+          <span className="text-yellow-300">no tempo certo.</span>
+        </h1>
+
+        <p className="text-white/70 text-sm sm:text-base text-center mt-4 max-w-sm leading-relaxed relative z-10">
+          Conectamos motoboys verificados a quem precisa entregar. Rastreamento em tempo real, pagamento seguro.
+        </p>
+
+        {/* CTAs */}
+        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs mt-8 relative z-10">
+          <button
+            onClick={() => navigate('/auth')}
+            className="flex-1 flex items-center justify-center gap-2 bg-white text-primary font-bold py-3.5 px-6 rounded-2xl shadow-lg active:scale-95 transition-transform text-sm"
+          >
+            <Store className="w-4 h-4" />
+            Quero enviar
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/auth')}
+            className="flex-1 flex items-center justify-center gap-2 bg-white/15 border border-white/30 text-white font-bold py-3.5 px-6 rounded-2xl active:scale-95 transition-transform text-sm"
+          >
+            <Bike className="w-4 h-4" />
+            Sou motoboy
+          </button>
+        </div>
+
+        {/* Social proof */}
+        <div className="flex items-center gap-4 mt-8 relative z-10">
+          <div className="flex -space-x-2">
+            {['#6366f1','#22c55e','#f59e0b','#ef4444'].map((c, i) => (
+              <div key={i} className="w-7 h-7 rounded-full border-2 border-primary/80 flex items-center justify-center text-white text-[10px] font-bold" style={{ background: c }}>
+                {['A','M','R','J'][i]}
               </div>
-              <h3 className="font-semibold text-foreground">Rápido</h3>
-              <p className="text-sm text-muted-foreground text-center">Entregas ágeis com rastreamento em tempo real</p>
+            ))}
+          </div>
+          <div>
+            <div className="flex items-center gap-1">
+              {[1,2,3,4,5].map(i => <Star key={i} className="h-3 w-3 text-yellow-300 fill-yellow-300" />)}
             </div>
-            <div className="flex flex-col items-center gap-3 p-4">
-              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
-                <Shield className="w-6 h-6 text-success" />
-              </div>
-              <h3 className="font-semibold text-foreground">Seguro</h3>
-              <p className="text-sm text-muted-foreground text-center">Entregadores verificados e pagamento protegido</p>
-            </div>
-            <div className="flex flex-col items-center gap-3 p-4">
-              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-warning" />
-              </div>
-              <h3 className="font-semibold text-foreground">24/7</h3>
-              <p className="text-sm text-muted-foreground text-center">Disponível a qualquer hora do dia</p>
-            </div>
+            <p className="text-white/60 text-[10px] mt-0.5">+200 entregas realizadas</p>
           </div>
         </div>
       </div>
-    </section>
+
+      {/* ── Features strip ── */}
+      <div className="bg-white px-6 py-8">
+        <div className="max-w-lg mx-auto">
+          <p className="text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-6">
+            Por que usar o Levei
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { icon: Zap,    bg: 'bg-primary/10',  color: 'text-primary',  title: 'Rápido',   sub: 'Motoboy em minutos' },
+              { icon: Shield, bg: 'bg-green-100',   color: 'text-green-600', title: 'Seguro',  sub: 'Entregadores verificados' },
+              { icon: MapPin, bg: 'bg-amber-100',   color: 'text-amber-600', title: 'Rastreio',sub: 'Veja em tempo real' },
+            ].map(({ icon: Icon, bg, color, title, sub }) => (
+              <div key={title} className="flex flex-col items-center text-center gap-2">
+                <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center`}>
+                  <Icon className={`w-5 h-5 ${color}`} />
+                </div>
+                <p className="text-xs font-bold text-gray-900">{title}</p>
+                <p className="text-[10px] text-gray-500 leading-tight">{sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom CTA ── */}
+      <div className="bg-gray-50 border-t border-gray-100 px-6 py-6">
+        <div className="max-w-sm mx-auto text-center">
+          <p className="text-xs text-gray-400 mb-3">
+            Já tem uma conta?{' '}
+            <button
+              onClick={() => navigate('/auth')}
+              className="text-primary font-semibold"
+            >
+              Entrar agora
+            </button>
+          </p>
+          <div className="flex items-center justify-center gap-4 text-[10px] text-gray-400">
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />Disponível 24h</span>
+            <span>·</span>
+            <span className="flex items-center gap-1"><Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />4.9 de satisfação</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 };
 
