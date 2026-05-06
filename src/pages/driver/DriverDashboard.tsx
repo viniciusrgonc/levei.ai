@@ -7,11 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import {
   MapPin, Package, Navigation, Star, TrendingUp,
-  ChevronRight, Clock, Wifi, WifiOff, Search,
+  ChevronRight, Clock, Wifi, WifiOff,
 } from 'lucide-react';
 import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
 import { DriverDrawer } from '@/components/DriverDrawer';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import { DivIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import 'leaflet/dist/leaflet.css';
@@ -267,6 +267,19 @@ export default function DriverDashboard() {
           <>
             <Marker position={position} icon={driverIcon(isOnline)} />
             <RecenterMap lat={position[0]} lng={position[1]} />
+            {isOnline && (
+              <Circle
+                center={position}
+                radius={radiusKm * 1000}
+                pathOptions={{
+                  color: '#3b82f6',
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.06,
+                  weight: 1.5,
+                  dashArray: '6 5',
+                }}
+              />
+            )}
           </>
         )}
       </MapContainer>
@@ -294,33 +307,21 @@ export default function DriverDashboard() {
         className="absolute left-0 right-0 z-20 flex items-center justify-between px-4"
         style={{ top: 0, paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
       >
-        {/* Logo/Avatar + status */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="active:scale-90 transition-transform"
-          >
-            {driverProfile?.avatarUrl ? (
-              <img
-                src={driverProfile.avatarUrl}
-                alt={driverProfile.name}
-                className="h-9 w-9 rounded-xl object-cover shadow-lg border-2 border-white/40"
-              />
-            ) : (
-              <img src={leveiLogo} alt="Levei" className="h-9 w-9 rounded-xl object-cover shadow-lg" />
-            )}
-          </button>
-          <div
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-lg backdrop-blur-md ${
-              isOnline
-                ? 'bg-green-500/90 text-white'
-                : 'bg-gray-700/90 text-gray-200'
-            }`}
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
-            {isOnline ? `Online · ${radiusKm} km` : 'Offline'}
-          </div>
-        </div>
+        {/* Logo/Avatar */}
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="active:scale-90 transition-transform"
+        >
+          {driverProfile?.avatarUrl ? (
+            <img
+              src={driverProfile.avatarUrl}
+              alt={driverProfile.name}
+              className="h-9 w-9 rounded-xl object-cover shadow-lg border-2 border-white/40"
+            />
+          ) : (
+            <img src={leveiLogo} alt="Levei" className="h-9 w-9 rounded-xl object-cover shadow-lg" />
+          )}
+        </button>
 
         {/* Rating + bell */}
         <div className="flex items-center gap-2">
@@ -332,26 +333,36 @@ export default function DriverDashboard() {
               </span>
             </div>
           )}
-          <div className="bg-black/40 backdrop-blur-md rounded-full p-1.5 shadow">
+          <div className="bg-black/40 backdrop-blur-md rounded-full shadow text-white">
             <NotificationBell />
           </div>
         </div>
       </div>
 
       {/* ── TOGGLE Online/Offline ── */}
-      <div className="absolute z-20" style={{ top: 'calc(env(safe-area-inset-top) + 80px)', right: 16 }}>
+      <div className="absolute z-20" style={{ top: 'calc(env(safe-area-inset-top) + 62px)', right: 16 }}>
         <button
           onClick={() => toggleAvailability(!isOnline)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl backdrop-blur-md font-semibold text-sm transition-all active:scale-95 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl shadow-xl backdrop-blur-md transition-all active:scale-95 ${
             isOnline
               ? 'bg-green-500/95 text-white'
               : 'bg-gray-800/95 text-gray-200'
           }`}
         >
-          {isOnline
-            ? <><Wifi className="h-4 w-4" />Online</>
-            : <><WifiOff className="h-4 w-4" />Offline</>
-          }
+          {isOnline ? (
+            <>
+              <Wifi className="h-4 w-4 flex-shrink-0" />
+              <div className="text-left leading-none">
+                <p className="text-xs font-bold">Online</p>
+                <p className="text-[10px] opacity-80 mt-0.5">Raio: {radiusKm} km</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-4 w-4" />
+              <span className="text-sm font-semibold">Offline</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -362,32 +373,16 @@ export default function DriverDashboard() {
       >
 
         {/* Entregas disponíveis quando online */}
-        {isOnline && (
+        {isOnline && safeDeliveries.length > 0 && (
           <div className="mb-3">
-            {deliveriesLoading ? (
-              <div className="bg-white/15 backdrop-blur-md rounded-2xl p-4 flex items-center gap-3 shadow-lg">
-                <div className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                <p className="text-white text-sm font-medium">Buscando entregas...</p>
+            {/* Lista de entregas disponíveis */}
+            <div className="space-y-2 max-h-[45vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-1 mb-1">
+                <p className="text-white font-semibold text-sm drop-shadow">
+                  {safeDeliveries.length} entrega{safeDeliveries.length > 1 ? 's' : ''} disponível{safeDeliveries.length > 1 ? 'is' : ''}
+                </p>
               </div>
-            ) : safeDeliveries.length === 0 ? (
-              <div className="bg-white/15 backdrop-blur-md rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-lg">
-                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <Search className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">Você está online</p>
-                  <p className="text-white/70 text-xs">Buscando entregas em {radiusKm} km...</p>
-                </div>
-              </div>
-            ) : (
-              /* Lista de entregas disponíveis */
-              <div className="space-y-2 max-h-[45vh] overflow-y-auto">
-                <div className="flex items-center justify-between px-1 mb-1">
-                  <p className="text-white font-semibold text-sm drop-shadow">
-                    {safeDeliveries.length} entrega{safeDeliveries.length > 1 ? 's' : ''} disponível{safeDeliveries.length > 1 ? 'is' : ''}
-                  </p>
-                </div>
-                {safeDeliveries.map((delivery) => (
+              {safeDeliveries.map((delivery) => (
                   <div
                     key={delivery.id}
                     className="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl"
@@ -441,56 +436,31 @@ export default function DriverDashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Offline CTA */}
-        {!isOnline && (
-          <div className="mb-3">
-            <div className="bg-white/15 backdrop-blur-md rounded-2xl px-4 py-3.5 flex items-center justify-between shadow-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                  <WifiOff className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-semibold text-sm">Você está offline</p>
-                  <p className="text-white/70 text-xs">Toque para ficar disponível</p>
-                </div>
-              </div>
-              <button
-                onClick={() => toggleAvailability(true)}
-                className="bg-green-500 text-white text-xs font-bold px-3 py-2 rounded-xl active:scale-95 transition-transform"
-              >
-                Ligar
-              </button>
             </div>
           </div>
         )}
 
-        {/* Ganhos card */}
+        {/* Ganhos card — compacto */}
         <button
           onClick={() => navigate('/driver/wallet')}
-          className="w-full bg-white/95 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center justify-between shadow-xl active:scale-[0.98] transition-transform"
+          className="w-full bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2.5 flex items-center gap-3 shadow-xl active:scale-[0.98] transition-transform"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </div>
-            <div className="text-left">
-              <p className="text-gray-500 text-xs">Ganhos hoje</p>
-              <p className="text-gray-900 font-bold text-lg leading-none">
-                R$ {earningsData.earnings.toFixed(2)}
-              </p>
-            </div>
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-gray-500 text-xs">Entregas</p>
-              <p className="text-gray-900 font-bold text-lg leading-none">{earningsData.count}</p>
+          <div className="flex-1 flex items-baseline gap-1.5 min-w-0">
+            <span className="text-gray-400 text-xs whitespace-nowrap">Ganhos hoje</span>
+            <span className="text-gray-900 font-bold text-base leading-none">
+              R$ {earningsData.earnings.toFixed(2)}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="bg-gray-100 rounded-full px-2.5 py-1">
+              <span className="text-gray-600 text-xs font-semibold">
+                {earningsData.count} {earningsData.count === 1 ? 'entrega' : 'entregas'}
+              </span>
             </div>
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            <ChevronRight className="h-4 w-4 text-gray-300" />
           </div>
         </button>
       </div>

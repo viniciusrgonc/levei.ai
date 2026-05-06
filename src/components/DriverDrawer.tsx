@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Wallet, Gift, Users, Bell, HelpCircle, Settings,
-  LogOut, Star, ChevronRight, X, Trophy,
+  Gift, Users, HelpCircle, Settings,
+  LogOut, Star, ChevronRight, Trophy,
 } from 'lucide-react';
 
 interface DriverProfile {
@@ -22,10 +22,8 @@ interface Props {
 }
 
 const menuItems = [
-  { icon: Wallet,      label: 'Ganhos',           path: '/driver/wallet',      color: 'text-green-600',  bg: 'bg-green-50' },
   { icon: Trophy,      label: 'Recompensas',       path: '/driver/rewards',     color: 'text-amber-600',  bg: 'bg-amber-50',  badge: 'Novo' },
   { icon: Users,       label: 'Indique um amigo',  path: '/driver/referral',    color: 'text-blue-600',   bg: 'bg-blue-50'  },
-  { icon: Bell,        label: 'Notificações',       path: '/driver/settings',    color: 'text-purple-600', bg: 'bg-purple-50' },
   { icon: HelpCircle,  label: 'Central de ajuda',  path: '/driver/help',        color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { icon: Settings,    label: 'Preferências',       path: '/driver/settings',    color: 'text-gray-600',   bg: 'bg-gray-100'  },
 ];
@@ -76,15 +74,6 @@ export function DriverDrawer({ open, onClose, profile }: Props) {
         className={`fixed top-0 left-0 bottom-0 z-[60] w-[300px] bg-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${open ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
-        {/* Fechar */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
-          style={{ marginTop: 'env(safe-area-inset-top)' }}
-        >
-          <X className="h-4 w-4 text-gray-500" />
-        </button>
-
         {/* ── Perfil ── */}
         <div className="px-5 pt-8 pb-5 bg-gradient-to-br from-primary to-primary/80">
           {/* Avatar */}
