@@ -3,190 +3,140 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useUserSetup, useAuthRedirect } from '@/hooks/useUserSetup';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, Store, Bike, ArrowRight } from 'lucide-react';
+import { LogOut, Store, Bike, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import leveiLogo from '@/assets/levei-logo.png';
+
+// ── Spinner splash ─────────────────────────────────────────────────────────────
+function Splash({ label }: { label: string }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-primary gap-4">
+      <img src={leveiLogo} alt="Levei.ai" className="h-16 w-16 rounded-2xl object-cover" />
+      <div className="flex items-center gap-2">
+        <Loader2 className="h-4 w-4 text-white/60 animate-spin" />
+        <p className="text-white/60 text-sm">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { role, loading } = useUserSetup();
-  useAuthRedirect(); // Handle automatic redirects for users with roles
+  useAuthRedirect();
   const [submitting, setSubmitting] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
-    toast({
-      title: 'Até logo!',
-      description: 'Você saiu da sua conta'
-    });
     navigate('/auth');
   };
 
   const selectRole = async (selectedRole: 'restaurant' | 'driver') => {
-    if (!user) return;
+    if (!user || submitting) return;
     setSubmitting(true);
-
     const { error } = await supabase
       .from('user_roles')
       .insert({ user_id: user.id, role: selectedRole });
-
     if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível selecionar o perfil'
-      });
+      toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível selecionar o perfil' });
       setSubmitting(false);
     } else {
-      toast({
-        title: 'Perfil selecionado!',
-        description: `Você agora é um ${selectedRole === 'restaurant' ? 'solicitante' : 'entregador'}`
-      });
       window.location.href = selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup';
     }
   };
 
-  // Show loading while checking user setup
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse-soft">
-            <Bike className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <Splash label="Carregando..." />;
+  if (role)   return <Splash label="Redirecionando..." />;
 
-  // If user has a role, useAuthRedirect will handle navigation
-  // This page should only be shown when user has no role
-  if (role) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center animate-pulse-soft">
-            <Bike className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">Redirecionando...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show role selection for users without a role
   return (
-    <div className="min-h-screen bg-background p-4">
-      {/* Subtle background */}
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--primary)/0.03),transparent_60%)]" />
-      
-      <div className="max-w-3xl mx-auto pt-12 md:pt-20 relative z-10">
-        <div className="text-center mb-10 animate-fade-in">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
-              <Bike className="h-8 w-8 text-primary-foreground" />
-            </div>
-          </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">Bem-vindo ao Levei!</h1>
-          <p className="text-lg text-muted-foreground">
-            Escolha como você quer usar a plataforma
+    <div className="min-h-screen flex flex-col bg-gray-50">
+
+      {/* ── Hero ── */}
+      <div className="bg-gradient-to-br from-primary to-primary/80 px-6 pt-16 pb-10">
+        <div className="flex flex-col items-center text-center">
+          <img src={leveiLogo} alt="Levei.ai" className="h-14 w-14 rounded-2xl object-cover mb-4 shadow-xl" />
+          <h1 className="text-2xl font-black text-white leading-tight">
+            Bem-vindo ao Levei!
+          </h1>
+          <p className="text-white/65 text-sm mt-2 max-w-xs">
+            Como você quer usar a plataforma?
           </p>
         </div>
+      </div>
 
-        <div className="grid md:grid-cols-2 gap-4 md:gap-6">
-          <Card 
-            className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in group"
-            onClick={() => !submitting && selectRole('restaurant')}
-            style={{ animationDelay: '100ms' }}
-          >
-            <CardHeader className="pb-3">
-              <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                <Store className="h-7 w-7 text-primary" />
-              </div>
-              <CardTitle className="text-xl flex items-center justify-between">
-                Sou Solicitante
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-              </CardTitle>
-              <CardDescription>
-                Solicite entregas para entregadores disponíveis
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  Criar solicitações de entrega
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  Acompanhar em tempo real
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  Gerenciar histórico
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  Avaliar entregadores
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
+      {/* ── Role cards ── */}
+      <main className="flex-1 px-4 pt-6 pb-10 space-y-4 max-w-sm mx-auto w-full">
 
-          <Card 
-            className="cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300 animate-fade-in group"
-            onClick={() => !submitting && selectRole('driver')}
-            style={{ animationDelay: '200ms' }}
-          >
-            <CardHeader className="pb-3">
-              <div className="w-14 h-14 bg-success/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-success/20 transition-colors">
-                <Bike className="h-7 w-7 text-success" />
-              </div>
-              <CardTitle className="text-xl flex items-center justify-between">
-                Sou Entregador
-                <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-success group-hover:translate-x-1 transition-all" />
-              </CardTitle>
-              <CardDescription>
-                Aceite entregas e ganhe dinheiro
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                  Aceitar entregas próximas
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                  Navegar até o destino
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                  Acompanhar ganhos
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-success" />
-                  Receber avaliações
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Solicitante */}
+        <button
+          onClick={() => selectRole('restaurant')}
+          disabled={submitting}
+          className="w-full bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4 text-left hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-60"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Store className="h-7 w-7 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-base">Sou Solicitante</p>
+            <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+              Crie pedidos de entrega e acompanhe em tempo real
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {['Solicitar entregas', 'Rastreamento', 'Histórico'].map((f) => (
+                <span key={f} className="text-[10px] font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
+        </button>
 
-        <div className="text-center mt-8 animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <Button 
-            variant="ghost" 
+        {/* Entregador */}
+        <button
+          onClick={() => selectRole('driver')}
+          disabled={submitting}
+          className="w-full bg-white rounded-2xl shadow-sm p-5 flex items-center gap-4 text-left hover:shadow-md active:scale-[0.98] transition-all disabled:opacity-60"
+        >
+          <div className="w-14 h-14 rounded-2xl bg-green-100 flex items-center justify-center flex-shrink-0">
+            <Bike className="h-7 w-7 text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-base">Sou Entregador</p>
+            <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+              Aceite entregas próximas e acompanhe seus ganhos
+            </p>
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {['Aceitar pedidos', 'Ganhos', 'Recompensas'].map((f) => (
+                <span key={f} className="text-[10px] font-medium bg-green-50 text-green-700 px-2 py-0.5 rounded-full">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+          <ArrowRight className="h-5 w-5 text-gray-300 flex-shrink-0" />
+        </button>
+
+        {submitting && (
+          <div className="flex items-center justify-center gap-2 py-2">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="text-sm text-gray-500">Configurando seu perfil...</span>
+          </div>
+        )}
+
+        <div className="pt-2 text-center">
+          <button
             onClick={handleSignOut}
             disabled={submitting}
+            className="flex items-center gap-2 text-gray-400 text-sm mx-auto hover:text-gray-600 transition-colors"
           >
             <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
+            Sair da conta
+          </button>
         </div>
-      </div>
+      </main>
+
     </div>
   );
 }

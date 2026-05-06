@@ -197,7 +197,7 @@ export default function Auth() {
                   <div className="text-right">
                     <button
                       type="button"
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                      className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
                       onClick={() => toast({ title: 'Em breve', description: 'Recuperação de senha será ativada em breve' })}
                     >
                       Esqueceu sua senha?
@@ -207,7 +207,7 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 rounded-xl text-base font-semibold bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-12 rounded-xl text-base font-semibold bg-primary hover:bg-primary/90"
                   loading={loading}
                 >
                   Entrar
@@ -255,7 +255,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => { setMode('signup'); setShowPassword(false); }}
-                  className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                  className="text-primary font-semibold hover:text-primary/80 transition-colors"
                 >
                   Criar conta
                 </button>
@@ -344,7 +344,7 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 rounded-xl text-base font-semibold bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-12 rounded-xl text-base font-semibold bg-primary hover:bg-primary/90"
                   loading={loading}
                 >
                   Criar Conta
@@ -357,7 +357,7 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => { setMode('signin'); setShowPassword(false); }}
-                  className="text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                  className="text-primary font-semibold hover:text-primary/80 transition-colors"
                 >
                   Entrar
                 </button>
