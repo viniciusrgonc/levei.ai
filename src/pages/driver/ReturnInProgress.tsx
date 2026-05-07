@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,11 +10,11 @@ import {
   MapPin, Navigation, Clock, CheckCircle, AlertCircle,
   PartyPopper, LayoutDashboard, X, Star,
 } from 'lucide-react';
-import { RatingModal } from '@/components/RatingModal';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { RatingModal } from '@/components/RatingModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -73,13 +74,10 @@ interface Delivery {
 }
 
 export default function ReturnInProgress() {
-  const { deliveryId } = useParams();
+  const { deliveryId } = useParams<{ deliveryId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [delivery, setDelivery] = useState<Delivery | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [driverId, setDriverId] = useState<string | null>(null);
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -88,6 +86,61 @@ export default function ReturnInProgress() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [restaurantForRating, setRestaurantForRating] = useState<{ userId: string; name: string } | null>(null);
 
+  // ── Queries ───────────────────────────────────────────────────────────────
+  const { data: driverData } = useQuery({
+    queryKey: ['driver-id', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from('drivers').select('id').eq('user_id', user!.id).single();
+      return data;
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const driverId = driverData?.id ?? null;
+
+  const { data: delivery, isLoading } = useQuery<Delivery>({
+    queryKey: ['return-in-progress', deliveryId, driverId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId!).single();
+      if (error || !data) throw new Error('Entrega não encontrada');
+      if (!data.driver_id || data.driver_id !== driverId) throw new Error('Acesso negado');
+
+      // Status já correto
+      if (data.status === 'returning') return data as Delivery;
+
+      // Corrige status se necessário
+      if (data.status === 'picked_up' && data.requires_return) {
+        await supabase.from('deliveries').update({ status: 'returning' }).eq('id', deliveryId!);
+        return { ...data, status: 'returning' } as Delivery;
+      }
+
+      // Status incompatível — lança para o effect redirecionar
+      throw new Error(`wrong-status:${data.status}`);
+    },
+    enabled: !!deliveryId && !!driverId,
+    staleTime: 15 * 1000,
+    retry: false,
+  });
+
+  // ── Redireciona quando status incompatível ────────────────────────────────
+  useEffect(() => {
+    // handled via react-query error
+  }, []);
+
+  // ── Hooks de entrega ──────────────────────────────────────────────────────
+  const destination: [number, number] | null = delivery
+    ? [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
+    : null;
+
+  const { route } = useMapNavigation(currentPosition, destination);
+
+  useDriverLocationTracking({
+    driverId: driverId || '',
+    deliveryId: deliveryId || '',
+    isActive: !!driverId && !!deliveryId,
+  });
+
+  // ── Complete delivery ─────────────────────────────────────────────────────
   const { completeDelivery, loading: completing } = useCompleteDelivery({
     onSuccess: async (_, __, transaction) => {
       setEarnings(transaction?.driver_earnings ?? Number(delivery?.price_adjusted || delivery?.price || 0) * 0.8);
@@ -112,20 +165,7 @@ export default function ReturnInProgress() {
     },
   });
 
-  // Destination for the return leg = pickup coordinates
-  const destination: [number, number] | null = delivery
-    ? [Number(delivery.pickup_latitude), Number(delivery.pickup_longitude)]
-    : null;
-
-  const { route } = useMapNavigation(currentPosition, destination);
-
-  useDriverLocationTracking({
-    driverId: driverId || '',
-    deliveryId: deliveryId || '',
-    isActive: !!driverId && !!deliveryId,
-  });
-
-  // Geolocation
+  // ── Geolocation ───────────────────────────────────────────────────────────
   useEffect(() => {
     const watchId = navigator.geolocation.watchPosition(
       (pos) => { setCurrentPosition([pos.coords.latitude, pos.coords.longitude]); setGeoError(false); },
@@ -135,118 +175,38 @@ export default function ReturnInProgress() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  useEffect(() => { if (deliveryId && user) fetchDriver(); }, [deliveryId, user]);
-  useEffect(() => { if (driverId && deliveryId) fetchDelivery(); }, [driverId, deliveryId]);
-
-  const fetchDriver = async () => {
-    const { data } = await supabase.from('drivers').select('id').eq('user_id', user?.id).single();
-    if (data) setDriverId(data.id);
-  };
-
-  const fetchDelivery = async () => {
-    const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId).single();
-    if (error || !data) {
-      toast({ title: 'Erro', description: 'Entrega não encontrada', variant: 'destructive' });
-      navigate('/driver/dashboard');
-      return;
-    }
-    if (!data.driver_id || data.driver_id !== driverId) {
-      toast({ title: 'Acesso Negado', variant: 'destructive' });
-      navigate('/driver/dashboard');
-      return;
-    }
-
-    console.log('[ReturnInProgress] Status atual ao carregar:', data.status);
-
-    // Aceita 'returning' ou 'picked_up' com requires_return (recupera fluxo interrompido)
-    if (data.status === 'returning') {
-      setDelivery(data);
-      setLoading(false);
-      return;
-    }
-
-    // Se status é picked_up e a entrega requer retorno, forçamos para 'returning'
-    if (data.status === 'picked_up' && data.requires_return) {
-      console.log('[ReturnInProgress] Forçando status para returning...');
-      const { error: fixErr } = await supabase
-        .from('deliveries')
-        .update({ status: 'returning' })
-        .eq('id', deliveryId!);
-      if (!fixErr) {
-        data.status = 'returning';
-        setDelivery(data);
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Redireciona baseado no status atual
-    if (['accepted', 'picking_up'].includes(data.status)) {
-      navigate(`/driver/pickup/${deliveryId}`, { replace: true });
-    } else if (['picked_up', 'delivering'].includes(data.status)) {
-      navigate(`/driver/delivery/${deliveryId}`, { replace: true });
-    } else if (data.status === 'delivered') {
-      navigate('/driver/dashboard', { replace: true });
-    } else {
-      navigate('/driver/dashboard');
-    }
-  };
-
+  // ── Confirm return ────────────────────────────────────────────────────────
   const handleConfirmReturn = async () => {
     if (!deliveryId || !driverId || !delivery) return;
 
-    // Busca o status mais recente do banco
     const { data: fresh } = await supabase
-      .from('deliveries')
-      .select('status')
-      .eq('id', deliveryId)
-      .single();
+      .from('deliveries').select('status').eq('id', deliveryId).single();
 
-    console.log('[ReturnInProgress] Status atual antes de finalizar:', fresh?.status);
-
-    const currentStatus = fresh?.status as string | undefined;
-
-    // Se já foi finalizada, mostra sucesso diretamente
-    if (currentStatus === 'delivered') {
+    if (fresh?.status === 'delivered') {
       setEarnings(Number(delivery.price_adjusted || delivery.price) * 0.8);
       setShowSuccess(true);
       return;
     }
 
-    // A edge function no Supabase só aceita 'picked_up' para finalizar.
-    // Revertemos o status para 'picked_up' antes de chamar completeDelivery,
-    // registrando o returned_at para manter o histórico do retorno.
-    console.log('[ReturnInProgress] Preparando finalização — revertendo para picked_up...');
-
     const { error: revertErr } = await supabase
       .from('deliveries')
-      .update({
-        status: 'picked_up',
-        returned_at: new Date().toISOString(),
-      })
+      .update({ status: 'picked_up', returned_at: new Date().toISOString() })
       .eq('id', deliveryId);
 
     if (revertErr) {
-      console.error('[ReturnInProgress] Erro ao preparar finalização:', revertErr);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível confirmar o retorno. Tente novamente.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível confirmar o retorno.', variant: 'destructive' });
       return;
     }
 
-    console.log('[ReturnInProgress] Chamando completeDelivery...');
     await completeDelivery(deliveryId, driverId, Number(delivery.price));
   };
 
   const openGPS = () => {
     if (!delivery) return;
-    const url = getGoogleMapsLink(
+    window.open(getGoogleMapsLink(
       currentPosition || undefined,
       [delivery.pickup_latitude, delivery.pickup_longitude],
-    );
-    window.open(url, '_blank');
+    ), '_blank');
   };
 
   const handleSuccessClose = () => {
@@ -258,11 +218,12 @@ export default function ReturnInProgress() {
     }
   };
 
-  if (loading) {
+  // ── Loading ───────────────────────────────────────────────────────────────
+  if (isLoading || !driverId) {
     return (
-      <div className="flex-mobile-column bg-background">
-        <div className="flex-1 relative"><Skeleton className="absolute inset-0" /></div>
-        <div className="p-responsive space-y-3 safe-bottom shrink-0">
+      <div className="min-h-screen flex flex-col bg-gray-900">
+        <div className="flex-1 relative"><Skeleton className="absolute inset-0 bg-gray-800" /></div>
+        <div className="p-4 space-y-3 bg-white">
           <Skeleton className="h-24 rounded-xl" />
           <Skeleton className="h-14 rounded-xl" />
         </div>
@@ -279,50 +240,47 @@ export default function ReturnInProgress() {
 
   return (
     <>
-      <div className="flex-mobile-column bg-background">
+      <div className="min-h-screen flex flex-col bg-gray-900">
 
         {/* Header flutuante */}
-        <div className="floating-header p-3 sm:p-4">
-          <Card className="glass">
+        <div className="absolute top-0 left-0 right-0 z-20 p-3"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+          <Card className="shadow-xl" style={{ background: 'rgba(15,20,35,0.85)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.1)' }}>
             <CardContent className="p-3 space-y-2">
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between">
                 <Button
                   variant="ghost" size="sm"
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                  className="h-8 px-2 text-white/60 hover:text-white hover:bg-white/10"
                   onClick={() => navigate('/driver/dashboard')}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-1" />
-                  <span className="hidden xs:inline">Dashboard</span>
+                  Dashboard
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-8 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  className="h-8 px-2 text-red-400 hover:text-red-300 hover:bg-red-500/10"
                   onClick={() => setShowCancelModal(true)}
                 >
                   <X className="w-4 h-4 mr-1" />
-                  <span className="hidden xs:inline">Cancelar</span>
+                  Cancelar
                 </Button>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
+                <div>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <span className="text-base">↩️</span>
-                    <p className="text-responsive-xs font-medium text-orange-600 uppercase tracking-wide">
-                      RETORNANDO
-                    </p>
+                    <p className="text-xs font-bold text-orange-400 uppercase tracking-wide">RETORNANDO</p>
                   </div>
-                  <p className="text-responsive-sm font-semibold text-foreground truncate">
-                    Voltando ao ponto de coleta
-                  </p>
+                  <p className="text-sm font-semibold text-white">Voltando ao ponto de coleta</p>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                <div className="flex items-center gap-1.5">
                   {routeDistance && (
-                    <Badge className="bg-orange-100 text-orange-700 border-none text-xs">
+                    <Badge className="bg-orange-500/20 text-orange-300 border-orange-500/30 text-xs">
                       <Navigation className="w-3 h-3 mr-1" />{routeDistance} km
                     </Badge>
                   )}
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="bg-white/10 text-white/70 border-0 text-xs">
                     <Clock className="w-3 h-3 mr-1" />~{estimatedTime} min
                   </Badge>
                 </div>
@@ -332,14 +290,12 @@ export default function ReturnInProgress() {
         </div>
 
         {/* Mapa fullscreen */}
-        <div className="flex-1 relative" style={{ minHeight: '40vh' }}>
+        <div className="flex-1 relative" style={{ minHeight: '55vh' }}>
           {currentPosition && destination ? (
             <MapContainer
-              center={currentPosition}
-              zoom={14}
-              style={{ height: '100%', width: '100%' }}
-              zoomControl={false}
-              attributionControl={false}
+              center={currentPosition} zoom={14}
+              style={{ height: '100%', width: '100%', minHeight: '55vh' }}
+              zoomControl={false} attributionControl={false}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               <MapBounds
@@ -347,90 +303,96 @@ export default function ReturnInProgress() {
               />
               <Marker position={currentPosition} icon={driverIcon} />
               {route && route.coordinates.length > 0 && (
-                <Polyline positions={route.coordinates} color="#f97316" weight={5} opacity={0.8} />
+                <Polyline positions={route.coordinates} color="#f97316" weight={5} opacity={0.85} />
               )}
               <Marker position={destination} icon={pickupIcon} />
             </MapContainer>
           ) : (
-            <div className="h-full flex items-center justify-center bg-muted">
+            <div className="h-full flex items-center justify-center bg-gray-800 min-h-[55vh]">
               {geoError ? (
-                <div className="text-center p-responsive">
-                  <AlertCircle className="icon-responsive-lg text-warning mx-auto mb-2" />
-                  <p className="text-responsive-base font-medium">Localização indisponível</p>
-                  <p className="text-responsive-sm text-muted-foreground">Ative o GPS do seu dispositivo</p>
+                <div className="text-center">
+                  <AlertCircle className="h-10 w-10 text-yellow-400 mx-auto mb-2" />
+                  <p className="text-white font-semibold">GPS indisponível</p>
+                  <p className="text-white/60 text-sm">Ative a localização</p>
                 </div>
               ) : (
-                <div className="animate-pulse text-muted-foreground">Obtendo localização...</div>
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-orange-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-white/60 text-sm">Obtendo localização...</p>
+                </div>
               )}
             </div>
           )}
         </div>
 
         {/* Bottom sheet */}
-        <div className="bg-background border-t border-border p-responsive space-y-3 safe-bottom animate-slide-up-sheet shrink-0">
+        <div className="bg-white rounded-t-3xl shadow-2xl z-10"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)' }}>
+          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-4" />
 
-          {/* Ponto de retorno */}
-          <Card className="card-dynamic border-orange-200">
-            <CardContent className="p-3">
+          <div className="px-4 space-y-3 pb-2">
+            {/* Ponto de retorno */}
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3">
               <div className="flex items-start gap-3">
-                <div className="avatar-responsive-sm rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                  <MapPin className="icon-responsive-sm text-orange-500" />
+                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="h-5 w-5 text-orange-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-responsive-xs font-medium text-orange-500 uppercase tracking-wide">
-                    PONTO DE RETORNO
-                  </p>
-                  <p className="text-responsive-sm text-foreground line-clamp-2">
+                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-wider mb-0.5">Ponto de Retorno</p>
+                  <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
                     {formatAddress(delivery.pickup_address)}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Confirme o retorno ao chegar no local
-                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Confirme ao chegar no local</p>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-responsive-lg font-bold text-orange-600">
+                <div className="text-right flex-shrink-0">
+                  <p className="text-base font-bold text-orange-600">
                     R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
                   </p>
-                  <p className="text-xs text-muted-foreground">ao retornar</p>
+                  <p className="text-xs text-gray-400">ao retornar</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* Ações */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <Button onClick={openGPS} variant="outline" size="lg" className="btn-touch">
-              <Navigation className="icon-responsive-sm mr-2" />
-              <span className="text-responsive-sm">Abrir GPS</span>
-            </Button>
-            <Button
-              onClick={handleConfirmReturn}
-              disabled={completing}
-              size="lg"
-              className="btn-touch font-semibold bg-orange-500 hover:bg-orange-600 text-white"
-            >
-              <CheckCircle className="icon-responsive-sm mr-2" />
-              <span className="text-responsive-sm">
-                {completing ? 'Confirmando...' : 'Confirmar Retorno'}
-              </span>
-            </Button>
+            {/* Ações */}
+            <div className="flex gap-3">
+              <button
+                onClick={openGPS}
+                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-700 text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <Navigation className="h-4 w-4" />
+                Abrir GPS
+              </button>
+              <button
+                onClick={handleConfirmReturn}
+                disabled={completing}
+                className="flex-1 h-12 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-60 transition-all active:scale-95"
+                style={{
+                  background: completing ? '#9ca3af' : '#f97316',
+                  boxShadow: completing ? 'none' : '0 4px 16px rgba(249,115,22,0.4)',
+                }}
+              >
+                {completing ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Confirmando...</>
+                ) : (
+                  <><CheckCircle className="h-4 w-4" /> Confirmar Retorno</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Modal de sucesso */}
       <Dialog open={showSuccess} onOpenChange={handleSuccessClose}>
-        <DialogContent className="sm:max-w-md text-center">
+        <DialogContent className="sm:max-w-md text-center rounded-3xl">
           <DialogHeader className="space-y-4">
-            <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto animate-scale-in">
+            <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mx-auto">
               <PartyPopper className="w-10 h-10 text-orange-500" />
             </div>
             <DialogTitle className="text-2xl">Retorno Confirmado! ↩️</DialogTitle>
             <DialogDescription className="text-base">
               Entrega concluída com sucesso.{' '}
-              <span className="font-bold text-orange-600">
-                R$ {earnings.toFixed(2)}
-              </span>{' '}
+              <span className="font-bold text-orange-600">R$ {earnings.toFixed(2)}</span>{' '}
               foi creditado na sua carteira.
             </DialogDescription>
           </DialogHeader>
@@ -466,7 +428,7 @@ export default function ReturnInProgress() {
         />
       )}
 
-      {/* Rating Modal (driver avalia restaurante) */}
+      {/* Rating Modal */}
       {showRatingModal && restaurantForRating && deliveryId && (
         <RatingModal
           deliveryId={deliveryId}
