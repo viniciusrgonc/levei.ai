@@ -49,6 +49,8 @@ import AdminRadiusSettings from "./pages/admin/AdminRadiusSettings";
 import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
 import AdminFeeTypes from "./pages/admin/AdminFeeTypes";
 import AdminDriverMap from "./pages/admin/AdminDriverMap";
+import AdminPointsStore from "./pages/admin/AdminPointsStore";
+import DriverPointsStore from "./pages/driver/DriverPointsStore";
 import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
@@ -275,6 +277,14 @@ const App = () => (
               }
             />
             <Route
+              path="/driver/store"
+              element={
+                <DriverRoute>
+                  <DriverPointsStore />
+                </DriverRoute>
+              }
+            />
+            <Route
               path="/chat/:deliveryId"
               element={
                 <ProtectedRoute>
@@ -391,6 +401,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminDriverMap />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/points-store"
+              element={
+                <AdminRoute>
+                  <AdminPointsStore />
                 </AdminRoute>
               }
             />

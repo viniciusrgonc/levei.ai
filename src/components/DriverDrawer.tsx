@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Gift, Users, HelpCircle, Settings,
-  LogOut, Star, ChevronRight, Trophy,
+  LogOut, Star, ChevronRight, Trophy, ShoppingBag,
 } from 'lucide-react';
 
 interface DriverProfile {
@@ -23,6 +23,7 @@ interface Props {
 
 const menuItems = [
   { icon: Trophy,      label: 'Recompensas',       path: '/driver/rewards',     color: 'text-amber-600',  bg: 'bg-amber-50',  badge: 'Novo' },
+  { icon: ShoppingBag, label: 'Loja de Pontos',    path: '/driver/store',       color: 'text-green-600',  bg: 'bg-green-50'  },
   { icon: Users,       label: 'Indique um amigo',  path: '/driver/referral',    color: 'text-blue-600',   bg: 'bg-blue-50'  },
   { icon: HelpCircle,  label: 'Central de ajuda',  path: '/driver/help',        color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { icon: Settings,    label: 'Preferências',       path: '/driver/settings',    color: 'text-gray-600',   bg: 'bg-gray-100'  },

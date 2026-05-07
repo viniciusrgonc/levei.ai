@@ -78,6 +78,11 @@ const menuItems = [
     icon: Map,
   },
   {
+    title: 'Loja de Pontos',
+    url: '/admin/points-store',
+    icon: ShoppingBag,
+  },
+  {
     title: 'Disputas',
     url: '/admin/disputes',
     icon: AlertCircle,

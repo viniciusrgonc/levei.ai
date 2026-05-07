@@ -721,6 +721,90 @@ export type Database = {
         }
         Relationships: []
       }
+      store_items: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          category: string
+          image_url: string | null
+          points_cost: number
+          stock: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description: string
+          category: string
+          image_url?: string | null
+          points_cost: number
+          stock?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          category?: string
+          image_url?: string | null
+          points_cost?: number
+          stock?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      store_redemptions: {
+        Row: {
+          id: string
+          driver_id: string
+          item_id: string
+          points_used: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          driver_id: string
+          item_id: string
+          points_used: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          driver_id?: string
+          item_id?: string
+          points_used?: number
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_redemptions_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_redemptions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "store_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
