@@ -6,12 +6,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
 import {
-  MapPin, Package, Navigation, Star, TrendingUp,
-  ChevronRight, Clock, Wifi, WifiOff,
+  MapPin, Package, Navigation, Clock,
+  ChevronRight, Wifi, WifiOff,
 } from 'lucide-react';
 import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
 import { DriverDrawer } from '@/components/DriverDrawer';
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import { DivIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import 'leaflet/dist/leaflet.css';
@@ -81,19 +81,17 @@ function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
 
 // ── Driver marker ──────────────────────────────────────────────────────────
 function driverIcon(online: boolean) {
-  const color = online ? '#3b82f6' : '#6b7280';
+  const color = online ? '#22c55e' : '#6b7280';
   return new DivIcon({
     html: renderToStaticMarkup(
       <div style={{ position: 'relative', width: 56, height: 56 }}>
         {online && (
           <>
-            {/* Outer pulse ring — slow */}
             <div style={{
               position: 'absolute', inset: -2, borderRadius: '50%',
               background: `${color}22`,
               animation: 'ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite',
             }} />
-            {/* Inner pulse ring — faster, offset */}
             <div style={{
               position: 'absolute', inset: 4, borderRadius: '50%',
               background: `${color}30`,
@@ -101,7 +99,6 @@ function driverIcon(online: boolean) {
             }} />
           </>
         )}
-        {/* Core dot */}
         <div style={{
           position: 'absolute', inset: 10, borderRadius: '50%',
           background: color, border: '3px solid white',
@@ -132,10 +129,7 @@ export default function DriverDashboard() {
     onSuccess: (id) => navigate(`/driver/pickup/${id}`, { replace: true }),
   });
 
-  // ── Drawer state ──────────────────────────────────────────────────────────
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // ── Notification card state ───────────────────────────────────────────────
   const [notificationDelivery, setNotificationDelivery] = useState<any | null>(null);
   const seenDeliveryIds = useRef<Set<string>>(new Set());
 
@@ -144,7 +138,7 @@ export default function DriverDashboard() {
     if (!navigator.geolocation) return;
     watchRef.current = navigator.geolocation.watchPosition(
       ({ coords }) => setPosition([coords.latitude, coords.longitude]),
-      () => setPosition([-19.9167, -43.9345]), // Belo Horizonte fallback
+      () => setPosition([-19.9167, -43.9345]),
       { enableHighAccuracy: true, maximumAge: 10000 }
     );
     return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
@@ -209,12 +203,11 @@ export default function DriverDashboard() {
       navigate(`/driver/return/${activeDelivery.id}`, { replace: true });
   }, [activeDelivery]);
 
-  // ── Detect new deliveries → show notification card ───────────────────────
+  // ── New delivery notification ─────────────────────────────────────────────
   useEffect(() => {
     const online = driver?.is_available ?? false;
     const deliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
     if (!online || deliveries.length === 0) return;
-
     const newDelivery = deliveries.find((d: any) => !seenDeliveryIds.current.has(d.id));
     if (newDelivery && !notificationDelivery) {
       seenDeliveryIds.current.add(newDelivery.id);
@@ -269,61 +262,41 @@ export default function DriverDashboard() {
         className="absolute inset-0 h-full w-full z-0"
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution=""
-        />
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" />
         {position && (
           <>
             <Marker position={position} icon={driverIcon(isOnline)} />
             <RecenterMap lat={position[0]} lng={position[1]} />
-            {isOnline && (
-              <Circle
-                center={position}
-                radius={radiusKm * 1000}
-                pathOptions={{
-                  color: '#3b82f6',
-                  fillColor: '#3b82f6',
-                  fillOpacity: 0.06,
-                  weight: 1.5,
-                  dashArray: '6 5',
-                }}
-              />
-            )}
           </>
         )}
       </MapContainer>
 
-      {/* ── OVERLAY escuro leve (melhora contraste da UI) ── */}
+      {/* ── OVERLAY ── */}
       <div
         className="absolute inset-0 z-[1] pointer-events-none"
-        style={{ background: 'rgba(0,0,0,0.15)' }}
+        style={{ background: 'rgba(0,0,0,0.12)' }}
       />
 
       {/* ── GRADIENTE topo ── */}
       <div
         className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
-        style={{
-          height: 160,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.60) 0%, transparent 100%)',
-        }}
+        style={{ height: 180, background: 'linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%)' }}
       />
 
       {/* ── GRADIENTE rodapé ── */}
       <div
         className="absolute bottom-0 left-0 right-0 z-10 pointer-events-none"
-        style={{
-          height: 340,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 100%)',
-        }}
+        style={{ height: 380, background: 'linear-gradient(to top, rgba(0,0,0,0.60) 0%, transparent 100%)' }}
       />
 
-      {/* ── HEADER overlay ── */}
+      {/* ════════════════════════════════════════════════════════════════════
+          HEADER — logo | ganhos discretos | sino | toggle
+      ════════════════════════════════════════════════════════════════════ */}
       <div
         className="absolute left-0 right-0 z-20 flex items-center justify-between px-4"
         style={{ top: 0, paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
       >
-        {/* Logo/Avatar */}
+        {/* Esquerda: logo / avatar → abre drawer */}
         <button
           onClick={() => setDrawerOpen(true)}
           className="active:scale-90 transition-transform"
@@ -339,159 +312,214 @@ export default function DriverDashboard() {
           )}
         </button>
 
-        {/* Right: rating + bell + toggle agrupados */}
-        <div className="flex items-center gap-2">
-          {driver?.rating && (
-            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md rounded-full px-2.5 py-1.5 shadow">
-              <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
-              <span className="text-white text-xs font-semibold">
-                {Number(driver.rating).toFixed(1)}
-              </span>
-            </div>
+        {/* Centro: ganhos do dia — pequenos e discretos */}
+        <button
+          onClick={() => navigate('/driver/wallet')}
+          className="flex items-center gap-1.5 bg-black/35 backdrop-blur-md rounded-full px-3 py-1.5 active:scale-95 transition-transform"
+        >
+          <span className="text-white/60 text-[11px]">Hoje</span>
+          <span className="text-white font-bold text-[13px]">
+            R$ {earningsData.earnings.toFixed(2)}
+          </span>
+          {earningsData.count > 0 && (
+            <span className="text-white/40 text-[10px]">
+              · {earningsData.count}x
+            </span>
           )}
+        </button>
 
-          {/* Bell + toggle numa cápsula só */}
-          <div className="flex items-center bg-black/40 backdrop-blur-md rounded-2xl shadow" style={{ overflow: 'visible' }}>
-            <div className="text-white">
-              <NotificationBell />
-            </div>
-            <div className="w-px self-stretch bg-white/15 mx-0.5" />
-            <button
-              onClick={() => toggleAvailability(!isOnline)}
-              className={`flex items-center gap-1.5 px-3 py-2 transition-all active:scale-95 ${
-                isOnline ? 'text-green-400' : 'text-gray-300'
-              }`}
-            >
-              {isOnline ? (
-                <>
-                  <Wifi className="h-3.5 w-3.5 flex-shrink-0" />
-                  <div className="leading-none text-left">
-                    <p className="text-[11px] font-bold text-white">Online</p>
-                    <p className="text-[9px] text-white/60 mt-0.5">{radiusKm} km</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-3.5 w-3.5" />
-                  <span className="text-[11px] font-semibold text-white/70">Offline</span>
-                </>
-              )}
-            </button>
+        {/* Direita: sino + toggle */}
+        <div
+          className="flex items-center bg-black/40 backdrop-blur-md rounded-2xl shadow"
+          style={{ overflow: 'visible' }}
+        >
+          <div className="text-white">
+            <NotificationBell />
           </div>
+          <div className="w-px self-stretch bg-white/15 mx-0.5" />
+          <button
+            onClick={() => toggleAvailability(!isOnline)}
+            className="flex items-center gap-1.5 px-3 py-2 active:scale-95 transition-transform"
+          >
+            {isOnline ? (
+              <>
+                {/* Pulsing green dot */}
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-400" />
+                </span>
+                <span className="text-[12px] font-bold text-white">Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5 text-gray-400" />
+                <span className="text-[12px] font-semibold text-white/60">Offline</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
-      {/* ── CARD DE GANHOS (flutuante) ── */}
+      {/* ════════════════════════════════════════════════════════════════════
+          ÁREA INFERIOR — card operacional + entregas
+      ════════════════════════════════════════════════════════════════════ */}
       <div
         className="absolute left-4 right-4 z-20"
         style={{ bottom: 'calc(env(safe-area-inset-bottom) + 80px)' }}
       >
 
-        {/* "Buscando entregas..." — visível quando online e sem entregas */}
-        {isOnline && safeDeliveries.length === 0 && !notificationDelivery && (
-          <div className="mb-3 flex justify-center">
-            <div className="flex items-center gap-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 shadow">
-              <div className="flex gap-0.5 items-end h-3">
-                <span className="w-1 bg-green-400 rounded-full" style={{ height: '40%', animation: 'bar-bounce 1.2s ease-in-out infinite 0s' }} />
-                <span className="w-1 bg-green-400 rounded-full" style={{ height: '80%', animation: 'bar-bounce 1.2s ease-in-out infinite 0.2s' }} />
-                <span className="w-1 bg-green-400 rounded-full" style={{ height: '55%', animation: 'bar-bounce 1.2s ease-in-out infinite 0.4s' }} />
-              </div>
-              <p className="text-white/80 text-xs font-medium tracking-wide">Buscando entregas...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Entregas disponíveis quando online */}
+        {/* ── ONLINE + entregas disponíveis ── */}
         {isOnline && safeDeliveries.length > 0 && (
-          <div className="mb-3">
-            {/* Lista de entregas disponíveis */}
-            <div className="space-y-2 max-h-[45vh] overflow-y-auto">
-              <div className="flex items-center justify-between px-1 mb-1">
-                <p className="text-white font-semibold text-sm drop-shadow">
-                  {safeDeliveries.length} entrega{safeDeliveries.length > 1 ? 's' : ''} disponível{safeDeliveries.length > 1 ? 'is' : ''}
-                </p>
-              </div>
-              {safeDeliveries.map((delivery) => (
-                  <div
-                    key={delivery.id}
-                    className="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl"
-                  >
-                    {/* Topo: distância + tempo + valor */}
-                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1">
-                          <Navigation className="h-3 w-3 text-gray-500" />
-                          <span className="text-xs text-gray-600 font-medium">
-                            {Number(delivery.distance_km).toFixed(1)} km
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1">
-                          <Clock className="h-3 w-3 text-gray-500" />
-                          <span className="text-xs text-gray-600 font-medium">
-                            ~{Math.ceil(Number(delivery.distance_km) * 3)} min
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-lg font-bold text-blue-600">
-                        R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto mb-3">
+            <p className="text-white font-semibold text-sm drop-shadow px-1 mb-1">
+              {safeDeliveries.length} entrega{safeDeliveries.length > 1 ? 's' : ''} disponível{safeDeliveries.length > 1 ? 'is' : ''}
+            </p>
+            {safeDeliveries.map((delivery) => (
+              <div
+                key={delivery.id}
+                className="bg-white/95 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl"
+              >
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1">
+                      <Navigation className="h-3 w-3 text-gray-500" />
+                      <span className="text-xs text-gray-600 font-medium">
+                        {Number(delivery.distance_km).toFixed(1)} km
                       </span>
                     </div>
-
-                    {/* Endereços */}
-                    <div className="px-4 py-3 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                          <Package className="h-3.5 w-3.5 text-green-600" />
-                        </div>
-                        <p className="text-sm text-gray-700 truncate flex-1">{delivery.pickup_address}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <MapPin className="h-3.5 w-3.5 text-red-500" />
-                        </div>
-                        <p className="text-sm text-gray-700 truncate flex-1">{delivery.delivery_address}</p>
-                      </div>
-                    </div>
-
-                    {/* Aceitar */}
-                    <div className="px-4 pb-3">
-                      <button
-                        onClick={() => handleAccept(delivery.id)}
-                        disabled={accepting}
-                        className="w-full h-10 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 active:scale-95 transition-transform"
-                      >
-                        {acceptingId === delivery.id ? 'Aceitando...' : 'Aceitar entrega'}
-                      </button>
+                    <div className="flex items-center gap-1 bg-gray-100 rounded-full px-2.5 py-1">
+                      <Clock className="h-3 w-3 text-gray-500" />
+                      <span className="text-xs text-gray-600 font-medium">
+                        ~{Math.ceil(Number(delivery.distance_km) * 3)} min
+                      </span>
                     </div>
                   </div>
-                ))}
+                  <span className="text-lg font-bold text-primary">
+                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                  </span>
+                </div>
+                <div className="px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Package className="h-3.5 w-3.5 text-green-600" />
+                    </div>
+                    <p className="text-sm text-gray-700 truncate flex-1">{delivery.pickup_address}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                      <MapPin className="h-3.5 w-3.5 text-red-500" />
+                    </div>
+                    <p className="text-sm text-gray-700 truncate flex-1">{delivery.delivery_address}</p>
+                  </div>
+                </div>
+                <div className="px-4 pb-3">
+                  <button
+                    onClick={() => handleAccept(delivery.id)}
+                    disabled={accepting}
+                    className="w-full h-10 rounded-xl bg-primary text-white font-semibold text-sm disabled:opacity-60 active:scale-95 transition-transform"
+                  >
+                    {acceptingId === delivery.id ? 'Aceitando...' : 'Aceitar entrega'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── CARD OPERACIONAL PRINCIPAL ── */}
+        {/* Online, buscando — card grande e vivo */}
+        {isOnline && safeDeliveries.length === 0 && !notificationDelivery && (
+          <div
+            className="w-full rounded-3xl overflow-hidden shadow-2xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(22,163,74,0.95) 0%, rgba(16,185,129,0.90) 100%)',
+              backdropFilter: 'blur(16px)',
+            }}
+          >
+            <div className="px-5 py-5 flex items-center gap-4">
+              {/* Animated status icon */}
+              <div className="relative flex-shrink-0">
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'rgba(255,255,255,0.2)' }}
+                >
+                  {/* Outer pulse */}
+                  <span
+                    className="absolute w-14 h-14 rounded-2xl"
+                    style={{
+                      background: 'rgba(255,255,255,0.15)',
+                      animation: 'op-pulse 2s ease-in-out infinite',
+                    }}
+                  />
+                  <Wifi className="h-7 w-7 text-white relative z-10" />
+                </div>
+              </div>
+
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+                  </span>
+                  <p className="text-white font-black text-base tracking-wide uppercase">Online</p>
+                </div>
+                <p className="text-white/80 text-sm font-medium">Buscando entregas...</p>
+                <div className="mt-2 flex gap-0.5 items-end h-4">
+                  {[0, 0.15, 0.3, 0.45, 0.6].map((delay, i) => (
+                    <span
+                      key={i}
+                      className="w-1.5 rounded-full bg-white/60"
+                      style={{
+                        height: '60%',
+                        animation: `bar-bounce 1.4s ease-in-out infinite ${delay}s`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Go offline button */}
+              <button
+                onClick={() => toggleAvailability(false)}
+                className="flex-shrink-0 bg-white/20 hover:bg-white/30 active:scale-90 transition-all rounded-xl px-3 py-2 text-white text-xs font-bold"
+              >
+                Pausar
+              </button>
             </div>
           </div>
         )}
 
-        {/* Ganhos card — compacto */}
-        <button
-          onClick={() => navigate('/driver/wallet')}
-          className="w-full bg-white/95 backdrop-blur-md rounded-2xl px-4 py-2.5 flex items-center gap-3 shadow-xl active:scale-[0.98] transition-transform"
-        >
-          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="h-3.5 w-3.5 text-primary" />
-          </div>
-          <div className="flex-1 flex items-baseline gap-1.5 min-w-0">
-            <span className="text-gray-400 text-xs whitespace-nowrap">Ganhos hoje</span>
-            <span className="text-gray-900 font-bold text-base leading-none">
-              R$ {earningsData.earnings.toFixed(2)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="bg-gray-100 rounded-full px-2.5 py-1">
-              <span className="text-gray-600 text-xs font-semibold">
-                {earningsData.count} {earningsData.count === 1 ? 'entrega' : 'entregas'}
-              </span>
+        {/* ── OFFLINE — card para ir online ── */}
+        {!isOnline && (
+          <div
+            className="w-full rounded-3xl overflow-hidden shadow-2xl"
+            style={{
+              background: 'rgba(17,24,39,0.88)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="px-5 py-5 flex items-center gap-4">
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                <WifiOff className="h-7 w-7 text-gray-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white font-black text-base">Offline</p>
+                <p className="text-white/50 text-sm">Fique online para receber entregas</p>
+              </div>
+              <button
+                onClick={() => toggleAvailability(true)}
+                className="flex-shrink-0 bg-green-500 hover:bg-green-400 active:scale-90 transition-all rounded-xl px-4 py-2.5 text-white text-sm font-black shadow-lg shadow-green-500/30"
+              >
+                Ir online
+              </button>
             </div>
-            <ChevronRight className="h-4 w-4 text-gray-300" />
           </div>
-        </button>
+        )}
       </div>
 
       {/* ── DRAWER ── */}
@@ -531,8 +559,12 @@ export default function DriverDashboard() {
           100% { transform: scale(2.2); opacity: 0;   }
         }
         @keyframes bar-bounce {
-          0%, 100% { transform: scaleY(1);   }
-          50%       { transform: scaleY(2.2); }
+          0%, 100% { transform: scaleY(0.4); }
+          50%       { transform: scaleY(1);   }
+        }
+        @keyframes op-pulse {
+          0%, 100% { transform: scale(1);   opacity: 1; }
+          50%       { transform: scale(1.08); opacity: 0.7; }
         }
       `}</style>
     </div>
