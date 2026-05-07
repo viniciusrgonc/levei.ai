@@ -439,63 +439,88 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* ── CARD OPERACIONAL PRINCIPAL ── */}
-        {/* Online, buscando — card grande e vivo */}
+        {/* ── CARD OPERACIONAL — ONLINE buscando ── */}
         {isOnline && safeDeliveries.length === 0 && !notificationDelivery && (
           <div
-            className="w-full rounded-3xl overflow-hidden shadow-2xl"
+            className="w-full rounded-3xl shadow-2xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(22,163,74,0.95) 0%, rgba(16,185,129,0.90) 100%)',
-              backdropFilter: 'blur(16px)',
+              background: 'rgba(10,16,28,0.82)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.09)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset',
             }}
           >
             <div className="px-5 py-5 flex items-center gap-4">
-              {/* Animated status icon */}
-              <div className="relative flex-shrink-0">
-                <div
-                  className="w-14 h-14 rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.2)' }}
-                >
-                  {/* Outer pulse */}
-                  <span
-                    className="absolute w-14 h-14 rounded-2xl"
-                    style={{
-                      background: 'rgba(255,255,255,0.15)',
-                      animation: 'op-pulse 2s ease-in-out infinite',
-                    }}
-                  />
-                  <Wifi className="h-7 w-7 text-white relative z-10" />
-                </div>
+
+              {/* Radar icon — 3 anéis pulsando em verde */}
+              <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
+                {/* Anel externo */}
+                <span style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  border: '1.5px solid rgba(34,197,94,0.25)',
+                  animation: 'radar-ring 2.4s ease-out infinite 0s',
+                }} />
+                {/* Anel médio */}
+                <span style={{
+                  position: 'absolute', inset: 6, borderRadius: '50%',
+                  border: '1.5px solid rgba(34,197,94,0.40)',
+                  animation: 'radar-ring 2.4s ease-out infinite 0.6s',
+                }} />
+                {/* Anel interno */}
+                <span style={{
+                  position: 'absolute', inset: 12, borderRadius: '50%',
+                  border: '2px solid rgba(34,197,94,0.60)',
+                  animation: 'radar-ring 2.4s ease-out infinite 1.2s',
+                }} />
+                {/* Ponto central */}
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: '#22c55e',
+                  boxShadow: '0 0 10px rgba(34,197,94,0.8), 0 0 20px rgba(34,197,94,0.4)',
+                  position: 'relative', zIndex: 2,
+                }} />
               </div>
 
-              {/* Text */}
+              {/* Texto */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
                   </span>
-                  <p className="text-white font-black text-base tracking-wide uppercase">Online</p>
+                  <p className="text-white font-bold text-sm tracking-widest uppercase">Online</p>
                 </div>
-                <p className="text-white/80 text-sm font-medium">Buscando entregas...</p>
-                <div className="mt-2 flex gap-0.5 items-end h-4">
-                  {[0, 0.15, 0.3, 0.45, 0.6].map((delay, i) => (
+                <p className="text-white/55 text-sm leading-tight">Buscando entregas próximas...</p>
+
+                {/* Barras de sinal animadas */}
+                <div className="mt-2.5 flex gap-[3px] items-end h-3.5">
+                  {[0.3, 0.55, 0.8, 0.55, 0.3, 0.55, 0.8].map((h, i) => (
                     <span
                       key={i}
-                      className="w-1.5 rounded-full bg-white/60"
                       style={{
-                        height: '60%',
-                        animation: `bar-bounce 1.4s ease-in-out infinite ${delay}s`,
+                        width: 3,
+                        height: `${h * 100}%`,
+                        borderRadius: 2,
+                        background: `rgba(34,197,94,${0.4 + i * 0.05})`,
+                        animation: `signal-bar 1.6s ease-in-out infinite ${i * 0.12}s`,
                       }}
                     />
                   ))}
                 </div>
               </div>
 
-              {/* Go offline button */}
+              {/* Botão Pausar */}
               <button
                 onClick={() => toggleAvailability(false)}
-                className="flex-shrink-0 bg-white/20 hover:bg-white/30 active:scale-90 transition-all rounded-xl px-3 py-2 text-white text-xs font-bold"
+                className="flex-shrink-0 active:scale-90 transition-all text-xs font-semibold"
+                style={{
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'rgba(255,255,255,0.65)',
+                  borderRadius: 12,
+                  padding: '8px 14px',
+                }}
               >
                 Pausar
               </button>
@@ -503,30 +528,51 @@ export default function DriverDashboard() {
           </div>
         )}
 
-        {/* ── OFFLINE — card para ir online ── */}
+        {/* ── CARD OPERACIONAL — OFFLINE ── */}
         {!isOnline && (
           <div
-            className="w-full rounded-3xl overflow-hidden shadow-2xl"
+            className="w-full rounded-3xl shadow-2xl"
             style={{
-              background: 'rgba(17,24,39,0.88)',
-              backdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(10,16,28,0.82)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04) inset',
             }}
           >
             <div className="px-5 py-5 flex items-center gap-4">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.06)' }}
-              >
-                <WifiOff className="h-7 w-7 text-gray-400" />
+
+              {/* Ícone offline — círculo apagado */}
+              <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
+                <span style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  border: '1.5px solid rgba(255,255,255,0.08)',
+                }} />
+                <span style={{
+                  position: 'absolute', inset: 8, borderRadius: '50%',
+                  border: '1.5px solid rgba(255,255,255,0.05)',
+                }} />
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.20)',
+                }} />
               </div>
+
               <div className="flex-1 min-w-0">
-                <p className="text-white font-black text-base">Offline</p>
-                <p className="text-white/50 text-sm">Fique online para receber entregas</p>
+                <p className="text-white/90 font-bold text-sm tracking-widest uppercase mb-0.5">Offline</p>
+                <p className="text-white/40 text-sm">Ative para receber entregas</p>
               </div>
+
+              {/* Botão Ir online */}
               <button
                 onClick={() => toggleAvailability(true)}
-                className="flex-shrink-0 bg-green-500 hover:bg-green-400 active:scale-90 transition-all rounded-xl px-4 py-2.5 text-white text-sm font-black shadow-lg shadow-green-500/30"
+                className="flex-shrink-0 active:scale-90 transition-all text-sm font-bold text-white"
+                style={{
+                  background: 'rgba(34,197,94,0.90)',
+                  borderRadius: 14,
+                  padding: '10px 18px',
+                  boxShadow: '0 4px 16px rgba(34,197,94,0.35), 0 0 0 1px rgba(34,197,94,0.5) inset',
+                }}
               >
                 Ir online
               </button>
@@ -571,13 +617,14 @@ export default function DriverDashboard() {
           75%  { transform: scale(2.2); opacity: 0;   }
           100% { transform: scale(2.2); opacity: 0;   }
         }
-        @keyframes bar-bounce {
-          0%, 100% { transform: scaleY(0.4); }
-          50%       { transform: scaleY(1);   }
+        @keyframes radar-ring {
+          0%   { transform: scale(0.6); opacity: 0.9; }
+          80%  { transform: scale(1.0); opacity: 0;   }
+          100% { transform: scale(1.0); opacity: 0;   }
         }
-        @keyframes op-pulse {
-          0%, 100% { transform: scale(1);   opacity: 1; }
-          50%       { transform: scale(1.08); opacity: 0.7; }
+        @keyframes signal-bar {
+          0%, 100% { transform: scaleY(0.45); opacity: 0.4; }
+          50%       { transform: scaleY(1.0);  opacity: 1.0; }
         }
       `}</style>
     </div>
