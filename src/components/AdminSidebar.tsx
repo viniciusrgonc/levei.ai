@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent, LogOut, Map, Star, Gift } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent, LogOut, Map, Star, Gift, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import leveiLogo from '@/assets/levei-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -81,6 +81,16 @@ const menuItems = [
     title: 'Loja de Pontos',
     url: '/admin/points-store',
     icon: ShoppingBag,
+  },
+  {
+    title: 'Gerenciar Pontos',
+    url: '/admin/points-manager',
+    icon: Gift,
+  },
+  {
+    title: 'Campanhas',
+    url: '/admin/campaigns',
+    icon: Zap,
   },
   {
     title: 'Tarifas',

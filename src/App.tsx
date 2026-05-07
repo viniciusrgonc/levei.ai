@@ -53,6 +53,8 @@ import AdminPointsStore from "./pages/admin/AdminPointsStore";
 import AdminPricingManager from "./pages/admin/AdminPricingManager";
 import AdminReviews from "./pages/admin/AdminReviews";
 import AdminReferrals from "./pages/admin/AdminReferrals";
+import AdminPointsManager from "./pages/admin/AdminPointsManager";
+import AdminCampaigns from "./pages/admin/AdminCampaigns";
 import DriverPointsStore from "./pages/driver/DriverPointsStore";
 import DriverPendingApproval from "./pages/driver/DriverPendingApproval";
 import DeliveryChat from "./pages/DeliveryChat";
@@ -447,6 +449,22 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminReferrals />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/points-manager"
+              element={
+                <AdminRoute>
+                  <AdminPointsManager />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/campaigns"
+              element={
+                <AdminRoute>
+                  <AdminCampaigns />
                 </AdminRoute>
               }
             />
