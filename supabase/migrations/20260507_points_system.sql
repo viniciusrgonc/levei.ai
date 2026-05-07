@@ -20,8 +20,8 @@ ALTER TABLE public.point_adjustments ENABLE ROW LEVEL SECURITY;
 -- Admins: acesso total
 CREATE POLICY "admins_all_point_adjustments"
   ON public.point_adjustments FOR ALL
-  USING   (auth.uid() IN (SELECT user_id FROM public.admins))
-  WITH CHECK (auth.uid() IN (SELECT user_id FROM public.admins));
+  USING   (auth.uid() IN (SELECT user_id FROM public.user_roles WHERE role = 'admin'))
+  WITH CHECK (auth.uid() IN (SELECT user_id FROM public.user_roles WHERE role = 'admin'));
 
 -- Motoboys: ler apenas os próprios
 CREATE POLICY "drivers_read_own_adjustments"
@@ -49,8 +49,8 @@ ALTER TABLE public.reward_campaigns ENABLE ROW LEVEL SECURITY;
 -- Admins: acesso total
 CREATE POLICY "admins_all_reward_campaigns"
   ON public.reward_campaigns FOR ALL
-  USING   (auth.uid() IN (SELECT user_id FROM public.admins))
-  WITH CHECK (auth.uid() IN (SELECT user_id FROM public.admins));
+  USING   (auth.uid() IN (SELECT user_id FROM public.user_roles WHERE role = 'admin'))
+  WITH CHECK (auth.uid() IN (SELECT user_id FROM public.user_roles WHERE role = 'admin'));
 
 -- Todos autenticados: ver campanhas ativas
 CREATE POLICY "authenticated_read_active_campaigns"
