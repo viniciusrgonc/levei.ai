@@ -60,10 +60,7 @@ export const useAcceptDelivery = ({
   };
 
   const acceptDelivery = useCallback(async (deliveryId: string, driverId: string) => {
-    if (loading) {
-      console.log('[useAcceptDelivery] Already processing, ignoring duplicate call');
-      return { success: false };
-    }
+    if (loading) return { success: false };
 
     setLoading(true);
     setAcceptingId(deliveryId);
@@ -88,8 +85,6 @@ export const useAcceptDelivery = ({
         onSessionExpired?.();
         return { success: false };
       }
-
-      console.log('[useAcceptDelivery] Calling accept-delivery function', { deliveryId, driverId });
 
       // Call edge function with auth header
       const { data, error: invokeError } = await supabase.functions.invoke('accept-delivery', {
@@ -133,9 +128,6 @@ export const useAcceptDelivery = ({
         return { success: false };
       }
 
-      // Success (including idempotent case)
-      console.log('[useAcceptDelivery] Delivery accepted successfully');
-      
       toast({
         title: '🎉 Entrega aceita!',
         description: response.message || 'Vá até o local de coleta.',

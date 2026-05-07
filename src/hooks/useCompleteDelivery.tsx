@@ -90,8 +90,6 @@ export const useCompleteDelivery = ({
             title: 'Aviso',
             description: response.message || 'Não foi possível finalizar a entrega.',
           });
-        } else if (response.ui_behavior === 'silent') {
-          console.log('Silent error:', response.code, response.message);
         }
         // Don't show error toast for silent or already-handled cases
         return { success: false, error: response.message };

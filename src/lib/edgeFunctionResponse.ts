@@ -115,8 +115,7 @@ export function handleResponseUI(
   // Handle errors based on ui_behavior
   switch (ui_behavior) {
     case 'silent':
-      // Don't show anything, just log
-      console.log(`[EdgeFunction] Silent error: ${code} - ${message}`);
+      // Silent — no UI feedback
       break;
 
     case 'block':

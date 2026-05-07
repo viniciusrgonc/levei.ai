@@ -31,10 +31,7 @@ export function usePushSubscription(userId: string | undefined) {
 
         // Pede permissão e cria subscription
         const permission = await Notification.requestPermission()
-        if (permission !== 'granted') {
-          console.log('[usePushSubscription] Permissão negada')
-          return
-        }
+        if (permission !== 'granted') return
 
         const sub = await registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -43,7 +40,6 @@ export function usePushSubscription(userId: string | undefined) {
 
         await saveSubscription(sub, userId!)
         subscribed.current = true
-        console.log('[usePushSubscription] Inscrito com sucesso')
       } catch (err) {
         console.error('[usePushSubscription] Erro ao subscrever:', err)
       }

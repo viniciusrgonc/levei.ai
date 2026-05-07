@@ -1,10 +1,9 @@
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 interface State {
@@ -19,66 +18,88 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
-    console.error('ErrorBoundary caught error:', error);
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary error details:', {
-      error: error.toString(),
-      errorInfo,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack
-    });
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[ErrorBoundary]', error.message, info.componentStack?.slice(0, 300));
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-          <Card className="max-w-2xl w-full">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-6 w-6 text-destructive" />
-                <CardTitle>Algo deu errado</CardTitle>
-              </div>
-              <CardDescription>
-                Ocorreu um erro ao renderizar esta página
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {this.state.error && (
-                <div className="p-4 bg-destructive/10 rounded-lg">
-                  <p className="text-sm font-mono text-destructive">
-                    {this.state.error.message}
-                  </p>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    this.setState({ hasError: false, error: undefined });
-                    window.location.reload();
-                  }}
-                >
-                  Recarregar Página
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    this.setState({ hasError: false, error: undefined });
-                    window.location.href = '/';
-                  }}
-                >
-                  Voltar ao Início
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center gap-5">
+          <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
+            <AlertTriangle className="h-10 w-10 text-red-500" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h1 className="text-xl font-bold text-gray-900">Algo deu errado</h1>
+            <p className="text-sm text-gray-500">
+              Ocorreu um erro inesperado. Tente recarregar a página.
+            </p>
+            {import.meta.env.DEV && this.state.error && (
+              <p className="text-xs font-mono text-red-500 bg-red-50 rounded-xl px-3 py-2 mt-2 text-left break-all">
+                {this.state.error.message}
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: undefined });
+                window.location.reload();
+              }}
+              className="w-full h-12 rounded-2xl bg-primary text-white font-bold text-sm"
+            >
+              Recarregar
+            </button>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: undefined });
+                window.location.href = '/';
+              }}
+              className="w-full h-12 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold text-sm"
+            >
+              Voltar ao início
+            </button>
+          </div>
         </div>
       );
     }
 
     return this.props.children;
   }
+}
+
+/** Wrapper funcional para uso inline em telas específicas */
+export function PageError({
+  message = 'Não foi possível carregar esta página.',
+  onRetry,
+}: {
+  message?: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-16 text-center gap-4">
+      <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+        <AlertTriangle className="h-7 w-7 text-red-500" />
+      </div>
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-gray-800">Erro ao carregar</p>
+        <p className="text-xs text-gray-500">{message}</p>
+      </div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="h-10 px-6 rounded-xl bg-primary text-white font-semibold text-sm"
+        >
+          Tentar novamente
+        </button>
+      )}
+    </div>
+  );
 }

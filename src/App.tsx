@@ -58,10 +58,12 @@ import DriverPendingApproval from "./pages/driver/DriverPendingApproval";
 import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
+  <ErrorBoundary>
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <PwaUpdateHandler />
@@ -454,6 +456,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

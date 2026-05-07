@@ -23,17 +23,7 @@ interface DeliveryCardProps {
 }
 
 export function DeliveryCard({ delivery, actionButton, onNavigate }: DeliveryCardProps) {
-  // Safety check
-  if (!delivery) {
-    console.error('DeliveryCard: delivery prop is undefined');
-    return null;
-  }
-
-  console.log('DeliveryCard render:', {
-    deliveryId: delivery.id,
-    actionButtonType: typeof actionButton,
-    onNavigateType: typeof onNavigate
-  });
+  if (!delivery) return null;
 
   const statusConfig = getStatusConfig(delivery.status as any);
 

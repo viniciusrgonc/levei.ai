@@ -130,7 +130,7 @@ export default function PickupInProgress() {
   });
   const driverId = driverData?.id ?? null;
 
-  const { data: delivery, isLoading: loading } = useQuery<Delivery>({
+  const { data: delivery, isLoading: loading, error: deliveryError } = useQuery<Delivery>({
     queryKey: ['pickup-delivery', deliveryId],
     queryFn: async () => {
       const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId!).single();
@@ -143,6 +143,20 @@ export default function PickupInProgress() {
     staleTime: 15 * 1000,
     retry: false,
   });
+
+  // Redireciona se status mudou (ex: entrega já foi para delivery)
+  useEffect(() => {
+    if (!deliveryError) return;
+    const msg = (deliveryError as Error).message ?? '';
+    if (msg.startsWith('wrong-status:')) {
+      const status = msg.replace('wrong-status:', '');
+      if (status === 'picked_up' || status === 'delivering') {
+        navigate(`/driver/delivery/${deliveryId}`, { replace: true });
+      } else {
+        navigate('/driver/dashboard', { replace: true });
+      }
+    }
+  }, [deliveryError, deliveryId, navigate]);
 
   // ── Hooks ─────────────────────────────────────────────────────────────
   const { pickupDelivery, loading: pickingUp } = usePickupDelivery({
@@ -227,6 +241,25 @@ export default function PickupInProgress() {
           <Skeleton className="h-20 rounded-2xl" />
           <Skeleton className="h-14 rounded-2xl" />
         </div>
+      </div>
+    );
+  }
+
+  // Erro não-status (acesso negado, não encontrada) — mostra tela limpa
+  if (deliveryError && !(deliveryError as Error).message?.startsWith('wrong-status:')) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+          <AlertCircle className="h-8 w-8 text-red-500" />
+        </div>
+        <p className="text-base font-bold text-gray-900">Entrega indisponível</p>
+        <p className="text-sm text-gray-500">Esta entrega não está mais disponível para você.</p>
+        <button
+          onClick={() => navigate('/driver/dashboard', { replace: true })}
+          className="h-11 px-8 rounded-2xl bg-primary text-white font-bold text-sm"
+        >
+          Voltar ao início
+        </button>
       </div>
     );
   }

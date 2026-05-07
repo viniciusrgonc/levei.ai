@@ -28,19 +28,9 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
   const RECONNECT_DELAY = 3000;
   const DEBOUNCE_DELAY = 500; // 500ms para localizações
 
-  console.log('[Realtime Location] Hook initialized:', {
-    deliveryId,
-    enabled,
-    connectionStatus,
-    currentLocationExists: !!currentLocation,
-    historyLength: locationHistory.length,
-    timestamp: new Date().toISOString(),
-  });
-
   const fetchInitialLocation = useCallback(async () => {
     if (!deliveryId || !enabled) return;
 
-    console.log('[Location] Fetching initial location for delivery:', deliveryId);
     setIsLoading(true);
 
     try {
@@ -56,14 +46,7 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
       if (error) {
         console.error('[Location] Error fetching location:', error);
       } else if (data) {
-        console.log('[Location] ✅ Initial location fetched:', {
-          lat: data.latitude,
-          lng: data.longitude,
-          timestamp: data.created_at,
-        });
         setCurrentLocation(data);
-      } else {
-        console.log('[Location] ⚠️ No location found yet');
       }
 
       // Fetch location history
@@ -76,7 +59,6 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
       if (historyError) {
         console.error('[Location] Error fetching history:', historyError);
       } else if (historyData) {
-        console.log('[Location] ✅ Location history fetched:', historyData.length, 'points');
         setLocationHistory(historyData);
       }
     } catch (error) {
@@ -87,16 +69,7 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
   }, [deliveryId, enabled]);
 
   const setupChannel = useCallback(() => {
-    if (!deliveryId || !enabled) {
-      console.log('[Location] Channel setup skipped (disabled or no deliveryId)');
-      return null;
-    }
-
-    console.log('[Location] Setting up realtime channel...', {
-      deliveryId,
-      attempt: reconnectAttemptsRef.current + 1,
-      timestamp: new Date().toISOString(),
-    });
+    if (!deliveryId || !enabled) return null;
 
     setConnectionStatus('CONNECTING');
 
@@ -113,12 +86,6 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
           filter: `delivery_id=eq.${deliveryId}`,
         },
         (payload) => {
-          console.log('[Location] 📍 New location received:', {
-            lat: payload.new.latitude,
-            lng: payload.new.longitude,
-            timestamp: payload.new.created_at,
-          });
-
           const newLocation = payload.new as DriverLocation;
 
           // Debounce location updates
@@ -139,24 +106,15 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
         }
       )
       .subscribe((status, error) => {
-        console.log('[Location] Subscription status:', {
-          status,
-          error,
-          channelName,
-          timestamp: new Date().toISOString(),
-        });
-
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('CONNECTED');
           reconnectAttemptsRef.current = 0;
-          console.log('[Location] ✅ Successfully subscribed to location updates');
         } else if (status === 'CLOSED') {
           setConnectionStatus('DISCONNECTED');
-          console.log('[Location] ⚠️ Channel closed, attempting reconnect...');
           attemptReconnect();
         } else if (status === 'CHANNEL_ERROR') {
           setConnectionStatus('ERROR');
-          console.error('[Location] ❌ Channel error:', error);
+          console.error('[Location] Channel error:', error);
           attemptReconnect();
         }
       });
@@ -166,13 +124,11 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
 
   const attemptReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-      console.error('[Location] ❌ Max reconnection attempts reached');
       setConnectionStatus('ERROR');
       return;
     }
 
     reconnectAttemptsRef.current++;
-    console.log(`[Location] 🔄 Reconnecting... (attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
 
     reconnectTimeoutRef.current = setTimeout(() => {
       if (channelRef.current) {
@@ -183,8 +139,6 @@ export function useRealtimeDriverLocation(deliveryId: string, enabled = true) {
   }, [setupChannel]);
 
   const cleanup = useCallback(() => {
-    console.log('[Location] 🧹 Cleaning up...');
-
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;

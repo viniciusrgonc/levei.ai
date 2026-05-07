@@ -140,7 +140,7 @@ export default function DeliveryInProgress() {
   });
   const driverId = driverData?.id ?? null;
 
-  const { data: delivery, isLoading: loading } = useQuery<Delivery>({
+  const { data: delivery, isLoading: loading, error: deliveryError } = useQuery<Delivery>({
     queryKey: ['delivery-in-progress', deliveryId],
     queryFn: async () => {
       const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId!).single();
@@ -152,6 +152,22 @@ export default function DeliveryInProgress() {
     enabled: !!deliveryId && !!driverId,
     staleTime: 15 * 1000, retry: false,
   });
+
+  // Redireciona se status mudou enquanto na tela
+  useEffect(() => {
+    if (!deliveryError) return;
+    const msg = (deliveryError as Error).message ?? '';
+    if (msg.startsWith('wrong-status:')) {
+      const status = msg.replace('wrong-status:', '');
+      if (status === 'returning') {
+        navigate(`/driver/return/${deliveryId}`, { replace: true });
+      } else if (status === 'accepted') {
+        navigate(`/driver/pickup/${deliveryId}`, { replace: true });
+      } else {
+        navigate('/driver/dashboard', { replace: true });
+      }
+    }
+  }, [deliveryError, deliveryId, navigate]);
 
   // ── Hooks ─────────────────────────────────────────────────────────────
   const destination: [number, number] | null = delivery
@@ -236,21 +252,16 @@ export default function DeliveryInProgress() {
   const handleCompleteDelivery = async () => {
     if (!deliveryId || !driverId || !delivery) return;
     if (delivery.requires_return) {
-      console.log('[DeliveryInProgress] Atualizando status para returning...');
-      const { error, data: updated } = await supabase
+      const { error } = await supabase
         .from('deliveries')
         .update({ status: 'returning' })
-        .eq('id', deliveryId)
-        .select('status')
-        .single();
+        .eq('id', deliveryId);
 
       if (error) {
-        console.error('[DeliveryInProgress] Erro ao atualizar status:', error);
         toast({ title: 'Erro', description: 'Não foi possível confirmar o retorno', variant: 'destructive' });
         return;
       }
 
-      console.log('[DeliveryInProgress] Status atualizado para:', updated?.status);
       navigate(`/driver/return/${deliveryId}`, { replace: true });
     } else {
       await completeDelivery(deliveryId, driverId, Number(delivery.price));
@@ -301,6 +312,25 @@ export default function DeliveryInProgress() {
           <Skeleton className="h-16 rounded-2xl" />
           <Skeleton className="h-14 rounded-2xl" />
         </div>
+      </div>
+    );
+  }
+
+  // Erro não-status (acesso negado, não encontrada)
+  if (deliveryError && !(deliveryError as Error).message?.startsWith('wrong-status:')) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+          <AlertCircle className="h-8 w-8 text-red-500" />
+        </div>
+        <p className="text-base font-bold text-gray-900">Entrega indisponível</p>
+        <p className="text-sm text-gray-500">Esta entrega não está mais disponível.</p>
+        <button
+          onClick={() => navigate('/driver/dashboard', { replace: true })}
+          className="h-11 px-8 rounded-2xl bg-primary text-white font-bold text-sm"
+        >
+          Voltar ao início
+        </button>
       </div>
     );
   }
