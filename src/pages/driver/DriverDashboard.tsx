@@ -232,7 +232,7 @@ export default function DriverDashboard() {
       toast({ variant: 'destructive', title: 'Erro ao atualizar disponibilidade' });
     } else {
       queryClient.setQueryData(['driver', user?.id], { ...driver, is_available: available });
-      toast({ title: available ? 'Você está online!' : 'Você está offline' });
+      // Sem toast — a mudança visual no header + card já comunica o estado
     }
   };
 
@@ -442,59 +442,55 @@ export default function DriverDashboard() {
         {/* ── CARD OPERACIONAL — ONLINE buscando ── */}
         {isOnline && safeDeliveries.length === 0 && !notificationDelivery && (
           <div
-            className="w-full rounded-3xl shadow-2xl"
+            className="w-full rounded-2xl"
             style={{
-              background: 'rgba(10,16,28,0.82)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255,255,255,0.09)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset',
+              background: 'rgba(8,14,24,0.62)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.07)',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.30)',
             }}
           >
-            <div className="px-5 py-5 flex items-center gap-4">
+            <div className="px-4 py-3 flex items-center gap-3.5">
 
-              {/* Radar icon — 3 anéis pulsando em verde */}
-              <div className="relative flex-shrink-0 w-14 h-14 flex items-center justify-center">
-                {/* Anel externo */}
+              {/* Radar icon — 15% menor (w-12 h-12) */}
+              <div className="relative flex-shrink-0 w-12 h-12 flex items-center justify-center">
                 <span style={{
                   position: 'absolute', inset: 0, borderRadius: '50%',
-                  border: '1.5px solid rgba(34,197,94,0.25)',
+                  border: '1.5px solid rgba(34,197,94,0.20)',
                   animation: 'radar-ring 2.4s ease-out infinite 0s',
                 }} />
-                {/* Anel médio */}
                 <span style={{
-                  position: 'absolute', inset: 6, borderRadius: '50%',
-                  border: '1.5px solid rgba(34,197,94,0.40)',
+                  position: 'absolute', inset: 5, borderRadius: '50%',
+                  border: '1.5px solid rgba(34,197,94,0.35)',
                   animation: 'radar-ring 2.4s ease-out infinite 0.6s',
                 }} />
-                {/* Anel interno */}
                 <span style={{
-                  position: 'absolute', inset: 12, borderRadius: '50%',
-                  border: '2px solid rgba(34,197,94,0.60)',
+                  position: 'absolute', inset: 11, borderRadius: '50%',
+                  border: '2px solid rgba(34,197,94,0.55)',
                   animation: 'radar-ring 2.4s ease-out infinite 1.2s',
                 }} />
-                {/* Ponto central */}
                 <span style={{
-                  width: 10, height: 10, borderRadius: '50%',
+                  width: 8, height: 8, borderRadius: '50%',
                   background: '#22c55e',
-                  boxShadow: '0 0 10px rgba(34,197,94,0.8), 0 0 20px rgba(34,197,94,0.4)',
+                  boxShadow: '0 0 8px rgba(34,197,94,0.7), 0 0 16px rgba(34,197,94,0.3)',
                   position: 'relative', zIndex: 2,
                 }} />
               </div>
 
               {/* Texto */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="relative flex h-2 w-2">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className="relative flex h-1.5 w-1.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
                   </span>
-                  <p className="text-white font-bold text-sm tracking-widest uppercase">Online</p>
+                  <p className="text-white/90 font-bold text-xs tracking-widest uppercase">Online</p>
                 </div>
-                <p className="text-white/55 text-sm leading-tight">Buscando entregas próximas...</p>
+                <p className="text-white/45 text-[13px] leading-tight">Buscando entregas</p>
 
-                {/* Barras de sinal animadas */}
-                <div className="mt-2.5 flex gap-[3px] items-end h-3.5">
+                {/* Barras de sinal */}
+                <div className="mt-2 flex gap-[3px] items-end h-3">
                   {[0.3, 0.55, 0.8, 0.55, 0.3, 0.55, 0.8].map((h, i) => (
                     <span
                       key={i}
@@ -502,7 +498,7 @@ export default function DriverDashboard() {
                         width: 3,
                         height: `${h * 100}%`,
                         borderRadius: 2,
-                        background: `rgba(34,197,94,${0.4 + i * 0.05})`,
+                        background: `rgba(34,197,94,${0.35 + i * 0.05})`,
                         animation: `signal-bar 1.6s ease-in-out infinite ${i * 0.12}s`,
                       }}
                     />
@@ -510,16 +506,19 @@ export default function DriverDashboard() {
                 </div>
               </div>
 
-              {/* Botão Pausar */}
+              {/* Botão Pausar — menor e mais elegante */}
               <button
                 onClick={() => toggleAvailability(false)}
-                className="flex-shrink-0 active:scale-90 transition-all text-xs font-semibold"
+                className="flex-shrink-0 active:scale-90 transition-all"
                 style={{
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  color: 'rgba(255,255,255,0.65)',
-                  borderRadius: 12,
-                  padding: '8px 14px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  color: 'rgba(255,255,255,0.50)',
+                  borderRadius: 10,
+                  padding: '5px 11px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  letterSpacing: '0.02em',
                 }}
               >
                 Pausar

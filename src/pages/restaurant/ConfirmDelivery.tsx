@@ -196,7 +196,7 @@ export default function ConfirmDelivery() {
                 <span className="text-sm text-gray-400">—</span>
               ) : (
                 <span className="text-base font-bold text-green-600">
-                  R$ {pricing.total.toFixed(2)}
+                  R$ {pricing.final_price.toFixed(2)}
                 </span>
               )}
             </div>
@@ -230,32 +230,41 @@ export default function ConfirmDelivery() {
           <div className="bg-white rounded-2xl shadow-sm p-4 space-y-2">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Composição do valor</h3>
             <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Taxa base ({distanceKm} km)</span>
-                <span className="font-medium">R$ {pricing.base_price.toFixed(2)}</span>
-              </div>
-              {pricing.product_addon > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Adicional por produto</span>
-                  <span className="font-medium">R$ {pricing.product_addon.toFixed(2)}</span>
-                </div>
-              )}
-              {pricing.return_fee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Taxa de retorno</span>
-                  <span className="font-medium">R$ {pricing.return_fee.toFixed(2)}</span>
-                </div>
-              )}
-              {pricing.dynamic_fee > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tarifa dinâmica ({pricing.dynamic_multiplier}×)</span>
-                  <span className="font-medium text-orange-600">R$ {pricing.dynamic_fee.toFixed(2)}</span>
-                </div>
-              )}
-              <div className="border-t border-gray-100 pt-2 flex justify-between text-sm font-bold">
-                <span>Total</span>
-                <span className="text-green-600">R$ {pricing.total.toFixed(2)}</span>
-              </div>
+              {(() => {
+                const dynamicFee = pricing.dynamic_enabled && pricing.dynamic_multiplier > 1
+                  ? parseFloat((pricing.final_price - pricing.base_price - pricing.product_addon - pricing.return_price).toFixed(2))
+                  : 0;
+                return (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Taxa base ({distanceKm} km)</span>
+                      <span className="font-medium">R$ {pricing.base_price.toFixed(2)}</span>
+                    </div>
+                    {pricing.product_addon > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Adicional por produto</span>
+                        <span className="font-medium">R$ {pricing.product_addon.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricing.return_price > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Taxa de retorno</span>
+                        <span className="font-medium">R$ {pricing.return_price.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {dynamicFee > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Tarifa dinâmica ({pricing.dynamic_multiplier}×)</span>
+                        <span className="font-medium text-orange-600">R$ {dynamicFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-gray-100 pt-2 flex justify-between text-sm font-bold">
+                      <span>Total</span>
+                      <span className="text-green-600">R$ {pricing.final_price.toFixed(2)}</span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -283,7 +292,7 @@ export default function ConfirmDelivery() {
         >
           <CheckCircle2 className="h-5 w-5" />
           {pricing && !pricingLoading
-            ? `Criar entrega · R$ ${pricing.total.toFixed(2)}`
+            ? `Criar entrega · R$ ${pricing.final_price.toFixed(2)}`
             : 'Criar entrega completa'}
         </button>
         <p className="text-center text-xs text-gray-400 mt-2">
