@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent, LogOut, Map, Star } from 'lucide-react';
+import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, ShoppingBag, DollarSign, BarChart3, MapPin, Layers, Percent, LogOut, Map, Star, Gift } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import leveiLogo from '@/assets/levei-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -91,6 +91,11 @@ const menuItems = [
     title: 'Avaliações',
     url: '/admin/reviews',
     icon: Star,
+  },
+  {
+    title: 'Indicações',
+    url: '/admin/referrals',
+    icon: Gift,
   },
   {
     title: 'Disputas',

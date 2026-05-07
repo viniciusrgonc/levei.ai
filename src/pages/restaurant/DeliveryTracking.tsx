@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Phone, MessageCircle, Navigation, Clock, CheckCircle2, Package, Star, X, XCircle, ChevronRight } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, MessageCircle, Navigation, Clock, CheckCircle2, Package, Star, X, XCircle, ChevronRight, AlertTriangle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useRealtimeDriverLocation } from '@/hooks/useRealtimeDriverLocation';
 import DeliveryMap from '@/components/DeliveryMap';
@@ -11,6 +11,7 @@ import { getGoogleMapsLink, formatAddress } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RatingModal } from '@/components/RatingModal';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { OpenDisputeModal } from '@/components/OpenDisputeModal';
 import { BottomNav } from '@/components/BottomNav';
 import leveiLogo from '@/assets/levei-logo.png';
 
@@ -41,7 +42,7 @@ type Driver = {
   vehicle_type: string;
   license_plate: string;
   rating: number;
-  profiles: { full_name: string; phone: string | null };
+  profiles: { full_name: string; phone: string | null; avatar_url: string | null };
 };
 
 const vehicleLabel: Record<string, string> = {
@@ -60,7 +61,7 @@ async function fetchDelivery(deliveryId: string): Promise<Delivery> {
 async function fetchDriver(driverId: string): Promise<Driver> {
   const { data, error } = await supabase
     .from('drivers')
-    .select('*, profiles!drivers_user_id_fkey (full_name, phone)')
+    .select('*, profiles!drivers_user_id_fkey (full_name, phone, avatar_url)')
     .eq('id', driverId).single();
   if (error || !data) throw new Error('Entregador não encontrado');
   return data as any as Driver;
@@ -81,9 +82,10 @@ export default function DeliveryTracking() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [autoRatingShown, setAutoRatingShown] = useState(false);
+  const [showRatingModal, setShowRatingModal]   = useState(false);
+  const [showCancelModal, setShowCancelModal]   = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [autoRatingShown, setAutoRatingShown]   = useState(false);
 
   const { currentLocation, locationHistory } = useRealtimeDriverLocation(deliveryId || '');
 
@@ -318,8 +320,19 @@ export default function DeliveryTracking() {
             className="px-8 py-3 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold">
             Voltar ao início
           </button>
+          <button
+            onClick={() => setShowDisputeModal(true)}
+            className="flex items-center gap-1.5 text-xs text-orange-500 font-medium mt-2"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />Abrir disputa
+          </button>
         </div>
         <BottomNav />
+        <OpenDisputeModal
+          deliveryId={delivery.id}
+          open={showDisputeModal}
+          onOpenChange={setShowDisputeModal}
+        />
         {showRatingModal && driver && (
           <RatingModal
             deliveryId={delivery.id}
@@ -421,10 +434,18 @@ export default function DeliveryTracking() {
         {driver && (
           <div className="px-4 py-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-xl font-bold text-primary">
-                  {driver.profiles.full_name.charAt(0).toUpperCase()}
-                </span>
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {driver.profiles.avatar_url ? (
+                  <img
+                    src={driver.profiles.avatar_url}
+                    alt={driver.profiles.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xl font-bold text-primary">
+                    {driver.profiles.full_name.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-gray-900 truncate">{driver.profiles.full_name}</p>
@@ -491,13 +512,23 @@ export default function DeliveryTracking() {
 
         {/* Cancel — only early statuses */}
         {['accepted', 'picking_up'].includes(delivery.status) && (
-          <div className="px-4 pb-4">
+          <div className="px-4 pb-2">
             <button onClick={() => setShowCancelModal(true)}
               className="w-full py-3 rounded-2xl border-2 border-red-200 text-red-500 font-semibold text-sm flex items-center justify-center gap-2">
               <X className="h-4 w-4" />Cancelar entrega
             </button>
           </div>
         )}
+
+        {/* Dispute — available for all active statuses */}
+        <div className="px-4 pb-4 pt-2">
+          <button
+            onClick={() => setShowDisputeModal(true)}
+            className="w-full py-3 rounded-2xl border-2 border-orange-200 text-orange-500 font-semibold text-sm flex items-center justify-center gap-2"
+          >
+            <AlertTriangle className="h-4 w-4" />Abrir disputa
+          </button>
+        </div>
       </div>
 
       <BottomNav />
@@ -509,6 +540,12 @@ export default function DeliveryTracking() {
           setShowCancelModal(false);
           queryClient.invalidateQueries({ queryKey: ['delivery-tracking', deliveryId] });
         }}
+      />
+
+      <OpenDisputeModal
+        deliveryId={delivery.id}
+        open={showDisputeModal}
+        onOpenChange={setShowDisputeModal}
       />
     </div>
   );

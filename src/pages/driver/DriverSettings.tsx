@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
   Loader2, ArrowLeft, CheckCircle2, AlertCircle,
-  Shield, Bike, Car, Truck, ChevronRight, Settings2,
+  Shield, Bike, Car, Truck, ChevronRight, Settings2, MapPin,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
@@ -28,7 +28,7 @@ const VEHICLE_OPTIONS = [
 async function fetchSettings(userId: string) {
   const { data, error } = await supabase
     .from('drivers')
-    .select('id, is_available, vehicle_type, license_plate, accepted_product_types')
+    .select('id, is_available, vehicle_type, license_plate, accepted_product_types, radius_km')
     .eq('user_id', userId)
     .single();
   if (error) throw error;
@@ -40,6 +40,7 @@ async function fetchSettings(userId: string) {
     acceptedProductTypes: Array.isArray(data.accepted_product_types)
       ? (data.accepted_product_types as string[])
       : [],
+    radiusKm: (data as any).radius_km ?? 10,
   };
 }
 
@@ -50,10 +51,11 @@ export default function DriverSettings() {
   const queryClient = useQueryClient();
 
   // Local state for editable fields
-  const [licensePlate, setLicensePlate] = useState('');
-  const [vehicleType, setVehicleType] = useState('motorcycle');
+  const [licensePlate, setLicensePlate]           = useState('');
+  const [vehicleType, setVehicleType]             = useState('motorcycle');
   const [acceptedProductTypes, setAcceptedProductTypes] = useState<string[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [radiusKm, setRadiusKm]                   = useState(10);
+  const [hydrated, setHydrated]                   = useState(false);
 
   // ── Query ──────────────────────────────────────────────────────────────────
   const { data, isLoading } = useQuery({
@@ -66,6 +68,7 @@ export default function DriverSettings() {
         setLicensePlate(d.licensePlate);
         setVehicleType(d.vehicleType);
         setAcceptedProductTypes(d.acceptedProductTypes);
+        setRadiusKm(d.radiusKm);
         setHydrated(true);
       }
     },
@@ -122,13 +125,17 @@ export default function DriverSettings() {
     mutationFn: async () => {
       const { error } = await supabase
         .from('drivers')
-        .update({ vehicle_type: vehicleType as any, license_plate: licensePlate || null })
+        .update({
+          vehicle_type: vehicleType as any,
+          license_plate: licensePlate || null,
+          radius_km: radiusKm,
+        } as any)
         .eq('user_id', user?.id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['driver-settings', user?.id] });
-      toast({ title: '✅ Veículo atualizado!' });
+      toast({ title: '✅ Veículo e raio atualizados!' });
     },
     onError: () => toast({ title: 'Erro ao salvar veículo', variant: 'destructive' }),
   });
@@ -283,6 +290,34 @@ export default function DriverSettings() {
                 className="rounded-xl border-gray-200 uppercase font-mono"
                 maxLength={8}
               />
+            </div>
+
+            {/* Raio de atuação */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-gray-500 flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  Raio de atuação
+                </Label>
+                <span className="text-sm font-bold text-primary">{radiusKm} km</span>
+              </div>
+              <input
+                type="range"
+                min={1}
+                max={50}
+                step={1}
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(Number(e.target.value))}
+                className="w-full h-2 accent-primary cursor-pointer rounded-lg"
+              />
+              <div className="flex justify-between text-[10px] text-gray-400">
+                <span>1 km</span>
+                <span>25 km</span>
+                <span>50 km</span>
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Você receberá entregas dentro deste raio a partir da sua localização.
+              </p>
             </div>
 
             <button

@@ -13,6 +13,7 @@ import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { OpenDisputeModal } from '@/components/OpenDisputeModal';
 import { RatingModal } from '@/components/RatingModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -120,7 +121,8 @@ export default function DeliveryInProgress() {
   const [geoError, setGeoError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCancelModal, setShowCancelModal]   = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [autoCenter, setAutoCenter] = useState(true);
   const [userInteracted, setUserInteracted] = useState(false);
@@ -641,10 +643,10 @@ export default function DeliveryInProgress() {
                 Não consegui entregar
               </button>
               <button
-                onClick={() => toast({ title: 'Suporte', description: 'Ligue para (37) 9xxxx-xxxx' })}
-                className="h-11 px-4 rounded-2xl bg-gray-100 text-gray-600 text-sm font-semibold flex items-center justify-center active:bg-gray-200"
+                onClick={() => setShowDisputeModal(true)}
+                className="h-11 px-4 rounded-2xl bg-orange-50 border border-orange-100 text-orange-500 text-sm font-semibold flex items-center justify-center active:bg-orange-100"
               >
-                <Headphones className="h-4 w-4" />
+                <AlertCircle className="h-4 w-4" />
               </button>
             </div>
 
@@ -720,6 +722,15 @@ export default function DeliveryInProgress() {
             setShowCancelModal(false);
             navigate('/driver/dashboard', { replace: true });
           }}
+        />
+      )}
+
+      {/* ── DISPUTE MODAL ── */}
+      {deliveryId && (
+        <OpenDisputeModal
+          deliveryId={deliveryId}
+          open={showDisputeModal}
+          onOpenChange={setShowDisputeModal}
         />
       )}
     </>

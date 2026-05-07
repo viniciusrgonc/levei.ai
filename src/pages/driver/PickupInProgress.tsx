@@ -13,6 +13,7 @@ import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { OpenDisputeModal } from '@/components/OpenDisputeModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -111,7 +112,8 @@ export default function PickupInProgress() {
 
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCancelModal, setShowCancelModal]   = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [autoCenter, setAutoCenter] = useState(true);
   const [userInteracted, setUserInteracted] = useState(false);
@@ -499,6 +501,15 @@ export default function PickupInProgress() {
               )}
             </button>
 
+            {/* Dispute link */}
+            <button
+              onClick={() => setShowDisputeModal(true)}
+              className="flex items-center justify-center gap-1.5 text-xs text-white/60 mt-2 py-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              Abrir disputa
+            </button>
+
           </div>
         </div>
       </div>
@@ -514,6 +525,15 @@ export default function PickupInProgress() {
             setShowCancelModal(false);
             navigate('/driver/dashboard', { replace: true });
           }}
+        />
+      )}
+
+      {/* ── DISPUTE MODAL ── */}
+      {deliveryId && (
+        <OpenDisputeModal
+          deliveryId={deliveryId}
+          open={showDisputeModal}
+          onOpenChange={setShowDisputeModal}
         />
       )}
     </>

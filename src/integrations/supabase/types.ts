@@ -387,6 +387,7 @@ export type Database = {
           longitude: number | null
           pending_balance: number
           points: number
+          radius_km: number | null
           rating: number | null
           referral_code: string | null
           referred_by: string | null
@@ -411,6 +412,7 @@ export type Database = {
           longitude?: number | null
           pending_balance?: number
           points?: number
+          radius_km?: number | null
           rating?: number | null
           referral_code?: string | null
           referred_by?: string | null
@@ -435,6 +437,7 @@ export type Database = {
           longitude?: number | null
           pending_balance?: number
           points?: number
+          radius_km?: number | null
           rating?: number | null
           referral_code?: string | null
           referred_by?: string | null
