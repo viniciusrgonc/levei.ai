@@ -202,6 +202,12 @@ export default function DriverDashboard() {
   }, [driverError]);
 
   useEffect(() => {
+    if (driver && !driver.is_approved) {
+      navigate('/driver/pending-approval', { replace: true });
+    }
+  }, [driver?.is_approved]);
+
+  useEffect(() => {
     if (!activeDelivery) return;
     if (['accepted', 'picking_up'].includes(activeDelivery.status))
       navigate(`/driver/pickup/${activeDelivery.id}`, { replace: true });

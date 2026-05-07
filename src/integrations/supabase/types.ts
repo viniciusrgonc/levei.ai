@@ -375,6 +375,8 @@ export type Database = {
           accepted_product_types: string[]
           created_at: string
           drivers_license_url: string | null
+          vehicle_photo_url: string | null
+          rejection_reason: string | null
           earnings_balance: number
           id: string
           is_approved: boolean
@@ -397,6 +399,8 @@ export type Database = {
           accepted_product_types?: string[]
           created_at?: string
           drivers_license_url?: string | null
+          vehicle_photo_url?: string | null
+          rejection_reason?: string | null
           earnings_balance?: number
           id?: string
           is_approved?: boolean
@@ -419,6 +423,8 @@ export type Database = {
           accepted_product_types?: string[]
           created_at?: string
           drivers_license_url?: string | null
+          vehicle_photo_url?: string | null
+          rejection_reason?: string | null
           earnings_balance?: number
           id?: string
           is_approved?: boolean

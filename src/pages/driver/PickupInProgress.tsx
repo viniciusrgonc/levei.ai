@@ -507,6 +507,7 @@ export default function PickupInProgress() {
       {deliveryId && (
         <CancelDeliveryModal
           deliveryId={deliveryId}
+          cancellerRole="driver"
           open={showCancelModal}
           onOpenChange={setShowCancelModal}
           onCancelled={() => {

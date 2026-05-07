@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   Search, UserCheck, UserX, Phone, Star, Package,
   Users, CheckCircle2, Clock, Loader2, Trash2, ChevronRight,
+  FileText, Car, ImageOff,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -31,6 +32,9 @@ interface Driver {
   created_at: string;
   profile_name: string;
   profile_phone: string;
+  drivers_license_url: string | null;
+  vehicle_photo_url: string | null;
+  rejection_reason: string | null;
 }
 
 // ── Query function ────────────────────────────────────────────────────────────
@@ -60,6 +64,9 @@ async function fetchDrivers(): Promise<Driver[]> {
         created_at: driver.created_at,
         profile_name: profile?.full_name || 'Sem nome',
         profile_phone: profile?.phone || '',
+        drivers_license_url: (driver as any).drivers_license_url || null,
+        vehicle_photo_url: (driver as any).vehicle_photo_url || null,
+        rejection_reason: (driver as any).rejection_reason || null,
       };
     })
   );
@@ -83,6 +90,7 @@ export default function AdminDrivers() {
   const [filter, setFilter] = useState<'all' | 'approved' | 'pending' | 'available'>('all');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Driver | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
 
   // ── Query ──────────────────────────────────────────────────────────────────
   const { data: drivers = [], isLoading, isError, refetch } = useQuery({
@@ -93,13 +101,55 @@ export default function AdminDrivers() {
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const approveMutation = useMutation({
-    mutationFn: async ({ id, value }: { id: string; value: boolean }) => {
-      const { error } = await supabase.from('drivers').update({ is_approved: value }).eq('id', id);
+    mutationFn: async ({ id, value, userId }: { id: string; value: boolean; userId: string }) => {
+      const updatePayload: any = { is_approved: value };
+      if (!value && rejectionReason.trim()) {
+        updatePayload.rejection_reason = rejectionReason.trim();
+      } else if (value) {
+        updatePayload.rejection_reason = null; // limpa motivo anterior
+      }
+      const { error } = await supabase.from('drivers').update(updatePayload).eq('id', id);
       if (error) throw error;
+
+      // Notifica o motoboy
+      if (value) {
+        supabase.rpc('create_notification', {
+          p_user_id: userId,
+          p_title: '✅ Cadastro aprovado!',
+          p_message: 'Seu cadastro foi aprovado. Você já pode começar a trabalhar!',
+          p_type: 'system',
+          p_delivery_id: null,
+        }).catch(() => {});
+        supabase.functions.invoke('send-push', {
+          body: {
+            user_id: userId,
+            title: '✅ Cadastro aprovado!',
+            message: 'Bem-vindo à Levei.ai! Abra o app para começar.',
+            url: '/driver/dashboard',
+          },
+        }).catch(() => {});
+      } else if (rejectionReason.trim()) {
+        supabase.rpc('create_notification', {
+          p_user_id: userId,
+          p_title: 'Cadastro não aprovado',
+          p_message: `Motivo: ${rejectionReason.trim()}. Corrija os documentos e aguarde nova análise.`,
+          p_type: 'system',
+          p_delivery_id: null,
+        }).catch(() => {});
+        supabase.functions.invoke('send-push', {
+          body: {
+            user_id: userId,
+            title: 'Cadastro não aprovado',
+            message: 'Verifique o aplicativo para entender o que corrigir.',
+            url: '/driver/pending-approval',
+          },
+        }).catch(() => {});
+      }
     },
     onSuccess: (_, { value }) => {
       queryClient.invalidateQueries({ queryKey: ['admin-drivers'] });
-      toast({ title: value ? '✅ Entregador aprovado!' : 'Entregador desaprovado.' });
+      setRejectionReason('');
+      toast({ title: value ? '✅ Entregador aprovado!' : '❌ Entregador reprovado.' });
       setSelectedDriver(null);
     },
     onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
@@ -364,10 +414,85 @@ export default function AdminDrivers() {
                 )}
               </div>
 
+              {/* Documentos */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Documentos</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-xs text-gray-500">CNH</span>
+                    </div>
+                    {selectedDriver.drivers_license_url ? (
+                      <a href={selectedDriver.drivers_license_url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={selectedDriver.drivers_license_url}
+                          alt="CNH"
+                          className="w-full h-24 object-cover rounded-xl border border-gray-100 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    ) : (
+                      <div className="w-full h-24 rounded-xl bg-gray-100 flex flex-col items-center justify-center gap-1 text-gray-300">
+                        <ImageOff className="h-5 w-5" />
+                        <span className="text-[10px]">Não enviada</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5">
+                      <Car className="h-3.5 w-3.5 text-gray-400" />
+                      <span className="text-xs text-gray-500">Veículo</span>
+                    </div>
+                    {selectedDriver.vehicle_photo_url ? (
+                      <a href={selectedDriver.vehicle_photo_url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={selectedDriver.vehicle_photo_url}
+                          alt="Veículo"
+                          className="w-full h-24 object-cover rounded-xl border border-gray-100 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    ) : (
+                      <div className="w-full h-24 rounded-xl bg-gray-100 flex flex-col items-center justify-center gap-1 text-gray-300">
+                        <ImageOff className="h-5 w-5" />
+                        <span className="text-[10px]">Não enviada</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Motivo de rejeição (só quando vai reprovar) */}
+              {selectedDriver.is_approved && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Motivo da reprovação (opcional)
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Ex: CNH ilegível, foto do veículo incorreta..."
+                    rows={2}
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+              )}
+
+              {/* Motivo anterior se já foi reprovado */}
+              {!selectedDriver.is_approved && selectedDriver.rejection_reason && (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  <p className="text-xs font-semibold text-red-600">Último motivo de reprovação:</p>
+                  <p className="text-xs text-red-500 mt-0.5">{selectedDriver.rejection_reason}</p>
+                </div>
+              )}
+
               {/* Ações */}
               <div className="space-y-2 pt-1">
                 <button
-                  onClick={() => approveMutation.mutate({ id: selectedDriver.id, value: !selectedDriver.is_approved })}
+                  onClick={() => approveMutation.mutate({
+                    id: selectedDriver.id,
+                    value: !selectedDriver.is_approved,
+                    userId: selectedDriver.user_id,
+                  })}
                   disabled={approveMutation.isPending}
                   className={`w-full h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-60 ${
                     selectedDriver.is_approved
@@ -378,7 +503,7 @@ export default function AdminDrivers() {
                   {approveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : selectedDriver.is_approved ? (
-                    <><UserX className="h-4 w-4" />Desaprovar entregador</>
+                    <><UserX className="h-4 w-4" />Reprovar entregador</>
                   ) : (
                     <><UserCheck className="h-4 w-4" />Aprovar entregador</>
                   )}

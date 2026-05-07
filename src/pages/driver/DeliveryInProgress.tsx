@@ -635,10 +635,7 @@ export default function DeliveryInProgress() {
             {/* ── Ações secundárias ── */}
             <div className="flex gap-2 pb-1">
               <button
-                onClick={() => toast({
-                  title: 'Problema reportado',
-                  description: 'Nossa equipe entrará em contato em breve.',
-                })}
+                onClick={() => setShowCancelModal(true)}
                 className="flex-1 h-11 rounded-2xl bg-red-50 border border-red-100 text-red-600 text-sm font-semibold flex items-center justify-center gap-1.5 active:bg-red-100"
               >
                 Não consegui entregar
@@ -716,6 +713,7 @@ export default function DeliveryInProgress() {
       {deliveryId && (
         <CancelDeliveryModal
           deliveryId={deliveryId}
+          cancellerRole="driver"
           open={showCancelModal}
           onOpenChange={setShowCancelModal}
           onCancelled={() => {

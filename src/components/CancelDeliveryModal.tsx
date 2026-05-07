@@ -22,6 +22,8 @@ interface CancelDeliveryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCancelled: () => void;
+  /** Quem está cancelando. Afeta: motivo padrão, quem é notificado. Default: 'restaurant' */
+  cancellerRole?: 'restaurant' | 'driver';
 }
 
 interface PenaltyInfo {
@@ -45,6 +47,7 @@ export function CancelDeliveryModal({
   open,
   onOpenChange,
   onCancelled,
+  cancellerRole = 'restaurant',
 }: CancelDeliveryModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingPenalty, setIsFetchingPenalty] = useState(false);
@@ -81,19 +84,21 @@ export function CancelDeliveryModal({
     setIsLoading(true);
 
     try {
-      // Fetch driver user_id before cancelling (so we can notify them)
+      const defaultReason = cancellerRole === 'driver'
+        ? 'Cancelado pelo entregador'
+        : 'Cancelado pelo solicitante';
+
+      // Busca dados da entrega para notificar a outra parte
       const { data: deliveryData } = await supabase
         .from('deliveries')
-        .select('driver_id, drivers!inner(user_id)')
+        .select('driver_id, restaurant_id, drivers!left(user_id), restaurants!left(user_id)')
         .eq('id', deliveryId)
         .maybeSingle();
-
-      const driverUserId = (deliveryData as any)?.drivers?.user_id as string | undefined;
 
       const { data: rawResult, error } = await supabase
         .rpc('refund_delivery_funds', {
           p_delivery_id: deliveryId,
-          p_cancellation_reason: cancellationReason || 'Cancelado pelo solicitante'
+          p_cancellation_reason: cancellationReason || defaultReason,
         });
 
       if (error) throw error;
@@ -109,26 +114,47 @@ export function CancelDeliveryModal({
         throw new Error(result?.error || 'Erro ao cancelar entrega');
       }
 
-      // Notify driver if delivery was already accepted
-      if (driverUserId) {
-        // In-app notification
-        supabase.rpc('create_notification', {
-          p_user_id: driverUserId,
-          p_title: 'Entrega cancelada',
-          p_message: 'O restaurante cancelou uma entrega que estava sob sua responsabilidade.',
-          p_type: 'delivery_cancelled',
-          p_delivery_id: deliveryId,
-        }).catch((e: any) => console.error('Notification error:', e));
-
-        // Push notification
-        supabase.functions.invoke('send-push', {
-          body: {
-            user_id: driverUserId,
-            title: 'Entrega cancelada',
-            message: 'O restaurante cancelou a entrega. Verifique seu painel.',
-            url: '/motoboy/dashboard',
-          },
-        }).catch((e: any) => console.error('Push error:', e));
+      // Notifica a parte OPOSTA a quem cancelou
+      if (cancellerRole === 'driver') {
+        // Driver cancelou → notifica o restaurante
+        const restaurantUserId = (deliveryData as any)?.restaurants?.user_id as string | undefined;
+        if (restaurantUserId) {
+          supabase.rpc('create_notification', {
+            p_user_id: restaurantUserId,
+            p_title: 'Entrega cancelada pelo motoboy',
+            p_message: 'O entregador cancelou a coleta. Sua entrega voltou para fila.',
+            p_type: 'delivery_cancelled',
+            p_delivery_id: deliveryId,
+          }).catch(() => {});
+          supabase.functions.invoke('send-push', {
+            body: {
+              user_id: restaurantUserId,
+              title: 'Entrega cancelada pelo motoboy',
+              message: 'O entregador cancelou. Sua entrega será redistribuída.',
+              url: '/restaurant/dashboard',
+            },
+          }).catch(() => {});
+        }
+      } else {
+        // Restaurante cancelou → notifica o driver
+        const driverUserId = (deliveryData as any)?.drivers?.user_id as string | undefined;
+        if (driverUserId) {
+          supabase.rpc('create_notification', {
+            p_user_id: driverUserId,
+            p_title: 'Entrega cancelada',
+            p_message: 'O restaurante cancelou uma entrega que estava sob sua responsabilidade.',
+            p_type: 'delivery_cancelled',
+            p_delivery_id: deliveryId,
+          }).catch(() => {});
+          supabase.functions.invoke('send-push', {
+            body: {
+              user_id: driverUserId,
+              title: 'Entrega cancelada',
+              message: 'O restaurante cancelou a entrega. Verifique seu painel.',
+              url: '/driver/dashboard',
+            },
+          }).catch(() => {});
+        }
       }
 
       const hasPenalty = (result.penalty_amount ?? 0) > 0;
@@ -188,7 +214,7 @@ export function CancelDeliveryModal({
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
             <AlertDialogTitle className="text-left">
-              Cancelar entrega?
+              {cancellerRole === 'driver' ? 'Desistir da entrega?' : 'Cancelar entrega?'}
             </AlertDialogTitle>
           </div>
         </AlertDialogHeader>
@@ -289,9 +315,13 @@ export function CancelDeliveryModal({
                 </div>
 
                 <AlertDialogDescription className="text-left pt-2">
-                  {penaltyInfo.penalty_amount > 0 
-                    ? 'Ao confirmar, a multa será aplicada e o restante será estornado ao seu saldo.'
-                    : 'Ao confirmar, o valor total será estornado ao seu saldo. Esta ação não pode ser desfeita.'}
+                  {penaltyInfo.penalty_amount > 0
+                    ? cancellerRole === 'driver'
+                      ? 'Ao desistir, uma multa será retida. O restaurante será notificado e a entrega voltará para a fila.'
+                      : 'Ao confirmar, a multa será aplicada e o restante será estornado ao seu saldo.'
+                    : cancellerRole === 'driver'
+                      ? 'Ao desistir, o valor será integralmente estornado ao restaurante. Esta ação não pode ser desfeita.'
+                      : 'Ao confirmar, o valor total será estornado ao seu saldo. Esta ação não pode ser desfeita.'}
                 </AlertDialogDescription>
               </>
             )}

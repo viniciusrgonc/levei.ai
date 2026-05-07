@@ -53,6 +53,7 @@ import AdminPointsStore from "./pages/admin/AdminPointsStore";
 import AdminPricingManager from "./pages/admin/AdminPricingManager";
 import AdminReviews from "./pages/admin/AdminReviews";
 import DriverPointsStore from "./pages/driver/DriverPointsStore";
+import DriverPendingApproval from "./pages/driver/DriverPendingApproval";
 import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
 import { PwaUpdateHandler } from "./components/PwaUpdateHandler";
@@ -163,6 +164,14 @@ const App = () => (
               element={
                 <DriverRoute>
                   <DriverSetup />
+                </DriverRoute>
+              }
+            />
+            <Route
+              path="/driver/pending-approval"
+              element={
+                <DriverRoute>
+                  <DriverPendingApproval />
                 </DriverRoute>
               }
             />
