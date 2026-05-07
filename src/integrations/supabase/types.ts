@@ -635,6 +635,9 @@ export type Database = {
           created_at: string
           delivery_id: string
           id: string
+          is_hidden: boolean
+          negative_reasons: string[] | null
+          rater_role: string | null
           rated_by: string
           rated_user: string
           rating: number
@@ -644,6 +647,9 @@ export type Database = {
           created_at?: string
           delivery_id: string
           id?: string
+          is_hidden?: boolean
+          negative_reasons?: string[] | null
+          rater_role?: string | null
           rated_by: string
           rated_user: string
           rating: number
@@ -653,6 +659,9 @@ export type Database = {
           created_at?: string
           delivery_id?: string
           id?: string
+          is_hidden?: boolean
+          negative_reasons?: string[] | null
+          rater_role?: string | null
           rated_by?: string
           rated_user?: string
           rating?: number

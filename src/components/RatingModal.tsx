@@ -4,15 +4,20 @@ import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/lib/auth'
 import { toast } from '@/hooks/use-toast'
 
-interface RatingModalProps {
+export interface RatingModalProps {
   deliveryId: string
-  driverUserId: string
-  driverName: string
+  raterRole: 'restaurant' | 'driver'
+  targetUserId: string   // user_id of who's being rated
+  targetName: string
   onClose: () => void
   onSubmitted: () => void
 }
 
-const QUICK_TAGS = ['Rápido', 'Cuidadoso', 'Pontual', 'Comunicativo', 'Profissional']
+const DRIVER_POSITIVE_TAGS = ['Rápido', 'Cuidadoso', 'Pontual', 'Comunicativo', 'Profissional']
+const DRIVER_NEGATIVE_REASONS = ['Atraso', 'Produto danificado', 'Comunicação ruim', 'Comportamento inadequado', 'Não entregou']
+
+const RESTAURANT_POSITIVE_TAGS = ['Organizado', 'Pedido pronto', 'Atencioso', 'Endereço correto', 'Profissional']
+const RESTAURANT_NEGATIVE_REASONS = ['Pedido não estava pronto', 'Endereço errado', 'Atendimento ruim', 'Falta de organização', 'Pedido incompleto']
 
 const RATING_LABELS: Record<number, { label: string; color: string }> = {
   1: { label: 'Muito ruim',  color: 'text-red-500'    },
@@ -22,7 +27,7 @@ const RATING_LABELS: Record<number, { label: string; color: string }> = {
   5: { label: 'Excelente!',  color: 'text-green-500'   },
 }
 
-export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onSubmitted }: RatingModalProps) {
+export function RatingModal({ deliveryId, raterRole, targetUserId, targetName, onClose, onSubmitted }: RatingModalProps) {
   const { user } = useAuth()
   const [stars, setStars] = useState(0)
   const [hovered, setHovered] = useState(0)
@@ -32,6 +37,11 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
   const [done, setDone] = useState(false)
 
   const effective = hovered || stars
+
+  const positiveTags = raterRole === 'restaurant' ? DRIVER_POSITIVE_TAGS : RESTAURANT_POSITIVE_TAGS
+  const negativeReasons = raterRole === 'restaurant' ? DRIVER_NEGATIVE_REASONS : RESTAURANT_NEGATIVE_REASONS
+  const isLowRating = stars > 0 && stars <= 2
+  const isHighRating = stars >= 4
 
   const toggleTag = (tag: string) =>
     setSelectedTags((prev) =>
@@ -43,40 +53,62 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
     setIsSubmitting(true)
 
     try {
-      const tagsPart = selectedTags.join(', ')
-      const fullComment = [tagsPart, comment.trim()].filter(Boolean).join(' — ')
+      let finalComment: string | null = null
 
-      // 1. Insere a avaliação
+      if (isLowRating) {
+        // For low ratings: negative reasons go in negative_reasons array, comment is separate
+        finalComment = comment.trim() || null
+      } else {
+        // For high ratings: positive tags + comment merged
+        const tagsPart = selectedTags.join(', ')
+        const merged = [tagsPart, comment.trim()].filter(Boolean).join(' — ')
+        finalComment = merged || null
+      }
+
       const { error: insertError } = await supabase.from('ratings').insert({
         delivery_id: deliveryId,
         rated_by: user.id,
-        rated_user: driverUserId,
+        rated_user: targetUserId,
         rating: stars,
-        comment: fullComment || null,
+        comment: finalComment,
+        rater_role: raterRole,
+        negative_reasons: isLowRating && selectedTags.length > 0 ? selectedTags : [],
+        is_hidden: false,
       })
       if (insertError) throw insertError
 
-      // 2. Recalcula rating médio do motoboy
-      const { data: allRatings } = await supabase
-        .from('ratings')
-        .select('rating')
-        .eq('rated_user', driverUserId)
+      // Recalcula rating médio (só para avaliações de restaurante→motorista)
+      if (raterRole === 'restaurant') {
+        const { data: allRatings } = await supabase
+          .from('ratings')
+          .select('rating')
+          .eq('rated_user', targetUserId)
+          .eq('rater_role', 'restaurant')
 
-      if (allRatings && allRatings.length > 0) {
-        const avg = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
-        await supabase
-          .from('drivers')
-          .update({ rating: parseFloat(avg.toFixed(2)) })
-          .eq('user_id', driverUserId)
+        if (allRatings && allRatings.length > 0) {
+          const avg = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
+          await supabase
+            .from('drivers')
+            .update({ rating: parseFloat(avg.toFixed(2)) })
+            .eq('user_id', targetUserId)
+        }
       }
 
       setDone(true)
     } catch (err: any) {
+      if (err?.message?.includes('ratings_delivery_rated_by_unique')) {
+        toast({ title: 'Você já avaliou esta entrega', variant: 'destructive' })
+        onSubmitted()
+        return
+      }
       toast({ variant: 'destructive', title: 'Erro ao enviar avaliação', description: err?.message })
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  const modalTitle = raterRole === 'restaurant' ? 'Como foi a entrega?' : 'Como foi o estabelecimento?'
+  const modalSubtitle = raterRole === 'restaurant' ? 'Avalie o entregador' : 'Avalie o estabelecimento'
 
   return (
     <div
@@ -120,12 +152,13 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
             <div className="text-center space-y-1">
               <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <span className="text-2xl font-bold text-primary">
-                  {driverName.charAt(0).toUpperCase()}
+                  {targetName.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <h2 className="text-lg font-bold text-gray-900">Como foi a entrega?</h2>
+              <h2 className="text-lg font-bold text-gray-900">{modalTitle}</h2>
               <p className="text-sm text-gray-500">
-                Avalie <span className="font-semibold text-gray-700">{driverName}</span>
+                {modalSubtitle}{' '}
+                <span className="font-semibold text-gray-700">{targetName}</span>
               </p>
             </div>
 
@@ -137,7 +170,7 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
                   return (
                     <button
                       key={val}
-                      onClick={() => setStars(val)}
+                      onClick={() => { setStars(val); setSelectedTags([]) }}
                       onMouseEnter={() => setHovered(val)}
                       onMouseLeave={() => setHovered(0)}
                       className="p-1 transition-transform hover:scale-110 active:scale-90"
@@ -163,14 +196,14 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
               </div>
             </div>
 
-            {/* Tags rápidas (só para notas altas) */}
-            {stars >= 4 && (
+            {/* Tags positivas (notas altas) */}
+            {isHighRating && (
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-center">
                   O que se destacou?
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {QUICK_TAGS.map((tag) => (
+                  {positiveTags.map((tag) => (
                     <button
                       key={tag}
                       onClick={() => toggleTag(tag)}
@@ -187,25 +220,51 @@ export function RatingModal({ deliveryId, driverUserId, driverName, onClose, onS
               </div>
             )}
 
+            {/* Motivos negativos (notas baixas) */}
+            {isLowRating && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide text-center">
+                  O que houve de errado?
+                </p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {negativeReasons.map((reason) => (
+                    <button
+                      key={reason}
+                      onClick={() => toggleTag(reason)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                        selectedTags.includes(reason)
+                          ? 'bg-red-500 text-white border-red-500'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-red-300'
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Comentário */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                Comentário <span className="normal-case font-normal">(opcional)</span>
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder={
-                  stars > 0 && stars <= 3
-                    ? 'O que poderia ser melhor?'
-                    : 'Deixe um comentário sobre a entrega...'
-                }
-                rows={3}
-                maxLength={500}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-300"
-              />
-              <p className="text-right text-xs text-gray-300">{comment.length}/500</p>
-            </div>
+            {stars > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  Comentário <span className="normal-case font-normal">(opcional)</span>
+                </label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder={
+                    isLowRating
+                      ? 'Conte mais sobre o problema...'
+                      : 'Deixe um comentário sobre a entrega...'
+                  }
+                  rows={3}
+                  maxLength={500}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary placeholder:text-gray-300"
+                />
+                <p className="text-right text-xs text-gray-300">{comment.length}/500</p>
+              </div>
+            )}
 
             {/* Botões */}
             <div className="flex flex-col gap-2 pt-1">

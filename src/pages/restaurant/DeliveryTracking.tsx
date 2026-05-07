@@ -322,8 +322,10 @@ export default function DeliveryTracking() {
         <BottomNav />
         {showRatingModal && driver && (
           <RatingModal
-            deliveryId={delivery.id} driverUserId={driver.user_id}
-            driverName={driver.profiles.full_name}
+            deliveryId={delivery.id}
+            raterRole="restaurant"
+            targetUserId={driver.user_id}
+            targetName={driver.profiles.full_name}
             onClose={() => setShowRatingModal(false)}
             onSubmitted={() => {
               setShowRatingModal(false);

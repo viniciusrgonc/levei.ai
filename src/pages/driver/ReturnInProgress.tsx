@@ -7,8 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   MapPin, Navigation, Clock, CheckCircle, AlertCircle,
-  PartyPopper, LayoutDashboard, X,
+  PartyPopper, LayoutDashboard, X, Star,
 } from 'lucide-react';
+import { RatingModal } from '@/components/RatingModal';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
@@ -68,6 +69,7 @@ interface Delivery {
   delivery_longitude: number;
   driver_id: string;
   requires_return: boolean | null;
+  restaurant_id: string | null;
 }
 
 export default function ReturnInProgress() {
@@ -83,11 +85,30 @@ export default function ReturnInProgress() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [earnings, setEarnings] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [restaurantForRating, setRestaurantForRating] = useState<{ userId: string; name: string } | null>(null);
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
-    onSuccess: (_, __, transaction) => {
+    onSuccess: async (_, __, transaction) => {
       setEarnings(transaction?.driver_earnings ?? Number(delivery?.price_adjusted || delivery?.price || 0) * 0.8);
       setShowSuccess(true);
+
+      // Busca dados do restaurante para avaliação
+      if (delivery?.restaurant_id) {
+        try {
+          const { data: rest } = await supabase
+            .from('restaurants')
+            .select('user_id, profiles!restaurants_user_id_fkey(full_name)')
+            .eq('id', delivery.restaurant_id)
+            .maybeSingle();
+          if (rest?.user_id) {
+            setRestaurantForRating({
+              userId: rest.user_id,
+              name: (rest.profiles as any)?.full_name || 'Estabelecimento',
+            });
+          }
+        } catch { /* silently ignore */ }
+      }
     },
   });
 
@@ -230,7 +251,11 @@ export default function ReturnInProgress() {
 
   const handleSuccessClose = () => {
     setShowSuccess(false);
-    navigate('/driver/dashboard', { replace: true });
+    if (restaurantForRating) {
+      setTimeout(() => setShowRatingModal(true), 200);
+    } else {
+      navigate('/driver/dashboard', { replace: true });
+    }
   };
 
   if (loading) {
@@ -409,9 +434,25 @@ export default function ReturnInProgress() {
               foi creditado na sua carteira.
             </DialogDescription>
           </DialogHeader>
-          <Button onClick={handleSuccessClose} size="lg" className="w-full mt-4 bg-orange-500 hover:bg-orange-600">
-            Voltar ao Início
-          </Button>
+          <div className="flex flex-col gap-2 mt-4">
+            {restaurantForRating && (
+              <Button
+                onClick={() => { setShowSuccess(false); setTimeout(() => setShowRatingModal(true), 200); }}
+                size="lg"
+                className="w-full bg-amber-400 hover:bg-amber-500 text-white gap-2"
+              >
+                <Star className="h-5 w-5 fill-white" />
+                Avaliar estabelecimento
+              </Button>
+            )}
+            <Button
+              onClick={handleSuccessClose}
+              size="lg"
+              className={`w-full ${restaurantForRating ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-orange-500 hover:bg-orange-600'}`}
+            >
+              Voltar ao Início
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -422,6 +463,18 @@ export default function ReturnInProgress() {
           open={showCancelModal}
           onOpenChange={setShowCancelModal}
           onCancelled={() => { setShowCancelModal(false); navigate('/driver/dashboard', { replace: true }); }}
+        />
+      )}
+
+      {/* Rating Modal (driver avalia restaurante) */}
+      {showRatingModal && restaurantForRating && deliveryId && (
+        <RatingModal
+          deliveryId={deliveryId}
+          raterRole="driver"
+          targetUserId={restaurantForRating.userId}
+          targetName={restaurantForRating.name}
+          onClose={() => { setShowRatingModal(false); navigate('/driver/dashboard', { replace: true }); }}
+          onSubmitted={() => { setShowRatingModal(false); navigate('/driver/dashboard', { replace: true }); }}
         />
       )}
     </>

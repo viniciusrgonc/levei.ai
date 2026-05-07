@@ -6,13 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   MapPin, Navigation, Clock, CheckCircle2, Phone, MessageCircle,
   AlertCircle, PartyPopper, RotateCcw, ChevronDown, ChevronUp,
-  Package, Wallet, ArrowLeft, Headphones,
+  Package, Wallet, ArrowLeft, Headphones, Star,
 } from 'lucide-react';
 import { useCompleteDelivery } from '@/hooks/useCompleteDelivery';
 import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
+import { RatingModal } from '@/components/RatingModal';
 import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -102,6 +103,7 @@ interface Delivery {
   delivery_sequence: number | null;
   parent_delivery_id: string | null;
   requires_return: boolean | null;
+  restaurant_id: string | null;
 }
 
 interface CompletionResult {
@@ -122,6 +124,8 @@ export default function DeliveryInProgress() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [autoCenter, setAutoCenter] = useState(true);
   const [userInteracted, setUserInteracted] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [restaurantForRating, setRestaurantForRating] = useState<{ userId: string; name: string } | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────────────
   const { data: driverData } = useQuery({
@@ -161,7 +165,7 @@ export default function DeliveryInProgress() {
   });
 
   const { completeDelivery, loading: completing } = useCompleteDelivery({
-    onSuccess: (_, __, transaction) => {
+    onSuccess: async (_, __, transaction) => {
       setCompletionResult(transaction ? {
         earnings: transaction.driver_earnings,
         isLastDelivery: transaction.is_last_delivery,
@@ -171,6 +175,23 @@ export default function DeliveryInProgress() {
         isLastDelivery: true, totalRouteEarnings: 0,
       });
       setShowSuccess(true);
+
+      // Busca dados do restaurante para avaliação
+      if (delivery?.restaurant_id) {
+        try {
+          const { data: rest } = await supabase
+            .from('restaurants')
+            .select('user_id, profiles!restaurants_user_id_fkey(full_name)')
+            .eq('id', delivery.restaurant_id)
+            .maybeSingle();
+          if (rest?.user_id) {
+            setRestaurantForRating({
+              userId: rest.user_id,
+              name: (rest.profiles as any)?.full_name || 'Estabelecimento',
+            });
+          }
+        } catch { /* silently ignore */ }
+      }
     },
   });
 
@@ -659,14 +680,37 @@ export default function DeliveryInProgress() {
               )}
             </DialogDescription>
           </DialogHeader>
-          <button
-            onClick={() => { setShowSuccess(false); navigate('/driver/dashboard', { replace: true }); }}
-            className="w-full h-13 mt-4 rounded-2xl bg-green-500 text-white font-bold text-base py-3.5"
-          >
-            {completionResult?.isLastDelivery ? 'Voltar ao Início' : 'Próxima Entrega →'}
-          </button>
+          <div className="mt-4 flex flex-col gap-2">
+            {restaurantForRating && completionResult?.isLastDelivery && (
+              <button
+                onClick={() => { setShowSuccess(false); setTimeout(() => setShowRatingModal(true), 200); }}
+                className="w-full py-3.5 rounded-2xl bg-amber-400 text-white font-bold text-base flex items-center justify-center gap-2"
+              >
+                <Star className="h-5 w-5 fill-white" />
+                Avaliar estabelecimento
+              </button>
+            )}
+            <button
+              onClick={() => { setShowSuccess(false); navigate('/driver/dashboard', { replace: true }); }}
+              className={`w-full py-3.5 rounded-2xl font-bold text-base ${restaurantForRating && completionResult?.isLastDelivery ? 'bg-gray-100 text-gray-700' : 'bg-green-500 text-white'}`}
+            >
+              {completionResult?.isLastDelivery ? 'Voltar ao Início' : 'Próxima Entrega →'}
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── RATING MODAL (driver avalia restaurante) ── */}
+      {showRatingModal && restaurantForRating && deliveryId && (
+        <RatingModal
+          deliveryId={deliveryId}
+          raterRole="driver"
+          targetUserId={restaurantForRating.userId}
+          targetName={restaurantForRating.name}
+          onClose={() => { setShowRatingModal(false); navigate('/driver/dashboard', { replace: true }); }}
+          onSubmitted={() => { setShowRatingModal(false); navigate('/driver/dashboard', { replace: true }); }}
+        />
+      )}
 
       {/* ── CANCEL MODAL ── */}
       {deliveryId && (

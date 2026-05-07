@@ -30,7 +30,7 @@ export default function DriverProfile() {
 
       const [{ data: profileData }, { data: driverData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-        supabase.from('drivers').select('rating, total_deliveries, vehicle_type').eq('user_id', user.id).maybeSingle(),
+        supabase.from('drivers').select('rating, total_deliveries, vehicle_type, points').eq('user_id', user.id).maybeSingle(),
       ]);
 
       setFullName(profileData?.full_name || '');
@@ -117,6 +117,19 @@ export default function DriverProfile() {
     motorcycle: 'Moto', bicycle: 'Bicicleta', car: 'Carro', van: 'Van',
   };
 
+  // Badges baseados em rating e entregas
+  const getBadges = () => {
+    const avg = Number(profile?.rating ?? 0);
+    const total = Number(profile?.total_deliveries ?? 0);
+    const badges: { emoji: string; label: string; color: string }[] = [];
+    if (avg >= 4.9 && total >= 50) badges.push({ emoji: '🏆', label: 'Top Entregador', color: 'bg-yellow-100 text-yellow-700' });
+    if (avg >= 4.7 && total >= 20) badges.push({ emoji: '⭐', label: 'Excelente atendimento', color: 'bg-amber-100 text-amber-700' });
+    if (avg >= 4.5 && total >= 30) badges.push({ emoji: '⚡', label: 'Entrega rápida', color: 'bg-blue-100 text-blue-700' });
+    if (total >= 100) badges.push({ emoji: '💯', label: '100+ entregas', color: 'bg-green-100 text-green-700' });
+    return badges;
+  };
+  const badges = getBadges();
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
 
@@ -169,6 +182,19 @@ export default function DriverProfile() {
               </div>
             )}
           </div>
+          {/* Badges */}
+          {badges.length > 0 && (
+            <div className="flex flex-wrap gap-2 justify-center mt-3 px-4">
+              {badges.map((b) => (
+                <span
+                  key={b.label}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${b.color}`}
+                >
+                  {b.emoji} {b.label}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
