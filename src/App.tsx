@@ -50,6 +50,7 @@ import AdminBatchSettings from "./pages/admin/AdminBatchSettings";
 import AdminFeeTypes from "./pages/admin/AdminFeeTypes";
 import AdminDriverMap from "./pages/admin/AdminDriverMap";
 import AdminPointsStore from "./pages/admin/AdminPointsStore";
+import AdminPricingManager from "./pages/admin/AdminPricingManager";
 import DriverPointsStore from "./pages/driver/DriverPointsStore";
 import DeliveryChat from "./pages/DeliveryChat";
 import NotFound from "./pages/NotFound";
@@ -409,6 +410,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <AdminPointsStore />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/pricing"
+              element={
+                <AdminRoute>
+                  <AdminPricingManager />
                 </AdminRoute>
               }
             />

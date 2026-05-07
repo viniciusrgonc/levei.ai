@@ -30,6 +30,7 @@ import DeliveryMap from '@/components/DeliveryMap';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatAddress } from '@/lib/utils';
+import { calculateDeliveryPrice, PricingBreakdown } from '@/lib/pricing';
 
 interface ProductTypeSetting {
   product_type: string;
@@ -100,6 +101,8 @@ export default function NewDelivery() {
   const [distance, setDistance] = useState<number>(0);
   const [estimatedPrice, setEstimatedPrice] = useState<number>(0);
   const [requiresReturn, setRequiresReturn] = useState(false);
+  const [pricingBreakdown, setPricingBreakdown] = useState<PricingBreakdown | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   // Agendamento
   const [scheduleMode, setScheduleMode] = useState<'now' | 'later'>('now');
@@ -177,18 +180,31 @@ export default function NewDelivery() {
   }, [pickupLat, pickupLng, deliveryLat, deliveryLng]);
 
   useEffect(() => {
-    if (distance > 0) {
-      let price = 0;
+    if (distance <= 0) return;
+    // Additional delivery: keep legacy pricing from batch settings
+    if (isAdditionalDelivery && parentDelivery) {
       const effectiveDistance = requiresReturn ? distance * 2 : distance;
-      if (isAdditionalDelivery && parentDelivery) {
-        price = parentDelivery.base_price + effectiveDistance * parentDelivery.price_per_km;
-      } else if (selectedCategory) {
-        price = selectedCategory.base_price + effectiveDistance * selectedCategory.price_per_km;
-      } else return;
-      if (productType && productSettingsMap[productType]) price *= (1 + productSettingsMap[productType] / 100);
+      const price = parentDelivery.base_price + effectiveDistance * parentDelivery.price_per_km;
       setEstimatedPrice(price);
+      return;
     }
-  }, [distance, selectedCategory, productType, productSettingsMap, isAdditionalDelivery, parentDelivery, requiresReturn]);
+    // Normal delivery: use new centralized pricing system
+    if (!selectedCategory) return;
+    setPricingLoading(true);
+    calculateDeliveryPrice(distance, productType || undefined, requiresReturn)
+      .then(breakdown => {
+        setPricingBreakdown(breakdown);
+        setEstimatedPrice(breakdown.final_price);
+      })
+      .catch(() => {
+        // fallback to category-based pricing if RPC fails
+        const effectiveDistance = requiresReturn ? distance * 2 : distance;
+        let price = selectedCategory.base_price + effectiveDistance * selectedCategory.price_per_km;
+        if (productType && productSettingsMap[productType]) price *= (1 + productSettingsMap[productType] / 100);
+        setEstimatedPrice(price);
+      })
+      .finally(() => setPricingLoading(false));
+  }, [distance, selectedCategory, productType, requiresReturn, isAdditionalDelivery, parentDelivery, productSettingsMap]);
 
   const fetchRestaurant = async () => {
     if (!user) return;
@@ -655,20 +671,62 @@ export default function NewDelivery() {
                 {[
                   { label: 'Veículo', value: isAdditionalDelivery ? parentDelivery?.vehicle_type : selectedCategory?.name },
                   { label: 'Tipo de envio', value: selectedProductType?.product_type || productType },
-                  { label: 'Distância cobrada', value: requiresReturn ? `${(distance * 2).toFixed(1)} km (ida + volta)` : `${distance.toFixed(1)} km` },
-                  { label: 'Retorno ao ponto', value: requiresReturn ? '✅ Sim — entregador retorna' : 'Não' },
-                  { label: 'Tempo estimado', value: `~${Math.round((requiresReturn ? distance * 2 : distance) / 40 * 60)} min` },
+                  { label: 'Distância', value: `${distance.toFixed(1)} km` },
+                  { label: 'Tempo estimado', value: `~${Math.round(distance / 40 * 60)} min` },
                   { label: 'Pagamento', value: 'Carteira Levei.ai' },
                 ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
+                  <div key={label} className="flex items-center justify-between py-2.5 border-b border-gray-50">
                     <span className="text-sm text-gray-500">{label}</span>
                     <span className="text-sm font-semibold text-gray-900">{value}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between pt-3 mt-1">
-                  <span className="text-base font-semibold text-gray-900">Total</span>
-                  <span className="text-xl font-bold text-blue-600">R$ {estimatedPrice.toFixed(2)}</span>
-                </div>
+
+                {/* Pricing breakdown */}
+                {pricingBreakdown && !isAdditionalDelivery ? (
+                  <div className="mt-3 space-y-2 bg-gray-50 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Composição do valor</p>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Taxa base (distância)</span>
+                      <span className="font-medium text-gray-900">R$ {pricingBreakdown.base_price.toFixed(2)}</span>
+                    </div>
+                    {pricingBreakdown.product_addon > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">
+                          Adicional {productType} ({pricingBreakdown.addon_type === 'fixed' ? `R$${pricingBreakdown.addon_value}` : `${pricingBreakdown.addon_value}%`})
+                        </span>
+                        <span className="font-medium text-gray-900">+ R$ {pricingBreakdown.product_addon.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricingBreakdown.return_price > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Retorno ({pricingBreakdown.return_percentage}%)</span>
+                        <span className="font-medium text-gray-900">+ R$ {pricingBreakdown.return_price.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricingBreakdown.dynamic_enabled && (
+                      <div className="flex justify-between text-sm text-amber-600">
+                        <span>⚡ Preço dinâmico ({pricingBreakdown.dynamic_multiplier}x{pricingBreakdown.dynamic_description ? ` · ${pricingBreakdown.dynamic_description}` : ''})</span>
+                        <span className="font-medium">×{pricingBreakdown.dynamic_multiplier}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between">
+                      <span className="text-base font-bold text-gray-900">Total</span>
+                      <span className="text-xl font-bold text-primary">R$ {pricingBreakdown.final_price.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                      <span>Ganho do entregador ({100 - pricingBreakdown.platform_commission_percentage}%)</span>
+                      <span>R$ {pricingBreakdown.driver_earnings.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between pt-3 mt-1">
+                    <span className="text-base font-semibold text-gray-900">Total</span>
+                    {pricingLoading
+                      ? <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      : <span className="text-xl font-bold text-primary">R$ {estimatedPrice.toFixed(2)}</span>
+                    }
+                  </div>
+                )}
               </div>
 
               {/* Agendamento — só para entregas normais (não adicionais) */}

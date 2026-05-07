@@ -21,6 +21,7 @@ import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
 import { useAcceptDelivery } from '@/hooks/useAcceptDelivery';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import leveiLogo from '@/assets/levei-logo.png';
+import { fetchPricingConfig } from '@/lib/pricing';
 
 // ── Query functions ────────────────────────────────────────────────────────
 async function fetchDriverProfile(userId: string) {
@@ -174,6 +175,13 @@ export default function DriverDashboard() {
     enabled: !!user?.id,
     staleTime: 60 * 1000,
   });
+
+  const { data: pricingConfig } = useQuery({
+    queryKey: ['pricing-config-driver'],
+    queryFn: fetchPricingConfig,
+    staleTime: 5 * 60 * 1000,
+  });
+  const driverCommissionPct = 100 - (pricingConfig?.platform_commission_percentage ?? 20);
 
   const { deliveries: availableDeliveries, loading: deliveriesLoading, radiusKm } =
     useNearbyDeliveries({ driverId: driver?.id || '', isAvailable: driver?.is_available || false });
@@ -394,9 +402,14 @@ export default function DriverDashboard() {
                       </span>
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-primary">
-                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-primary leading-none">
+                      R$ {(Number(delivery.price_adjusted || delivery.price) * driverCommissionPct / 100).toFixed(2)}
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      seu ganho ({driverCommissionPct}%) · total R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
                 <div className="px-4 py-3 space-y-2">
                   <div className="flex items-center gap-3">

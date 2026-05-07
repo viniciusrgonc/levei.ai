@@ -721,6 +721,90 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_distance_ranges: {
+        Row: {
+          id: string
+          min_km: number
+          max_km: number
+          price: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          min_km: number
+          max_km: number
+          price: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          min_km?: number
+          max_km?: number
+          price?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pricing_product_addons: {
+        Row: {
+          id: string
+          product_type: string
+          addon_type: string
+          addon_value: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          product_type: string
+          addon_type?: string
+          addon_value?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          product_type?: string
+          addon_type?: string
+          addon_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pricing_config: {
+        Row: {
+          id: string
+          return_percentage: number
+          dynamic_enabled: boolean
+          dynamic_multiplier: number
+          dynamic_description: string
+          platform_commission_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          return_percentage?: number
+          dynamic_enabled?: boolean
+          dynamic_multiplier?: number
+          dynamic_description?: string
+          platform_commission_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          return_percentage?: number
+          dynamic_enabled?: boolean
+          dynamic_multiplier?: number
+          dynamic_description?: string
+          platform_commission_percentage?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       store_items: {
         Row: {
           id: string

@@ -83,6 +83,11 @@ const menuItems = [
     icon: ShoppingBag,
   },
   {
+    title: 'Tarifas',
+    url: '/admin/pricing',
+    icon: Percent,
+  },
+  {
     title: 'Disputas',
     url: '/admin/disputes',
     icon: AlertCircle,
