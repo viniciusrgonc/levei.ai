@@ -20,6 +20,7 @@ import DeliveryTracking from "./pages/restaurant/DeliveryTracking";
 import RestaurantScheduling from "./pages/restaurant/RestaurantScheduling";
 import RestaurantWallet from "./pages/restaurant/RestaurantWallet";
 import RestaurantAccount from "./pages/restaurant/RestaurantAccount";
+import RestaurantAddresses from "./pages/restaurant/RestaurantAddresses";
 import DriverSetup from "./pages/driver/DriverSetup";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import DriverMap from "./pages/driver/DriverMap";
@@ -153,6 +154,14 @@ const App = () => (
               element={
                 <RestaurantRoute>
                   <RestaurantWallet />
+                </RestaurantRoute>
+              }
+            />
+            <Route
+              path="/restaurant/addresses"
+              element={
+                <RestaurantRoute>
+                  <RestaurantAddresses />
                 </RestaurantRoute>
               }
             />

@@ -762,6 +762,25 @@ export type Database = {
           updated_at: string
           user_id: string
           wallet_balance: number
+          // extended profile fields
+          person_type: 'pf' | 'pj'
+          cpf: string | null
+          company_name: string | null
+          fantasy_name: string | null
+          phone: string | null
+          address_cep: string | null
+          address_street: string | null
+          address_number: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_city: string | null
+          address_state: string | null
+          address_label: string | null
+          business_hours: Record<string, { enabled: boolean; open: string; close: string }> | null
+          accepted_terms: boolean
+          terms_accepted_at: string | null
+          is_blocked: boolean
+          block_reason: string | null
         }
         Insert: {
           address: string
@@ -779,6 +798,24 @@ export type Database = {
           updated_at?: string
           user_id: string
           wallet_balance?: number
+          person_type?: 'pf' | 'pj'
+          cpf?: string | null
+          company_name?: string | null
+          fantasy_name?: string | null
+          phone?: string | null
+          address_cep?: string | null
+          address_street?: string | null
+          address_number?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_city?: string | null
+          address_state?: string | null
+          address_label?: string | null
+          business_hours?: Record<string, { enabled: boolean; open: string; close: string }> | null
+          accepted_terms?: boolean
+          terms_accepted_at?: string | null
+          is_blocked?: boolean
+          block_reason?: string | null
         }
         Update: {
           address?: string
@@ -796,8 +833,91 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wallet_balance?: number
+          person_type?: 'pf' | 'pj'
+          cpf?: string | null
+          company_name?: string | null
+          fantasy_name?: string | null
+          phone?: string | null
+          address_cep?: string | null
+          address_street?: string | null
+          address_number?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_city?: string | null
+          address_state?: string | null
+          address_label?: string | null
+          business_hours?: Record<string, { enabled: boolean; open: string; close: string }> | null
+          accepted_terms?: boolean
+          terms_accepted_at?: string | null
+          is_blocked?: boolean
+          block_reason?: string | null
         }
         Relationships: []
+      }
+      saved_addresses: {
+        Row: {
+          id: string
+          restaurant_id: string
+          label: string
+          cep: string | null
+          street: string
+          number: string | null
+          complement: string | null
+          neighborhood: string | null
+          city: string
+          state: string
+          latitude: number | null
+          longitude: number | null
+          is_default: boolean
+          is_favorite: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          label?: string
+          cep?: string | null
+          street: string
+          number?: string | null
+          complement?: string | null
+          neighborhood?: string | null
+          city: string
+          state: string
+          latitude?: number | null
+          longitude?: number | null
+          is_default?: boolean
+          is_favorite?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          label?: string
+          cep?: string | null
+          street?: string
+          number?: string | null
+          complement?: string | null
+          neighborhood?: string | null
+          city?: string
+          state?: string
+          latitude?: number | null
+          longitude?: number | null
+          is_default?: boolean
+          is_favorite?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_addresses_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       pricing_distance_ranges: {
         Row: {
