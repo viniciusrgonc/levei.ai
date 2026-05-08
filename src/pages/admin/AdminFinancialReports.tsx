@@ -65,12 +65,11 @@ export default function AdminFinancialReports() {
   });
 
   useEffect(() => {
-    supabase.from('platform_settings').select('key, value').then(({ data }) => {
+    supabase.from('pricing_config').select('platform_commission_percentage').maybeSingle().then(({ data }) => {
       if (data) {
-        const fee = data.find(s => s.key === 'platform_fee_percentage');
-        const comm = data.find(s => s.key === 'driver_commission_percentage');
-        if (fee) setPlatformFeeRate(parseFloat(fee.value) / 100);
-        if (comm) setDriverCommissionRate(parseFloat(comm.value) / 100);
+        const feeRate = data.platform_commission_percentage / 100;
+        setPlatformFeeRate(feeRate);
+        setDriverCommissionRate(1 - feeRate);
       }
     });
   }, []);
