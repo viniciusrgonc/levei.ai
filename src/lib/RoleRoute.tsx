@@ -18,7 +18,7 @@ interface RoleRouteProps {
 
 export function RoleRoute({ role: requiredRole, children }: RoleRouteProps) {
   const { user, loading: authLoading } = useAuth();
-  const { role, driverPendingApproval, loading: roleLoading } = useUserSetup();
+  const { role, driverPendingApproval, driverBlocked, loading: roleLoading } = useUserSetup();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -36,11 +36,11 @@ export function RoleRoute({ role: requiredRole, children }: RoleRouteProps) {
       return;
     }
 
-    // Driver aguardando aprovação: só permite /driver/pending-approval
-    if (requiredRole === 'driver' && driverPendingApproval && pathname !== '/driver/pending-approval') {
+    // Driver bloqueado ou aguardando aprovação: só permite /driver/pending-approval
+    if (requiredRole === 'driver' && (driverPendingApproval || driverBlocked) && pathname !== '/driver/pending-approval') {
       navigate('/driver/pending-approval', { replace: true });
     }
-  }, [user, role, requiredRole, driverPendingApproval, pathname, authLoading, roleLoading, navigate]);
+  }, [user, role, requiredRole, driverPendingApproval, driverBlocked, pathname, authLoading, roleLoading, navigate]);
 
   if (authLoading || roleLoading) {
     return (
@@ -50,8 +50,8 @@ export function RoleRoute({ role: requiredRole, children }: RoleRouteProps) {
     );
   }
 
-  // Bloqueia render de qualquer rota driver exceto pending-approval quando não aprovado
-  if (requiredRole === 'driver' && driverPendingApproval && pathname !== '/driver/pending-approval') {
+  // Bloqueia render de qualquer rota driver exceto pending-approval quando não aprovado/bloqueado
+  if (requiredRole === 'driver' && (driverPendingApproval || driverBlocked) && pathname !== '/driver/pending-approval') {
     return null;
   }
 

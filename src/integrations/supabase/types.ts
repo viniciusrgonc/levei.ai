@@ -373,11 +373,23 @@ export type Database = {
       drivers: {
         Row: {
           accepted_product_types: string[]
+          accepted_terms: boolean
+          address_cep: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          bag_type: string | null
+          birth_date: string | null
+          cnh_back_url: string | null
+          cpf: string | null
           created_at: string
+          driver_status: 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url: string | null
-          vehicle_photo_url: string | null
-          rejection_reason: string | null
           earnings_balance: number
+          has_bag: boolean
           id: string
           is_approved: boolean
           is_available: boolean
@@ -386,23 +398,43 @@ export type Database = {
           license_plate: string | null
           longitude: number | null
           pending_balance: number
+          phone: string | null
           points: number
           radius_km: number | null
           rating: number | null
           referral_code: string | null
           referred_by: string | null
+          rejection_reason: string | null
+          selfie_url: string | null
+          terms_accepted_at: string | null
           total_deliveries: number | null
           updated_at: string
           user_id: string
+          vehicle_color: string | null
+          vehicle_model: string | null
+          vehicle_photo_url: string | null
           vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_year: number | null
         }
         Insert: {
           accepted_product_types?: string[]
+          accepted_terms?: boolean
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          bag_type?: string | null
+          birth_date?: string | null
+          cnh_back_url?: string | null
+          cpf?: string | null
           created_at?: string
+          driver_status?: 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url?: string | null
-          vehicle_photo_url?: string | null
-          rejection_reason?: string | null
           earnings_balance?: number
+          has_bag?: boolean
           id?: string
           is_approved?: boolean
           is_available?: boolean
@@ -411,23 +443,43 @@ export type Database = {
           license_plate?: string | null
           longitude?: number | null
           pending_balance?: number
+          phone?: string | null
           points?: number
           radius_km?: number | null
           rating?: number | null
           referral_code?: string | null
           referred_by?: string | null
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id: string
+          vehicle_color?: string | null
+          vehicle_model?: string | null
+          vehicle_photo_url?: string | null
           vehicle_type: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_year?: number | null
         }
         Update: {
           accepted_product_types?: string[]
+          accepted_terms?: boolean
+          address_cep?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          bag_type?: string | null
+          birth_date?: string | null
+          cnh_back_url?: string | null
+          cpf?: string | null
           created_at?: string
+          driver_status?: 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url?: string | null
-          vehicle_photo_url?: string | null
-          rejection_reason?: string | null
           earnings_balance?: number
+          has_bag?: boolean
           id?: string
           is_approved?: boolean
           is_available?: boolean
@@ -436,15 +488,23 @@ export type Database = {
           license_plate?: string | null
           longitude?: number | null
           pending_balance?: number
+          phone?: string | null
           points?: number
           radius_km?: number | null
           rating?: number | null
           referral_code?: string | null
           referred_by?: string | null
+          rejection_reason?: string | null
+          selfie_url?: string | null
+          terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string
           user_id?: string
+          vehicle_color?: string | null
+          vehicle_model?: string | null
+          vehicle_photo_url?: string | null
           vehicle_type?: Database["public"]["Enums"]["vehicle_type"]
+          vehicle_year?: number | null
         }
         Relationships: []
       }

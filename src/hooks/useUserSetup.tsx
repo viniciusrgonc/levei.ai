@@ -9,7 +9,8 @@ type UserRole = 'admin' | 'restaurant' | 'driver' | null;
 interface UserSetupStatus {
   role: UserRole;
   hasCompletedSetup: boolean;
-  driverPendingApproval: boolean; // driver criou registro mas ainda não aprovado
+  driverPendingApproval: boolean; // driver criou registro mas ainda não aprovado (pending ou rejected)
+  driverBlocked: boolean;         // driver bloqueado pelo admin
   loading: boolean;
 }
 
@@ -18,7 +19,7 @@ interface UserSetupStatus {
  * staleTime: 5 minutos → uma só query por sessão de navegação,
  * sem repetição a cada troca de rota.
  */
-async function fetchUserSetup(userId: string): Promise<{ role: UserRole; hasCompletedSetup: boolean; driverPendingApproval: boolean }> {
+async function fetchUserSetup(userId: string): Promise<{ role: UserRole; hasCompletedSetup: boolean; driverPendingApproval: boolean; driverBlocked: boolean }> {
   // 1. Busca o papel na tabela user_roles
   const { data: roleData } = await supabase
     .from('user_roles')
@@ -29,12 +30,13 @@ async function fetchUserSetup(userId: string): Promise<{ role: UserRole; hasComp
   const userRole = (roleData?.role as UserRole) ?? null;
 
   if (!userRole) {
-    return { role: null, hasCompletedSetup: false, driverPendingApproval: false };
+    return { role: null, hasCompletedSetup: false, driverPendingApproval: false, driverBlocked: false };
   }
 
   // 2. Verifica se o cadastro complementar está completo
   let hasCompleted = false;
   let pendingApproval = false;
+  let blocked = false;
 
   if (userRole === 'restaurant') {
     const { data } = await supabase
@@ -46,18 +48,18 @@ async function fetchUserSetup(userId: string): Promise<{ role: UserRole; hasComp
   } else if (userRole === 'driver') {
     const { data } = await supabase
       .from('drivers')
-      .select('id, is_approved')
+      .select('id, is_approved, driver_status')
       .eq('user_id', userId)
       .maybeSingle();
-    // Considerado completo SOMENTE após aprovação do admin
-    hasCompleted = !!data && data.is_approved === true;
-    // Registro existe mas ainda não aprovado → tela de aguardo
-    pendingApproval = !!data && data.is_approved === false;
+    const status = data?.driver_status ?? (data?.is_approved ? 'approved' : 'pending');
+    hasCompleted    = status === 'approved';
+    pendingApproval = !!data && (status === 'pending' || status === 'rejected');
+    blocked         = status === 'blocked';
   } else if (userRole === 'admin') {
     hasCompleted = true;
   }
 
-  return { role: userRole, hasCompletedSetup: hasCompleted, driverPendingApproval: pendingApproval };
+  return { role: userRole, hasCompletedSetup: hasCompleted, driverPendingApproval: pendingApproval, driverBlocked: blocked };
 }
 
 export function useUserSetup(): UserSetupStatus {
@@ -76,6 +78,7 @@ export function useUserSetup(): UserSetupStatus {
     role: data?.role ?? null,
     hasCompletedSetup: data?.hasCompletedSetup ?? false,
     driverPendingApproval: data?.driverPendingApproval ?? false,
+    driverBlocked: data?.driverBlocked ?? false,
     loading: isLoading,
   };
 }
