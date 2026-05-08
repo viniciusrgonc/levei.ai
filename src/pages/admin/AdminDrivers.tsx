@@ -64,9 +64,9 @@ async function fetchDrivers(): Promise<Driver[]> {
         created_at: driver.created_at,
         profile_name: profile?.full_name || 'Sem nome',
         profile_phone: profile?.phone || '',
-        drivers_license_url: (driver as any).drivers_license_url || null,
-        vehicle_photo_url: (driver as any).vehicle_photo_url || null,
-        rejection_reason: (driver as any).rejection_reason || null,
+        drivers_license_url: driver.drivers_license_url || null,
+        vehicle_photo_url: driver.vehicle_photo_url || null,
+        rejection_reason: driver.rejection_reason || null,
       };
     })
   );
