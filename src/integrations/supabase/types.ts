@@ -1060,6 +1060,22 @@ export type Database = {
             Args: { p_cancellation_reason?: string; p_delivery_id: string }
             Returns: Json
           }
+      redeem_store_item: {
+        Args: { p_item_id: string }
+        Returns: Json
+      }
+      increment_driver_points: {
+        Args: { p_driver_id: string; p_points: number }
+        Returns: void
+      }
+      register_referral: {
+        Args: { p_referral_code: string; p_new_driver_id: string }
+        Returns: Json
+      }
+      process_referral_completion: {
+        Args: { p_driver_id: string }
+        Returns: void
+      }
     }
     Enums: {
       app_role: "admin" | "restaurant" | "driver"
