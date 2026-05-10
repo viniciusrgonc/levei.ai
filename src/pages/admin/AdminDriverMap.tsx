@@ -3,13 +3,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminPageHeader } from '@/components/AdminPageHeader';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { DivIcon } from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import 'leaflet/dist/leaflet.css';
-import { Wifi, WifiOff, Package, Star, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, Package, Star, RefreshCw, Zap } from 'lucide-react';
+import { fetchPricingConfig } from '@/lib/pricing';
 
 // ── Types ────────────────────────────────────────────────────────────────────
+interface Hotspot {
+  lat: number;
+  lng: number;
+  count: number;
+}
+
 interface DriverOnMap {
   id: string;
   user_id: string;
@@ -82,6 +89,39 @@ const ICON_ONLINE   = makeIcon('online');
 const ICON_DELIVERY = makeIcon('delivery');
 const ICON_OFFLINE  = makeIcon('offline');
 
+// ── Hotspot computation ──────────────────────────────────────────────────────
+// Agrupa coordenadas em uma grade de ~1km (0.01°) e retorna clusters
+function computeHotspots(coords: { lat: number; lng: number }[]): Hotspot[] {
+  const grid = new Map<string, Hotspot>();
+  for (const c of coords) {
+    const key = `${Math.round(c.lat * 100)},${Math.round(c.lng * 100)}`;
+    if (grid.has(key)) {
+      grid.get(key)!.count++;
+    } else {
+      grid.set(key, { lat: c.lat, lng: c.lng, count: 1 });
+    }
+  }
+  return Array.from(grid.values());
+}
+
+// ── Fetch pending delivery hotspots ──────────────────────────────────────────
+async function fetchHotspots(): Promise<Hotspot[]> {
+  const { data } = await supabase
+    .from('deliveries')
+    .select('pickup_lat, pickup_lng')
+    .in('status', ['pending', 'scheduled'])
+    .not('pickup_lat', 'is', null)
+    .not('pickup_lng', 'is', null)
+    .limit(200);
+
+  if (!data || data.length === 0) return [];
+  const coords = (data as { pickup_lat: number; pickup_lng: number }[]).map((d) => ({
+    lat: d.pickup_lat,
+    lng: d.pickup_lng,
+  }));
+  return computeHotspots(coords);
+}
+
 // ── Query ────────────────────────────────────────────────────────────────────
 async function fetchDriversOnMap(): Promise<DriverOnMap[]> {
   const [{ data: drivers }, { data: activeDeliveries }] = await Promise.all([
@@ -128,11 +168,21 @@ export default function AdminDriverMap() {
   const [drivers, setDrivers] = useState<DriverOnMap[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [dynamicEnabled, setDynamicEnabled] = useState(false);
+  const [dynamicMultiplier, setDynamicMultiplier] = useState(1);
+  const [hotspots, setHotspots] = useState<Hotspot[]>([]);
 
   const load = async () => {
     setLoading(true);
-    const data = await fetchDriversOnMap();
+    const [data, config, spots] = await Promise.all([
+      fetchDriversOnMap(),
+      fetchPricingConfig(),
+      fetchHotspots(),
+    ]);
     setDrivers(data);
+    setDynamicEnabled(config?.dynamic_enabled ?? false);
+    setDynamicMultiplier(config?.dynamic_multiplier ?? 1);
+    setHotspots(spots);
     setLastUpdate(new Date());
     setLoading(false);
   };
@@ -179,6 +229,21 @@ export default function AdminDriverMap() {
             </button>
           </AdminPageHeader>
 
+          {/* ── Modo dinâmico banner ── */}
+          {dynamicEnabled && (
+            <div className="flex items-center gap-3 px-4 py-2.5 bg-amber-500 z-10">
+              <div className="flex items-center gap-2 flex-1">
+                <Zap className="h-4 w-4 text-white flex-shrink-0" />
+                <span className="text-white font-bold text-sm">
+                  Modo Dinâmico Ativo — {dynamicMultiplier}× multiplicador
+                </span>
+                <span className="text-amber-100 text-xs ml-1">
+                  · Círculos vermelhos = alta demanda
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* ── Stats bar ── */}
           <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 z-10">
             <StatChip icon={Wifi} label="Online" value={online} color="text-green-600" bg="bg-green-50" dot="#22c55e" />
@@ -201,6 +266,12 @@ export default function AdminDriverMap() {
                 <span className="text-gray-500 text-xs">{l.label}</span>
               </div>
             ))}
+            {dynamicEnabled && (
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ef4444' }} />
+                <span className="text-gray-500 text-xs">Alta demanda</span>
+              </div>
+            )}
           </div>
 
           {/* ── Map ── */}
@@ -235,6 +306,26 @@ export default function AdminDriverMap() {
                 attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
               />
               <FitBounds drivers={drivers} />
+
+              {/* ── Hotspot circles — visíveis apenas com modo dinâmico ativo ── */}
+              {dynamicEnabled && hotspots.map((spot, idx) => {
+                // Raio base 400m + 100m por entrega extra no cluster
+                const radiusMeters = 400 + (spot.count - 1) * 120;
+                return (
+                  <Circle
+                    key={`hotspot-${idx}`}
+                    center={[spot.lat, spot.lng]}
+                    radius={radiusMeters}
+                    pathOptions={{
+                      color: '#ef4444',
+                      fillColor: '#ef4444',
+                      fillOpacity: 0.15 + Math.min(spot.count * 0.05, 0.25),
+                      weight: 1.5,
+                      dashArray: '6 4',
+                    }}
+                  />
+                );
+              })}
 
               {drivers.map((driver) => {
                 const status = driver.in_delivery ? 'delivery' : driver.is_available ? 'online' : 'offline';

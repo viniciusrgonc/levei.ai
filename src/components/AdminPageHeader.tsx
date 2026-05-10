@@ -3,9 +3,12 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ArrowLeft, LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import leveiLogo from '@/assets/levei-logo.png';
+import NotificationBell from '@/components/NotificationBell';
 
 interface AdminPageHeaderProps {
   title: string;
+  /** Subtítulo exibido abaixo do título (opcional). */
+  subtitle?: string;
   /** Mostra botão voltar. Padrão: false (não mostrar no dashboard). */
   showBack?: boolean;
   /** Mostra botão Sair. Padrão: false. */
@@ -16,6 +19,7 @@ interface AdminPageHeaderProps {
 
 export function AdminPageHeader({
   title,
+  subtitle,
   showBack = false,
   showLogout = false,
   children,
@@ -55,14 +59,22 @@ export function AdminPageHeader({
           <SidebarTrigger className="text-primary-foreground hover:bg-white/10" />
           <div className="flex items-center gap-2 ml-1">
             <img src={leveiLogo} alt="Levei" className="h-7 w-7 rounded-lg object-cover" />
-            <h1 className="text-base font-bold text-white truncate max-w-[180px] sm:max-w-none">
-              {title}
-            </h1>
+            <div>
+              <h1 className="text-base font-bold text-white truncate max-w-[180px] sm:max-w-none leading-tight">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-white/60 text-[11px] truncate max-w-[180px] sm:max-w-none leading-tight">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Lado direito: ações + logout */}
         <div className="flex items-center gap-2">
+          <NotificationBell />
           {children}
           {showLogout && (
             <button

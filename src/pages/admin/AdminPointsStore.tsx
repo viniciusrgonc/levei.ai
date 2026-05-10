@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -273,6 +273,29 @@ export default function AdminPointsStore() {
     staleTime: 30_000,
   });
 
+  // ── Realtime: notifica novo resgate ─────────────────────────────────────────
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-store-redemptions-rt')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'store_redemptions',
+      }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ['admin-store-redemptions'] });
+        // Toast de alerta para o admin
+        toast({
+          title: '🎁 Novo resgate de pontos!',
+          description: 'Um motoboy acabou de resgatar um item da loja.',
+        });
+        // Muda automaticamente para a aba de resgates para o admin ver
+        setTab('redemptions');
+        setStatusFilter('pending');
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
+  const pendingRedemptions = redemptions.filter((r) => r.status === 'pending').length;
+
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await supabase.from('store_items').update({ is_active, updated_at: new Date().toISOString() }).eq('id', id);
@@ -328,20 +351,27 @@ export default function AdminPointsStore() {
 
           {/* Tabs */}
           <div className="bg-white border-b border-gray-200 px-6 flex gap-1">
-            {(['items', 'redemptions'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`py-3 px-1 text-sm font-semibold border-b-2 mr-6 transition-colors ${
-                  tab === t ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'
-                }`}
-              >
-                {t === 'items'
-                  ? `Itens (${items.length})`
-                  : `Resgates (${redemptions.length})`
-                }
-              </button>
-            ))}
+            <button
+              onClick={() => setTab('items')}
+              className={`py-3 px-1 text-sm font-semibold border-b-2 mr-6 transition-colors ${
+                tab === 'items' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Itens ({items.length})
+            </button>
+            <button
+              onClick={() => setTab('redemptions')}
+              className={`py-3 px-1 text-sm font-semibold border-b-2 mr-6 transition-colors flex items-center gap-2 ${
+                tab === 'redemptions' ? 'border-primary text-primary' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              Resgates ({redemptions.length})
+              {pendingRedemptions > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold leading-none">
+                  {pendingRedemptions > 9 ? '9+' : pendingRedemptions}
+                </span>
+              )}
+            </button>
           </div>
 
           <div className="flex-1 p-6">
