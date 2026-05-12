@@ -86,7 +86,7 @@ export function useUserSetup(): UserSetupStatus {
 export function useAuthRedirect() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { role, hasCompletedSetup, loading } = useUserSetup();
+  const { role, hasCompletedSetup, driverPendingApproval, loading } = useUserSetup();
 
   useEffect(() => {
     if (loading || !user) return;
@@ -123,7 +123,7 @@ export function useAuthRedirect() {
     if (role === 'restaurant' && !currentPath.startsWith('/restaurant/')) navigate('/restaurant/dashboard');
     else if (role === 'driver' && !currentPath.startsWith('/driver/')) navigate('/driver/dashboard');
     else if (role === 'admin' && !currentPath.startsWith('/admin/')) navigate('/admin/dashboard');
-  }, [user, role, hasCompletedSetup, loading, navigate]);
+  }, [user, role, hasCompletedSetup, driverPendingApproval, loading, navigate]);
 
   return { role, hasCompletedSetup, loading };
 }
