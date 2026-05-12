@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 // ── Vehicle options ───────────────────────────────────────────────────────────
 const VEHICLE_OPTIONS = [
@@ -63,16 +63,18 @@ export default function DriverSettings() {
     queryFn: () => fetchSettings(user!.id),
     enabled: !!user?.id,
     staleTime: 2 * 60 * 1000,
-    onSuccess: (d) => {
-      if (!hydrated) {
-        setLicensePlate(d.licensePlate);
-        setVehicleType(d.vehicleType);
-        setAcceptedProductTypes(d.acceptedProductTypes);
-        setRadiusKm(d.radiusKm);
-        setHydrated(true);
-      }
-    },
-  } as any);
+  });
+
+  // Hidrata o estado local uma única vez quando os dados chegam do servidor
+  useEffect(() => {
+    if (data && !hydrated) {
+      setLicensePlate(data.licensePlate);
+      setVehicleType(data.vehicleType);
+      setAcceptedProductTypes(data.acceptedProductTypes);
+      setRadiusKm(data.radiusKm);
+      setHydrated(true);
+    }
+  }, [data, hydrated]);
 
   // ── Mutations ──────────────────────────────────────────────────────────────
   const toggleAvailability = useMutation({

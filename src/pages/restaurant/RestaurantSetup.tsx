@@ -14,6 +14,7 @@ import {
   FileText,
   Building2,
   User,
+  LogOut,
 } from 'lucide-react';
 
 // ── Validation ────────────────────────────────────────────────────────────────
@@ -352,10 +353,23 @@ export default function RestaurantSetup() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Hero header */}
-      <div className="bg-primary pt-safe-top pb-6 px-4 flex flex-col items-center">
+      <div className="bg-primary pt-safe-top pb-6 px-4 flex flex-col items-center relative">
         <div className="w-full max-w-md flex justify-center pt-4">
           <img src={leveiLogo} alt="Levei.ai" className="h-8 rounded-lg" />
         </div>
+        {/* Botão sair — sempre visível para evitar armadilha no step 1 */}
+        <button
+          onClick={async () => {
+            await supabase.auth.signOut();
+            navigate('/auth');
+          }}
+          aria-label="Sair"
+          className="absolute top-4 right-4 flex items-center gap-1 text-white/70 hover:text-white text-xs font-medium transition-colors"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
+          <LogOut className="h-4 w-4" />
+          Sair
+        </button>
         <ProgressBar step={step} />
         <p className="text-white/80 text-xs mt-1 mb-1">{STEP_LABELS[step - 1]}</p>
         <h1 className="text-white font-bold text-lg text-center">{stepTitles[step - 1]}</h1>

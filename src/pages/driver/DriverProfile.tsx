@@ -14,7 +14,7 @@ import {
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 
 export default function DriverProfile() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
@@ -23,10 +23,11 @@ export default function DriverProfile() {
   const [uploading, setUploading] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ['driver-profile'],
+    queryKey: ['driver-profile', user?.id],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) throw new Error('Not authenticated');
+      const user = authUser;
 
       const [{ data: profileData }, { data: driverData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),

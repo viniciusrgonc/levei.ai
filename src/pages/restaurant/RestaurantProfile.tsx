@@ -22,7 +22,7 @@ const DAYS: Record<string, string> = {
 };
 
 export default function RestaurantProfile() {
-  const { signOut } = useAuth();
+  const { signOut, user: authUser } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -33,7 +33,7 @@ export default function RestaurantProfile() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const { data: profile, isLoading } = useQuery({
-    queryKey: ['restaurant-profile'],
+    queryKey: ['restaurant-profile', authUser?.id],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
