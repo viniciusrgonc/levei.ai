@@ -1,11 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
   ArrowLeft, ChevronRight, CheckCircle2, Loader2, Camera, Upload,
-  Gift, Bike, Car, Truck, User, MapPin, FileText, ShoppingBag, ClipboardCheck,
+  Gift, Bike, User, MapPin, FileText, ShoppingBag, ClipboardCheck, X,
 } from 'lucide-react';
 import leveiLogo from '@/assets/levei-logo.png';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
@@ -53,6 +53,10 @@ function isOver18(dateStr: string): boolean {
   return birth <= limit;
 }
 
+function isValidEmail(e: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
 async function compressImage(file: File, maxPx = 1200, quality = 0.82): Promise<File> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -92,6 +96,9 @@ async function fetchCEP(cep: string) {
   return data as { logradouro: string; bairro: string; localidade: string; uf: string };
 }
 
+// ── Draft persistence ──────────────────────────────────────────────────────────
+const draftKey = (userId: string) => `levei-driver-setup-${userId}`;
+
 // ── Config ─────────────────────────────────────────────────────────────────────
 
 const VEHICLE_OPTIONS = [
@@ -104,33 +111,79 @@ const VEHICLE_OPTIONS = [
 const BAG_TYPES = ['Bag traseira', 'Baú', 'Mochila', 'Caçamba'];
 
 const STEP_LABELS = [
-  { label: 'Dados pessoais', icon: User     },
-  { label: 'Endereço',       icon: MapPin   },
-  { label: 'Veículo',        icon: Bike     },
-  { label: 'Documentos',     icon: FileText },
-  { label: 'Categorias',     icon: ShoppingBag },
+  { label: 'Dados pessoais', icon: User         },
+  { label: 'Endereço',       icon: MapPin        },
+  { label: 'Veículo',        icon: Bike          },
+  { label: 'Documentos',     icon: FileText      },
+  { label: 'Categorias',     icon: ShoppingBag   },
   { label: 'Termos',         icon: ClipboardCheck },
 ];
 const TOTAL_STEPS = STEP_LABELS.length;
 
 type DocKey = 'cnhFront' | 'cnhBack' | 'selfie' | 'vehiclePhoto';
-
 interface DocState { file: File | null; preview: string | null }
 const emptyDoc = (): DocState => ({ file: null, preview: null });
+
+// ── Exit Modal ─────────────────────────────────────────────────────────────────
+
+function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)' }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-t-3xl w-full max-w-md px-6 pt-4 pb-10 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+        style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }}
+      >
+        {/* Handle */}
+        <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+
+        <div className="text-center space-y-1.5 mb-5">
+          <h2 className="text-lg font-bold text-gray-900">Sair do cadastro?</h2>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Seu progresso foi salvo automaticamente.<br />
+            Você pode continuar de onde parou quando retornar.
+          </p>
+        </div>
+
+        <button
+          onClick={onConfirm}
+          className="w-full h-12 rounded-2xl bg-gray-100 text-gray-700 font-bold text-sm"
+        >
+          Sair do cadastro
+        </button>
+        <button
+          onClick={onCancel}
+          className="w-full h-12 rounded-2xl bg-primary text-white font-bold text-sm shadow-sm"
+        >
+          Continuar cadastro
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export default function DriverSetup() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [step, setStep]     = useState(1);
-  const [loading, setLoading] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const [step, setStep]         = useState(1);
+  const [loading, setLoading]   = useState(false);
+  const [showExit, setShowExit] = useState(false);
+  const [restored, setRestored] = useState(false);
 
   // Step 1 — Dados pessoais
-  const [fullName,   setFullName]   = useState('');
-  const [cpf,        setCpf]        = useState('');
-  const [birthDate,  setBirthDate]  = useState('');
-  const [phone,      setPhone]      = useState('');
+  const [email,     setEmail]     = useState(user?.email ?? '');
+  const [fullName,  setFullName]  = useState('');
+  const [cpf,       setCpf]       = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [phone,     setPhone]     = useState('');
 
   // Step 2 — Endereço
   const [cep,          setCep]          = useState('');
@@ -139,7 +192,7 @@ export default function DriverSetup() {
   const [complement,   setComplement]   = useState('');
   const [neighborhood, setNeighborhood] = useState('');
   const [city,         setCity]         = useState('');
-  const [state,        setState]        = useState('');
+  const [stateUF,      setStateUF]      = useState('');
   const [cepLoading,   setCepLoading]   = useState(false);
 
   // Step 3 — Veículo
@@ -153,15 +206,15 @@ export default function DriverSetup() {
 
   // Step 4 — Documentos
   const [docs, setDocs] = useState<Record<DocKey, DocState>>({
-    cnhFront:    emptyDoc(),
-    cnhBack:     emptyDoc(),
-    selfie:      emptyDoc(),
+    cnhFront:     emptyDoc(),
+    cnhBack:      emptyDoc(),
+    selfie:       emptyDoc(),
     vehiclePhoto: emptyDoc(),
   });
   const inputRefs: Record<DocKey, React.RefObject<HTMLInputElement>> = {
-    cnhFront:    useRef<HTMLInputElement>(null),
-    cnhBack:     useRef<HTMLInputElement>(null),
-    selfie:      useRef<HTMLInputElement>(null),
+    cnhFront:     useRef<HTMLInputElement>(null),
+    cnhBack:      useRef<HTMLInputElement>(null),
+    selfie:       useRef<HTMLInputElement>(null),
     vehiclePhoto: useRef<HTMLInputElement>(null),
   };
 
@@ -169,25 +222,85 @@ export default function DriverSetup() {
   const [categories, setCategories] = useState<string[]>([]);
 
   // Step 6 — Termos
-  const [termsAccepted,    setTermsAccepted]    = useState(false);
-  const [privacyAccepted,  setPrivacyAccepted]  = useState(false);
-  const [declareCNH,       setDeclareCNH]       = useState(false);
-  const [declareVehicle,   setDeclareVehicle]   = useState(false);
-  const [referralCode,     setReferralCode]     = useState('');
+  const [termsAccepted,  setTermsAccepted]  = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [declareCNH,     setDeclareCNH]     = useState(false);
+  const [declareVehicle, setDeclareVehicle] = useState(false);
+  const [referralCode,   setReferralCode]   = useState('');
+
+  // ── Draft key ──────────────────────────────────────────────────────────────
+  const DRAFT_KEY = user?.id ? draftKey(user.id) : null;
+
+  // ── Restore draft on mount ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (!DRAFT_KEY || restored) return;
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (!saved) { setRestored(true); return; }
+      const d = JSON.parse(saved);
+      if (d.step)         setStep(Math.min(d.step, TOTAL_STEPS));
+      if (d.email)        setEmail(d.email);
+      if (d.fullName)     setFullName(d.fullName);
+      if (d.cpf)          setCpf(d.cpf);
+      if (d.birthDate)    setBirthDate(d.birthDate);
+      if (d.phone)        setPhone(d.phone);
+      if (d.cep)          setCep(d.cep);
+      if (d.street)       setStreet(d.street);
+      if (d.number)       setNumber(d.number);
+      if (d.complement)   setComplement(d.complement);
+      if (d.neighborhood) setNeighborhood(d.neighborhood);
+      if (d.city)         setCity(d.city);
+      if (d.stateUF)      setStateUF(d.stateUF);
+      if (d.vehicleType)  setVehicleType(d.vehicleType);
+      if (d.plate)        setPlate(d.plate);
+      if (d.vehicleModel) setVehicleModel(d.vehicleModel);
+      if (d.vehicleColor) setVehicleColor(d.vehicleColor);
+      if (d.vehicleYear)  setVehicleYear(d.vehicleYear);
+      if (d.hasBag !== undefined && d.hasBag !== null) setHasBag(d.hasBag);
+      if (d.bagType)      setBagType(d.bagType);
+      if (d.categories?.length) setCategories(d.categories);
+      if (d.referralCode) setReferralCode(d.referralCode);
+    } catch {}
+    setRestored(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [DRAFT_KEY]);
+
+  // ── Auto-save draft on every change ───────────────────────────────────────
+  useEffect(() => {
+    if (!DRAFT_KEY || !restored) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        step, email, fullName, cpf, birthDate, phone,
+        cep, street, number, complement, neighborhood, city, stateUF,
+        vehicleType, plate, vehicleModel, vehicleColor, vehicleYear, hasBag, bagType,
+        categories, referralCode,
+      }));
+    } catch {}
+  }, [
+    DRAFT_KEY, restored, step, email, fullName, cpf, birthDate, phone,
+    cep, street, number, complement, neighborhood, city, stateUF,
+    vehicleType, plate, vehicleModel, vehicleColor, vehicleYear, hasBag, bagType,
+    categories, referralCode,
+  ]);
+
+  // ── Scroll top on step change ──────────────────────────────────────────────
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
 
   // ── Validation per step ────────────────────────────────────────────────────
-
   const canProceed = (s: number): boolean => {
     switch (s) {
-      case 1: {
-        if (!fullName.trim()) return false;
-        if (!validateCPF(cpf)) return false;
-        if (!isOver18(birthDate)) return false;
-        if (phone.replace(/\D/g, '').length < 10) return false;
-        return true;
-      }
+      case 1:
+        return (
+          isValidEmail(email) &&
+          !!fullName.trim() &&
+          validateCPF(cpf) &&
+          isOver18(birthDate) &&
+          phone.replace(/\D/g, '').length >= 10
+        );
       case 2:
-        return !!(street && number && neighborhood && city && state);
+        return !!(street && number && neighborhood && city && stateUF);
       case 3:
         return !!(vehicleType && hasBag !== null);
       case 4:
@@ -202,7 +315,6 @@ export default function DriverSetup() {
   };
 
   // ── CEP fetch ──────────────────────────────────────────────────────────────
-
   const handleCEP = async (raw: string) => {
     const formatted = formatCEP(raw);
     setCep(formatted);
@@ -213,7 +325,7 @@ export default function DriverSetup() {
         setStreet(data.logradouro);
         setNeighborhood(data.bairro);
         setCity(data.localidade);
-        setState(data.uf);
+        setStateUF(data.uf);
       } catch {
         toast({ variant: 'destructive', title: 'CEP não encontrado', description: 'Preencha o endereço manualmente.' });
       } finally {
@@ -223,7 +335,6 @@ export default function DriverSetup() {
   };
 
   // ── Document picker ────────────────────────────────────────────────────────
-
   const pickDoc = (key: DocKey, file: File) => {
     if (file.size > 15 * 1024 * 1024) {
       toast({ variant: 'destructive', title: 'Arquivo muito grande', description: 'Máximo 15 MB.' });
@@ -234,20 +345,43 @@ export default function DriverSetup() {
   };
 
   // ── Category toggle ────────────────────────────────────────────────────────
-
   const toggleCat = (key: string) =>
     setCategories((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────────
+  const goBack = () => {
+    if (step === 1) {
+      setShowExit(true);
+    } else {
+      setStep((s) => s - 1);
+    }
+  };
 
+  const handleExit = () => {
+    setShowExit(false);
+    // Draft já foi salvo automaticamente
+    navigate('/');
+  };
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // 1. Atualiza nome no perfil
+      // 0. Atualiza e-mail se foi alterado
+      if (email && email !== user.email) {
+        const { error: emailErr } = await supabase.auth.updateUser({ email });
+        if (emailErr) {
+          toast({ variant: 'destructive', title: 'Erro ao atualizar e-mail', description: emailErr.message });
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 1. Atualiza nome e telefone no perfil
       await supabase.from('profiles').update({ full_name: fullName.trim(), phone }).eq('id', user.id);
 
-      // 2. Upload docs (com compressão automática)
+      // 2. Upload docs em paralelo (com compressão automática)
       const [cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl] = await Promise.all([
         uploadFile(user.id, docs.cnhFront.file!, 'cnh-front'),
         uploadFile(user.id, docs.cnhBack.file!, 'cnh-back'),
@@ -259,9 +393,9 @@ export default function DriverSetup() {
       const { data: newDriver, error } = await supabase
         .from('drivers')
         .insert([{
-          user_id:    user.id,
-          cpf:        cpf.replace(/\D/g, ''),
-          birth_date: birthDate,
+          user_id:              user.id,
+          cpf:                  cpf.replace(/\D/g, ''),
+          birth_date:           birthDate,
           phone,
           address_cep:          cep.replace(/\D/g, ''),
           address_street:       street,
@@ -269,24 +403,24 @@ export default function DriverSetup() {
           address_complement:   complement || null,
           address_neighborhood: neighborhood,
           address_city:         city,
-          address_state:        state,
-          vehicle_type:   vehicleType as any,
-          license_plate:  plate.trim().toUpperCase() || null,
-          vehicle_model:  vehicleModel.trim() || null,
-          vehicle_color:  vehicleColor.trim() || null,
-          vehicle_year:   vehicleYear ? parseInt(vehicleYear) : null,
-          has_bag:        hasBag!,
-          bag_type:       hasBag && bagType ? bagType : null,
-          drivers_license_url: cnhFrontUrl,
-          cnh_back_url:   cnhBackUrl,
-          selfie_url:     selfieUrl,
-          vehicle_photo_url: vehiclePhotoUrl,
+          address_state:        stateUF,
+          vehicle_type:         vehicleType as any,
+          license_plate:        plate.trim().toUpperCase() || null,
+          vehicle_model:        vehicleModel.trim() || null,
+          vehicle_color:        vehicleColor.trim() || null,
+          vehicle_year:         vehicleYear ? parseInt(vehicleYear) : null,
+          has_bag:              hasBag!,
+          bag_type:             hasBag && bagType ? bagType : null,
+          drivers_license_url:  cnhFrontUrl,
+          cnh_back_url:         cnhBackUrl,
+          selfie_url:           selfieUrl,
+          vehicle_photo_url:    vehiclePhotoUrl,
           accepted_product_types: categories,
-          accepted_terms:    true,
-          terms_accepted_at: new Date().toISOString(),
-          is_approved:    false,
-          is_available:   false,
-          driver_status:  'pending',
+          accepted_terms:       true,
+          terms_accepted_at:    new Date().toISOString(),
+          is_approved:          false,
+          is_available:         false,
+          driver_status:        'pending',
         }])
         .select('id')
         .single();
@@ -299,6 +433,9 @@ export default function DriverSetup() {
         supabase.rpc('register_referral', { p_referral_code: code, p_new_driver_id: newDriver.id }).catch(() => {});
       }
 
+      // 5. Limpa draft salvo
+      if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
+
       navigate('/driver/pending-approval', { replace: true });
     } catch (e: any) {
       toast({ variant: 'destructive', title: 'Erro no cadastro', description: e?.message ?? 'Tente novamente.' });
@@ -309,7 +446,7 @@ export default function DriverSetup() {
 
   const goNext = () => {
     if (!canProceed(step)) {
-      toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha todos os campos destacados.' });
+      toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha todos os campos antes de continuar.' });
       return;
     }
     if (step === TOTAL_STEPS) { handleSubmit(); return; }
@@ -319,112 +456,141 @@ export default function DriverSetup() {
   const stepInfo = STEP_LABELS[step - 1];
 
   // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
 
       {/* ── Header ── */}
-      <div className="bg-primary px-4 pb-5 pt-4">
-        <div className="flex items-center gap-3 mb-4">
-          {step > 1 ? (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <ArrowLeft className="h-5 w-5 text-white" />
-            </button>
-          ) : (
-            <img src={leveiLogo} alt="Levei" className="h-8 w-8 rounded-lg" />
-          )}
-          <div className="flex-1">
-            <p className="text-white/60 text-xs font-medium">Passo {step} de {TOTAL_STEPS}</p>
-            <h1 className="text-white font-bold text-lg leading-tight">{stepInfo.label}</h1>
+      <div className="bg-primary px-4 pb-5 pt-4 flex-shrink-0">
+        <div className="flex items-center gap-2 mb-4">
+
+          {/* ← Voltar */}
+          <button
+            onClick={goBack}
+            className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform flex-shrink-0"
+            aria-label="Voltar"
+          >
+            <ArrowLeft className="h-5 w-5 text-white" />
+          </button>
+
+          {/* Progresso central */}
+          <div className="flex-1 text-center min-w-0 px-1">
+            <p className="text-white/60 text-[11px] font-medium">
+              Passo {step} de {TOTAL_STEPS}
+            </p>
+            <h1 className="text-white font-bold text-base leading-tight truncate">
+              {stepInfo.label}
+            </h1>
           </div>
-          <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center">
-            <stepInfo.icon className="h-4.5 w-4.5 text-white" size={18} />
-          </div>
+
+          {/* × Fechar */}
+          <button
+            onClick={() => setShowExit(true)}
+            className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center active:scale-90 transition-transform flex-shrink-0"
+            aria-label="Fechar cadastro"
+          >
+            <X className="h-5 w-5 text-white" />
+          </button>
         </div>
 
-        {/* Progress bar */}
+        {/* Barra de progresso */}
         <div className="flex gap-1">
           {STEP_LABELS.map((_, i) => (
             <div
               key={i}
-              className="flex-1 h-1 rounded-full transition-all duration-400"
+              className="flex-1 h-1 rounded-full transition-all duration-300"
               style={{ background: i < step ? 'white' : 'rgba(255,255,255,0.25)' }}
             />
           ))}
         </div>
       </div>
 
-      {/* ── Content ── */}
-      <div className="flex-1 px-4 py-5 space-y-4 overflow-y-auto">
+      {/* ── Content (scrollável) ── */}
+      <div
+        ref={contentRef}
+        className="flex-1 px-4 py-5 space-y-4 overflow-y-auto"
+        style={{ paddingBottom: '100px' }} /* espaço para o teclado + footer */
+      >
 
         {/* ═══════════════ STEP 1 — Dados pessoais ═══════════════ */}
         {step === 1 && (
-          <>
-            <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Informações básicas</p>
+          <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Informações básicas</p>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-600">E-mail</label>
-                <div className="h-11 px-4 rounded-xl border border-gray-100 bg-gray-50 flex items-center text-sm text-gray-400">
-                  {user?.email}
-                </div>
-                <p className="text-[10px] text-gray-400">Não pode ser alterado</p>
-              </div>
+            {/* E-mail editável */}
+            <Field label="E-mail *">
+              <input
+                type="email"
+                inputMode="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className={inputCls(isValidEmail(email))}
+              />
+              {email && !isValidEmail(email) && (
+                <p className="text-[10px] text-red-500 mt-1">E-mail inválido</p>
+              )}
+              <p className="text-[10px] text-blue-500">Pode ser alterado antes da aprovação</p>
+            </Field>
 
-              <Field label="Nome completo *">
-                <input
-                  type="text"
-                  placeholder="Seu nome completo"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className={inputCls(!!fullName.trim())}
-                />
-              </Field>
+            <Field label="Nome completo *">
+              <input
+                type="text"
+                placeholder="Seu nome completo"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className={inputCls(!!fullName.trim())}
+              />
+            </Field>
 
-              <Field label="CPF *">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="000.000.000-00"
-                  value={cpf}
-                  onChange={(e) => setCpf(formatCPF(e.target.value))}
-                  maxLength={14}
-                  className={inputCls(validateCPF(cpf))}
-                />
-                {cpf.length === 14 && !validateCPF(cpf) && (
-                  <p className="text-[10px] text-red-500 mt-1">CPF inválido</p>
-                )}
-              </Field>
+            <Field label="CPF *">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="000.000.000-00"
+                value={cpf}
+                onChange={(e) => setCpf(formatCPF(e.target.value))}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                maxLength={14}
+                className={inputCls(validateCPF(cpf))}
+              />
+              {cpf.length === 14 && !validateCPF(cpf) && (
+                <p className="text-[10px] text-red-500 mt-1">CPF inválido</p>
+              )}
+            </Field>
 
-              <Field label="Data de nascimento *">
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  max={(() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d.toISOString().split('T')[0]; })()}
-                  className={inputCls(isOver18(birthDate))}
-                />
-                {birthDate && !isOver18(birthDate) && (
-                  <p className="text-[10px] text-red-500 mt-1">Você precisa ter 18 anos ou mais</p>
-                )}
-              </Field>
+            <Field label="Data de nascimento *">
+              <input
+                type="date"
+                value={birthDate}
+                onChange={(e) => setBirthDate(e.target.value)}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                max={(() => {
+                  const d = new Date();
+                  d.setFullYear(d.getFullYear() - 18);
+                  return d.toISOString().split('T')[0];
+                })()}
+                className={inputCls(isOver18(birthDate))}
+              />
+              {birthDate && !isOver18(birthDate) && (
+                <p className="text-[10px] text-red-500 mt-1">Você precisa ter 18 anos ou mais</p>
+              )}
+            </Field>
 
-              <Field label="Telefone / WhatsApp *">
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="(00) 00000-0000"
-                  value={phone}
-                  onChange={(e) => setPhone(formatPhone(e.target.value))}
-                  maxLength={15}
-                  className={inputCls(phone.replace(/\D/g, '').length >= 10)}
-                />
-              </Field>
-            </div>
-          </>
+            <Field label="Telefone / WhatsApp *">
+              <input
+                type="tel"
+                inputMode="numeric"
+                placeholder="(00) 00000-0000"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                maxLength={15}
+                className={inputCls(phone.replace(/\D/g, '').length >= 10)}
+              />
+            </Field>
+          </div>
         )}
 
         {/* ═══════════════ STEP 2 — Endereço ═══════════════ */}
@@ -440,6 +606,7 @@ export default function DriverSetup() {
                   placeholder="00000-000"
                   value={cep}
                   onChange={(e) => handleCEP(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   maxLength={9}
                   className={inputCls(cep.replace(/\D/g, '').length === 8)}
                 />
@@ -450,35 +617,72 @@ export default function DriverSetup() {
             </Field>
 
             <Field label="Rua / Logradouro *">
-              <input type="text" placeholder="Rua das Flores" value={street}
-                onChange={(e) => setStreet(e.target.value)} className={inputCls(!!street)} />
+              <input
+                type="text"
+                placeholder="Rua das Flores"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className={inputCls(!!street)}
+              />
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Número *">
-                <input type="text" inputMode="numeric" placeholder="123" value={number}
-                  onChange={(e) => setNumber(e.target.value)} className={inputCls(!!number)} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="123"
+                  value={number}
+                  onChange={(e) => setNumber(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className={inputCls(!!number)}
+                />
               </Field>
               <Field label="Complemento">
-                <input type="text" placeholder="Apto 4" value={complement}
-                  onChange={(e) => setComplement(e.target.value)} className={inputCls(true)} />
+                <input
+                  type="text"
+                  placeholder="Apto 4"
+                  value={complement}
+                  onChange={(e) => setComplement(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className={inputCls(true)}
+                />
               </Field>
             </div>
 
             <Field label="Bairro *">
-              <input type="text" placeholder="Centro" value={neighborhood}
-                onChange={(e) => setNeighborhood(e.target.value)} className={inputCls(!!neighborhood)} />
+              <input
+                type="text"
+                placeholder="Centro"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                className={inputCls(!!neighborhood)}
+              />
             </Field>
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Cidade *">
-                <input type="text" placeholder="Belo Horizonte" value={city}
-                  onChange={(e) => setCity(e.target.value)} className={inputCls(!!city)} />
+                <input
+                  type="text"
+                  placeholder="Belo Horizonte"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className={inputCls(!!city)}
+                />
               </Field>
               <Field label="Estado *">
-                <input type="text" placeholder="MG" value={state}
-                  onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                  maxLength={2} className={inputCls(!!state)} />
+                <input
+                  type="text"
+                  placeholder="MG"
+                  value={stateUF}
+                  onChange={(e) => setStateUF(e.target.value.toUpperCase().slice(0, 2))}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  maxLength={2}
+                  className={inputCls(!!stateUF)}
+                />
               </Field>
             </div>
           </div>
@@ -493,12 +697,17 @@ export default function DriverSetup() {
                 {VEHICLE_OPTIONS.map((opt) => {
                   const active = vehicleType === opt.value;
                   return (
-                    <button key={opt.value} onClick={() => setVehicleType(opt.value)}
+                    <button
+                      key={opt.value}
+                      onClick={() => setVehicleType(opt.value)}
                       className={`flex flex-col items-center py-4 rounded-2xl border-2 transition-all gap-2 ${
                         active ? 'border-primary bg-primary/5' : 'border-gray-100 bg-gray-50'
-                      }`}>
+                      }`}
+                    >
                       <span className="text-3xl">{opt.emoji}</span>
-                      <span className={`text-sm font-bold ${active ? 'text-primary' : 'text-gray-600'}`}>{opt.label}</span>
+                      <span className={`text-sm font-bold ${active ? 'text-primary' : 'text-gray-600'}`}>
+                        {opt.label}
+                      </span>
                       {active && <CheckCircle2 className="h-4 w-4 text-primary" />}
                     </button>
                   );
@@ -509,26 +718,50 @@ export default function DriverSetup() {
             <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Dados do veículo</p>
               <Field label="Placa">
-                <input type="text" placeholder="ABC1D23" value={plate}
-                  onChange={(e) => setPlate(e.target.value.toUpperCase())} maxLength={8}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                <input
+                  type="text"
+                  placeholder="ABC1D23"
+                  value={plate}
+                  onChange={(e) => setPlate(e.target.value.toUpperCase())}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  maxLength={8}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Modelo">
-                  <input type="text" placeholder="Honda CG 160" value={vehicleModel}
+                  <input
+                    type="text"
+                    placeholder="Honda CG 160"
+                    value={vehicleModel}
                     onChange={(e) => setVehicleModel(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
                 </Field>
                 <Field label="Cor">
-                  <input type="text" placeholder="Vermelha" value={vehicleColor}
+                  <input
+                    type="text"
+                    placeholder="Vermelha"
+                    value={vehicleColor}
                     onChange={(e) => setVehicleColor(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
                 </Field>
               </div>
               <Field label="Ano">
-                <input type="number" inputMode="numeric" placeholder="2021" value={vehicleYear}
-                  onChange={(e) => setVehicleYear(e.target.value)} min="1990" max={new Date().getFullYear() + 1}
-                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="2021"
+                  value={vehicleYear}
+                  onChange={(e) => setVehicleYear(e.target.value)}
+                  onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  min="1990"
+                  max={new Date().getFullYear() + 1}
+                  className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
               </Field>
             </div>
 
@@ -536,10 +769,15 @@ export default function DriverSetup() {
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Possui bag/compartimento? *</p>
               <div className="grid grid-cols-2 gap-3">
                 {([true, false] as const).map((v) => (
-                  <button key={String(v)} onClick={() => setHasBag(v)}
+                  <button
+                    key={String(v)}
+                    onClick={() => setHasBag(v)}
                     className={`py-3 rounded-2xl border-2 font-bold text-sm transition-all ${
-                      hasBag === v ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-500'
-                    }`}>
+                      hasBag === v
+                        ? 'border-primary bg-primary/5 text-primary'
+                        : 'border-gray-100 text-gray-500'
+                    }`}
+                  >
                     {v ? '✅ Sim' : '❌ Não'}
                   </button>
                 ))}
@@ -550,10 +788,15 @@ export default function DriverSetup() {
                   <p className="text-xs text-gray-500 font-semibold">Tipo de bag</p>
                   <div className="grid grid-cols-2 gap-2">
                     {BAG_TYPES.map((bt) => (
-                      <button key={bt} onClick={() => setBagType(bt)}
+                      <button
+                        key={bt}
+                        onClick={() => setBagType(bt)}
                         className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
-                          bagType === bt ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-500'
-                        }`}>
+                          bagType === bt
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-gray-200 text-gray-500'
+                        }`}
+                      >
                         {bt}
                       </button>
                     ))}
@@ -617,7 +860,9 @@ export default function DriverSetup() {
         {step === 5 && (
           <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">O que você pode entregar? *</p>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">
+                O que você pode entregar? *
+              </p>
               <p className="text-xs text-gray-400">Marque todas as categorias que aceita. Você pode mudar depois.</p>
             </div>
             <div className="space-y-2">
@@ -641,17 +886,23 @@ export default function DriverSetup() {
               })}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setCategories(PRODUCT_TYPES.map((p) => p.key))}
-                className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600">
+              <button
+                onClick={() => setCategories(PRODUCT_TYPES.map((p) => p.key))}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-50"
+              >
                 Selecionar todas
               </button>
-              <button onClick={() => setCategories([])}
-                className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600">
+              <button
+                onClick={() => setCategories([])}
+                className="flex-1 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 active:bg-gray-50"
+              >
                 Limpar
               </button>
             </div>
             {categories.length > 0 && (
-              <p className="text-xs text-primary font-semibold text-center">{categories.length} categoria{categories.length > 1 ? 's' : ''} selecionada{categories.length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-primary font-semibold text-center">
+                {categories.length} categoria{categories.length > 1 ? 's' : ''} selecionada{categories.length > 1 ? 's' : ''}
+              </p>
             )}
           </div>
         )}
@@ -662,11 +913,11 @@ export default function DriverSetup() {
             <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
               <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Aceite obrigatório</p>
               {[
-                { key: 'terms',   state: termsAccepted,   set: setTermsAccepted,   label: 'Aceito os termos de uso da plataforma Levei.ai' },
-                { key: 'privacy', state: privacyAccepted,  set: setPrivacyAccepted, label: 'Aceito a política de privacidade e uso de dados' },
-                { key: 'cnh',     state: declareCNH,       set: setDeclareCNH,      label: 'Declaro possuir CNH válida e vigente' },
-                { key: 'vehicle', state: declareVehicle,   set: setDeclareVehicle,  label: 'Declaro ser responsável pelo veículo utilizado nas entregas' },
-              ].map(({ key, state: s, set, label }) => (
+                { key: 'terms',   s: termsAccepted,   set: setTermsAccepted,   label: 'Aceito os termos de uso da plataforma Levei.ai' },
+                { key: 'privacy', s: privacyAccepted,  set: setPrivacyAccepted, label: 'Aceito a política de privacidade e uso de dados' },
+                { key: 'cnh',     s: declareCNH,       set: setDeclareCNH,      label: 'Declaro possuir CNH válida e vigente' },
+                { key: 'vehicle', s: declareVehicle,   set: setDeclareVehicle,  label: 'Declaro ser responsável pelo veículo utilizado nas entregas' },
+              ].map(({ key, s, set, label }) => (
                 <button
                   key={key}
                   onClick={() => set((v) => !v)}
@@ -694,6 +945,7 @@ export default function DriverSetup() {
                 placeholder="Ex: VINI1234"
                 value={referralCode}
                 onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                 maxLength={12}
                 className="w-full h-11 px-4 rounded-xl border border-gray-200 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
@@ -712,16 +964,14 @@ export default function DriverSetup() {
 
       {/* ── Footer CTA ── */}
       <div
-        className="bg-white border-t border-gray-100 px-4 py-3"
+        className="bg-white border-t border-gray-100 px-4 py-3 flex-shrink-0"
         style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}
       >
         <button
           onClick={goNext}
           disabled={loading || !canProceed(step)}
-          className={`w-full flex items-center justify-center gap-2 rounded-2xl font-bold text-base transition-all active:scale-98 disabled:opacity-40 ${
-            step === TOTAL_STEPS
-              ? 'bg-green-600 text-white'
-              : 'bg-primary text-white'
+          className={`w-full flex items-center justify-center gap-2 rounded-2xl font-bold text-base transition-all active:scale-[0.98] disabled:opacity-40 ${
+            step === TOTAL_STEPS ? 'bg-green-600 text-white' : 'bg-primary text-white'
           }`}
           style={{ height: 52 }}
         >
@@ -734,6 +984,14 @@ export default function DriverSetup() {
           )}
         </button>
       </div>
+
+      {/* ── Exit Modal ── */}
+      {showExit && (
+        <ExitModal
+          onConfirm={handleExit}
+          onCancel={() => setShowExit(false)}
+        />
+      )}
     </div>
   );
 }
@@ -751,7 +1009,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function inputCls(valid: boolean) {
   return `w-full h-11 px-4 rounded-xl border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${
-    valid ? 'border-gray-200' : 'border-gray-200'
+    valid ? 'border-gray-200 bg-white' : 'border-gray-200 bg-white'
   }`;
 }
 
@@ -804,7 +1062,7 @@ function DocUploadCard({ label, subtitle, docKey, state, required, inputRef, onP
       ) : (
         <button
           onClick={() => inputRef.current?.click()}
-          className="w-full h-32 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-primary/40 transition-colors active:scale-98"
+          className="w-full h-32 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-primary/40 transition-colors active:scale-[0.98]"
         >
           <Upload className="h-6 w-6" />
           <span className="text-sm">Toque para enviar foto</span>
