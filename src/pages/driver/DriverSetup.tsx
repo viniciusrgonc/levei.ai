@@ -80,11 +80,11 @@ async function compressImage(file: File, maxPx = 1200, quality = 0.82): Promise<
 
 async function uploadFile(userId: string, file: File, name: string): Promise<string> {
   const compressed = await compressImage(file);
-  const path = `driver-docs/${userId}/${name}.jpg`;
+  const path = `${userId}/${name}.jpg`;
   const { error } = await supabase.storage
-    .from('avatars').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+    .from('driver-documents').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
   if (error) throw error;
-  return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl;
+  return supabase.storage.from('driver-documents').getPublicUrl(path).data.publicUrl;
 }
 
 async function fetchCEP(cep: string) {
