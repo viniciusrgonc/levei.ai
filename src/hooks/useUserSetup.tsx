@@ -48,12 +48,14 @@ async function fetchUserSetup(userId: string): Promise<{ role: UserRole; hasComp
   } else if (userRole === 'driver') {
     const { data } = await supabase
       .from('drivers')
-      .select('id, is_approved, driver_status')
+      .select('id, is_approved, driver_status, submitted_at')
       .eq('user_id', userId)
       .maybeSingle();
     const status = data?.driver_status ?? (data?.is_approved ? 'approved' : 'pending');
+    // 'draft' status or pending with no submitted_at = still in setup
+    const isDraft = !data || status === 'draft' || (status === 'pending' && !data.submitted_at);
     hasCompleted    = status === 'approved';
-    pendingApproval = !!data && (status === 'pending' || status === 'rejected');
+    pendingApproval = !!data && !isDraft && (status === 'pending' || status === 'rejected');
     blocked         = status === 'blocked';
   } else if (userRole === 'admin') {
     hasCompleted = true;

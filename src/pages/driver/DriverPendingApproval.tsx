@@ -108,10 +108,10 @@ export default function DriverPendingApproval() {
       const nameMap: Record<UploadField, string> = {
         cnhFront: 'cnh-front', cnhBack: 'cnh-back', selfie: 'selfie', vehicle: 'vehicle',
       };
-      const path = `driver-docs/${user.id}/${nameMap[field]}.jpg`;
-      const { error: upErr } = await supabase.storage.from('avatars').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+      const path = `${user.id}/${nameMap[field]}.jpg`;
+      const { error: upErr } = await supabase.storage.from('driver-documents').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
       if (upErr) throw upErr;
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from('driver-documents').getPublicUrl(path);
       const colMap: Record<UploadField, string> = {
         cnhFront: 'drivers_license_url', cnhBack: 'cnh_back_url', selfie: 'selfie_url', vehicle: 'vehicle_photo_url',
       };

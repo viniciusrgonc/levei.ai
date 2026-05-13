@@ -175,8 +175,10 @@ export default function DriverSetup() {
 
   const [step, setStep]         = useState(1);
   const [loading, setLoading]   = useState(false);
+  const [saving, setSaving]     = useState(false);
   const [showExit, setShowExit] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [driverId, setDriverId] = useState<string | null>(null);
 
   // Step 1 — Dados pessoais
   const [email,     setEmail]     = useState(user?.email ?? '');
@@ -231,39 +233,96 @@ export default function DriverSetup() {
   // ── Draft key ──────────────────────────────────────────────────────────────
   const DRAFT_KEY = user?.id ? draftKey(user.id) : null;
 
-  // ── Restore draft on mount ─────────────────────────────────────────────────
+  // ── Restore draft on mount: DB first, localStorage fallback ───────────────
   useEffect(() => {
-    if (!DRAFT_KEY || restored) return;
-    try {
-      const saved = localStorage.getItem(DRAFT_KEY);
-      if (!saved) { setRestored(true); return; }
-      const d = JSON.parse(saved);
-      if (d.step)         setStep(Math.min(d.step, TOTAL_STEPS));
-      if (d.email)        setEmail(d.email);
-      if (d.fullName)     setFullName(d.fullName);
-      if (d.cpf)          setCpf(d.cpf);
-      if (d.birthDate)    setBirthDate(d.birthDate);
-      if (d.phone)        setPhone(d.phone);
-      if (d.cep)          setCep(d.cep);
-      if (d.street)       setStreet(d.street);
-      if (d.number)       setNumber(d.number);
-      if (d.complement)   setComplement(d.complement);
-      if (d.neighborhood) setNeighborhood(d.neighborhood);
-      if (d.city)         setCity(d.city);
-      if (d.stateUF)      setStateUF(d.stateUF);
-      if (d.vehicleType)  setVehicleType(d.vehicleType);
-      if (d.plate)        setPlate(d.plate);
-      if (d.vehicleModel) setVehicleModel(d.vehicleModel);
-      if (d.vehicleColor) setVehicleColor(d.vehicleColor);
-      if (d.vehicleYear)  setVehicleYear(d.vehicleYear);
-      if (d.hasBag !== undefined && d.hasBag !== null) setHasBag(d.hasBag);
-      if (d.bagType)      setBagType(d.bagType);
-      if (d.categories?.length) setCategories(d.categories);
-      if (d.referralCode) setReferralCode(d.referralCode);
-    } catch {}
-    setRestored(true);
+    if (!user?.id || restored) return;
+
+    (async () => {
+      try {
+        // 1. Check DB for existing draft (driver_status = 'draft' OR pending with no submitted_at)
+        const { data: dbDraft } = await supabase
+          .from('drivers')
+          .select('id,driver_status,onboarding_step,cpf,birth_date,phone,address_cep,address_street,address_number,address_complement,address_neighborhood,address_city,address_state,vehicle_type,license_plate,vehicle_model,vehicle_color,vehicle_year,has_bag,bag_type,accepted_product_types,submitted_at')
+          .eq('user_id', user.id)
+          .in('driver_status', ['draft', 'pending'])
+          .maybeSingle();
+
+        if (dbDraft && !dbDraft.submitted_at) {
+          // Resume from DB draft
+          setDriverId(dbDraft.id);
+          setStep(Math.min(dbDraft.onboarding_step || 1, TOTAL_STEPS));
+          if (dbDraft.cpf)               setCpf(dbDraft.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'));
+          if (dbDraft.birth_date)        setBirthDate(dbDraft.birth_date);
+          if (dbDraft.phone)             setPhone(dbDraft.phone);
+          if (dbDraft.address_cep)       setCep(dbDraft.address_cep.replace(/(\d{5})(\d{3})/, '$1-$2'));
+          if (dbDraft.address_street)    setStreet(dbDraft.address_street);
+          if (dbDraft.address_number)    setNumber(dbDraft.address_number);
+          if (dbDraft.address_complement)setComplement(dbDraft.address_complement);
+          if (dbDraft.address_neighborhood) setNeighborhood(dbDraft.address_neighborhood);
+          if (dbDraft.address_city)      setCity(dbDraft.address_city);
+          if (dbDraft.address_state)     setStateUF(dbDraft.address_state);
+          if (dbDraft.vehicle_type)      setVehicleType(dbDraft.vehicle_type);
+          if (dbDraft.license_plate)     setPlate(dbDraft.license_plate);
+          if (dbDraft.vehicle_model)     setVehicleModel(dbDraft.vehicle_model || '');
+          if (dbDraft.vehicle_color)     setVehicleColor(dbDraft.vehicle_color || '');
+          if (dbDraft.vehicle_year)      setVehicleYear(String(dbDraft.vehicle_year));
+          if (dbDraft.has_bag !== null && dbDraft.has_bag !== undefined) setHasBag(dbDraft.has_bag);
+          if (dbDraft.bag_type)          setBagType(dbDraft.bag_type);
+          if (dbDraft.accepted_product_types?.length) setCategories(dbDraft.accepted_product_types);
+
+          // Also try to get profile name
+          const { data: profile } = await supabase.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
+          if (profile?.full_name) setFullName(profile.full_name);
+          if (profile?.phone && !dbDraft.phone) setPhone(profile.phone);
+
+          setRestored(true);
+          return;
+        }
+
+        // 2. Fallback to localStorage
+        if (DRAFT_KEY) {
+          try {
+            const saved = localStorage.getItem(DRAFT_KEY);
+            if (saved) {
+              const d = JSON.parse(saved);
+              if (d.step)         setStep(Math.min(d.step, TOTAL_STEPS));
+              if (d.email)        setEmail(d.email);
+              if (d.fullName)     setFullName(d.fullName);
+              if (d.cpf)          setCpf(d.cpf);
+              if (d.birthDate)    setBirthDate(d.birthDate);
+              if (d.phone)        setPhone(d.phone);
+              if (d.cep)          setCep(d.cep);
+              if (d.street)       setStreet(d.street);
+              if (d.number)       setNumber(d.number);
+              if (d.complement)   setComplement(d.complement);
+              if (d.neighborhood) setNeighborhood(d.neighborhood);
+              if (d.city)         setCity(d.city);
+              if (d.stateUF)      setStateUF(d.stateUF);
+              if (d.vehicleType)  setVehicleType(d.vehicleType);
+              if (d.plate)        setPlate(d.plate);
+              if (d.vehicleModel) setVehicleModel(d.vehicleModel);
+              if (d.vehicleColor) setVehicleColor(d.vehicleColor);
+              if (d.vehicleYear)  setVehicleYear(d.vehicleYear);
+              if (d.hasBag !== undefined && d.hasBag !== null) setHasBag(d.hasBag);
+              if (d.bagType)      setBagType(d.bagType);
+              if (d.categories?.length) setCategories(d.categories);
+              if (d.referralCode) setReferralCode(d.referralCode);
+            }
+          } catch {}
+        }
+
+        // 3. Pre-fill from profile if available
+        const { data: profile } = await supabase.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
+        if (profile?.full_name && !fullName) setFullName(profile.full_name);
+        if (profile?.phone && !phone) setPhone(profile.phone);
+
+      } catch (e) {
+        console.error('Error restoring draft:', e);
+      }
+      setRestored(true);
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [DRAFT_KEY]);
+  }, [user?.id]);
 
   // ── Auto-save draft on every change ───────────────────────────────────────
   useEffect(() => {
@@ -364,6 +423,81 @@ export default function DriverSetup() {
     navigate('/auth');
   };
 
+  // ── Save step to DB (upsert) ────────────────────────────────────────────────
+  const saveStepToDb = async (completedStep: number): Promise<boolean> => {
+    if (!user?.id) return false;
+    setSaving(true);
+    try {
+      const stepPayloads: Record<number, Record<string, any>> = {
+        1: {
+          cpf:        cpf.replace(/\D/g, ''),
+          birth_date: birthDate,
+          phone,
+        },
+        2: {
+          address_cep:          cep.replace(/\D/g, ''),
+          address_street:       street,
+          address_number:       number,
+          address_complement:   complement || null,
+          address_neighborhood: neighborhood,
+          address_city:         city,
+          address_state:        stateUF,
+        },
+        3: {
+          vehicle_type:  vehicleType as any,
+          license_plate: plate.trim().toUpperCase() || null,
+          vehicle_model: vehicleModel.trim() || null,
+          vehicle_color: vehicleColor.trim() || null,
+          vehicle_year:  vehicleYear ? parseInt(vehicleYear) : null,
+          has_bag:       hasBag!,
+          bag_type:      hasBag && bagType ? bagType : null,
+        },
+        5: {
+          accepted_product_types: categories,
+        },
+      };
+
+      const payload = stepPayloads[completedStep];
+      if (!payload) return true; // step 4 and 6 handled separately
+
+      const nextStep = completedStep + 1;
+
+      if (driverId) {
+        const { error } = await supabase.from('drivers')
+          .update({ ...payload, onboarding_step: nextStep })
+          .eq('id', driverId);
+        if (error) throw error;
+      } else {
+        // First save: create draft record
+        const { data, error } = await supabase.from('drivers')
+          .insert({
+            user_id:       user.id,
+            driver_status: 'draft' as any,
+            onboarding_step: nextStep,
+            is_approved:   false,
+            is_available:  false,
+            ...payload,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        setDriverId(data.id);
+
+        // Update profile full_name
+        if (fullName.trim()) {
+          supabase.from('profiles').update({ full_name: fullName.trim() }).eq('id', user.id).catch(() => {});
+        }
+      }
+      return true;
+    } catch (e: any) {
+      console.error('saveStepToDb error:', e);
+      toast({ variant: 'destructive', title: 'Aviso', description: 'Progresso salvo localmente. Continuando...' });
+      return true; // don't block navigation on save error
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!user) return;
@@ -392,48 +526,67 @@ export default function DriverSetup() {
         docs.vehiclePhoto.file ? uploadFile(user.id, docs.vehiclePhoto.file, 'vehicle') : Promise.resolve(null),
       ]);
 
-      // 3. Insere driver com todos os dados
-      const { data: newDriver, error } = await supabase
-        .from('drivers')
-        .insert([{
-          user_id:              user.id,
-          cpf:                  cpf.replace(/\D/g, ''),
-          birth_date:           birthDate,
-          phone,
-          address_cep:          cep.replace(/\D/g, ''),
-          address_street:       street,
-          address_number:       number,
-          address_complement:   complement || null,
-          address_neighborhood: neighborhood,
-          address_city:         city,
-          address_state:        stateUF,
-          vehicle_type:         vehicleType as any,
-          license_plate:        plate.trim().toUpperCase() || null,
-          vehicle_model:        vehicleModel.trim() || null,
-          vehicle_color:        vehicleColor.trim() || null,
-          vehicle_year:         vehicleYear ? parseInt(vehicleYear) : null,
-          has_bag:              hasBag!,
-          bag_type:             hasBag && bagType ? bagType : null,
-          drivers_license_url:  cnhFrontUrl,
-          cnh_back_url:         cnhBackUrl,
-          selfie_url:           selfieUrl,
-          vehicle_photo_url:    vehiclePhotoUrl,
-          accepted_product_types: categories,
-          accepted_terms:       true,
-          terms_accepted_at:    new Date().toISOString(),
-          is_approved:          false,
-          is_available:         false,
-          driver_status:        'pending',
-        }])
-        .select('id')
-        .single();
+      // 3. Cria ou atualiza o registro do driver
+      const finalPayload = {
+        cpf:                  cpf.replace(/\D/g, ''),
+        birth_date:           birthDate,
+        phone,
+        address_cep:          cep.replace(/\D/g, ''),
+        address_street:       street,
+        address_number:       number,
+        address_complement:   complement || null,
+        address_neighborhood: neighborhood,
+        address_city:         city,
+        address_state:        stateUF,
+        vehicle_type:         vehicleType as any,
+        license_plate:        plate.trim().toUpperCase() || null,
+        vehicle_model:        vehicleModel.trim() || null,
+        vehicle_color:        vehicleColor.trim() || null,
+        vehicle_year:         vehicleYear ? parseInt(vehicleYear) : null,
+        has_bag:              hasBag!,
+        bag_type:             hasBag && bagType ? bagType : null,
+        drivers_license_url:  cnhFrontUrl,
+        cnh_back_url:         cnhBackUrl,
+        selfie_url:           selfieUrl,
+        vehicle_photo_url:    vehiclePhotoUrl,
+        accepted_product_types: categories,
+        accepted_terms:       true,
+        terms_accepted_at:    new Date().toISOString(),
+        is_approved:          false,
+        is_available:         false,
+        driver_status:        'pending' as any,
+        submitted_at:         new Date().toISOString(),
+        onboarding_completed: true,
+        onboarding_step:      TOTAL_STEPS,
+      };
 
-      if (error || !newDriver) throw error ?? new Error('Erro ao criar cadastro');
+      let newDriverId: string;
+
+      if (driverId) {
+        // Update existing draft
+        const { error } = await supabase.from('drivers').update(finalPayload).eq('id', driverId);
+        if (error) throw error;
+        newDriverId = driverId;
+      } else {
+        // No draft saved yet — full insert
+        const { data: newDriver, error } = await supabase
+          .from('drivers')
+          .insert([{ user_id: user.id, ...finalPayload }])
+          .select('id')
+          .single();
+        if (error || !newDriver) throw error ?? new Error('Erro ao criar cadastro');
+        newDriverId = newDriver.id;
+      }
+
+      // Update profile name
+      if (fullName.trim()) {
+        supabase.from('profiles').update({ full_name: fullName.trim() }).eq('id', user.id).catch(() => {});
+      }
 
       // 4. Indicação fire-and-forget
       const code = referralCode.trim().toUpperCase();
       if (code) {
-        supabase.rpc('register_referral', { p_referral_code: code, p_new_driver_id: newDriver.id }).catch(() => {});
+        supabase.rpc('register_referral', { p_referral_code: code, p_new_driver_id: newDriverId }).catch(() => {});
       }
 
       // 5. Limpa draft salvo
@@ -447,12 +600,16 @@ export default function DriverSetup() {
     }
   };
 
-  const goNext = () => {
+  const goNext = async () => {
     if (!canProceed(step)) {
       toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha todos os campos antes de continuar.' });
       return;
     }
     if (step === TOTAL_STEPS) { handleSubmit(); return; }
+    // Save text steps to DB (steps 1, 2, 3, 5)
+    if ([1, 2, 3, 5].includes(step)) {
+      await saveStepToDb(step);
+    }
     setStep((s) => s + 1);
   };
 
@@ -972,7 +1129,7 @@ export default function DriverSetup() {
       >
         <button
           onClick={goNext}
-          disabled={loading || !canProceed(step)}
+          disabled={loading || saving || !canProceed(step)}
           className={`w-full flex items-center justify-center gap-2 rounded-2xl font-bold text-base transition-all active:scale-[0.98] disabled:opacity-40 ${
             step === TOTAL_STEPS ? 'bg-green-600 text-white' : 'bg-primary text-white'
           }`}
@@ -980,6 +1137,8 @@ export default function DriverSetup() {
         >
           {loading ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Enviando cadastro...</>
+          ) : saving ? (
+            <><Loader2 className="h-5 w-5 animate-spin" /> Salvando...</>
           ) : step === TOTAL_STEPS ? (
             <><CheckCircle2 className="h-5 w-5" /> Enviar cadastro</>
           ) : (

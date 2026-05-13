@@ -2,6 +2,7 @@ import { LayoutDashboard, Users, PackageCheck, AlertCircle, Settings, Tag, Shopp
 import { supabase } from '@/integrations/supabase/client';
 import leveiLogo from '@/assets/levei-logo.png';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +16,15 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
+
+async function fetchPendingCount(): Promise<number> {
+  const { count } = await supabase
+    .from('drivers')
+    .select('id', { count: 'exact', head: true })
+    .eq('driver_status', 'pending')
+    .not('submitted_at', 'is', null);
+  return count ?? 0;
+}
 
 const menuItems = [
   {
@@ -126,6 +136,13 @@ export function AdminSidebar() {
   const currentPath = location.pathname;
   const isCollapsed = state === 'collapsed';
 
+  const { data: pendingCount = 0 } = useQuery({
+    queryKey: ['admin-pending-drivers-count'],
+    queryFn: fetchPendingCount,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+  });
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/auth');
@@ -157,19 +174,27 @@ export function AdminSidebar() {
           )}
           <SidebarGroupContent>
             <SidebarMenu className="space-y-0.5 px-2">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    isActive={isActive(item.url)}
-                    onClick={() => navigate(item.url)}
-                    tooltip={item.title}
-                    className="w-full"
-                  >
-                    <item.icon className="h-5 w-5 shrink-0" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems.map((item) => {
+                const showBadge = item.url === '/admin/drivers' && pendingCount > 0;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      isActive={isActive(item.url)}
+                      onClick={() => navigate(item.url)}
+                      tooltip={item.title}
+                      className="w-full"
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="flex-1">{item.title}</span>
+                      {showBadge && !isCollapsed && (
+                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                          {pendingCount > 9 ? '9+' : pendingCount}
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
