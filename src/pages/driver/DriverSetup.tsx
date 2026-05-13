@@ -145,15 +145,15 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
           <h2 className="text-lg font-bold text-gray-900">Sair do cadastro?</h2>
           <p className="text-sm text-gray-500 leading-relaxed">
             Seu progresso foi salvo automaticamente.<br />
-            Você pode continuar de onde parou quando retornar.
+            Faça login novamente para continuar de onde parou.
           </p>
         </div>
 
         <button
           onClick={onConfirm}
-          className="w-full h-12 rounded-2xl bg-gray-100 text-gray-700 font-bold text-sm"
+          className="w-full h-12 rounded-2xl bg-red-50 border border-red-100 text-red-600 font-bold text-sm"
         >
-          Sair do cadastro
+          Sair e deslogar
         </button>
         <button
           onClick={onCancel}
@@ -357,10 +357,11 @@ export default function DriverSetup() {
     }
   };
 
-  const handleExit = () => {
+  const handleExit = async () => {
     setShowExit(false);
-    // Draft já foi salvo automaticamente
-    navigate('/');
+    // Draft já foi salvo automaticamente — desloga para evitar redirect loop
+    await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -368,13 +369,15 @@ export default function DriverSetup() {
     if (!user) return;
     setLoading(true);
     try {
-      // 0. Atualiza e-mail se foi alterado
+      // 0. Atualiza e-mail se foi alterado (fire-and-forget — não bloqueia o cadastro)
       if (email && email !== user.email) {
         const { error: emailErr } = await supabase.auth.updateUser({ email });
         if (emailErr) {
-          toast({ variant: 'destructive', title: 'Erro ao atualizar e-mail', description: emailErr.message });
-          setLoading(false);
-          return;
+          // Avisa mas não para o cadastro — e-mail pode ser atualizado no perfil depois
+          toast({
+            title: 'E-mail não atualizado',
+            description: 'O cadastro continuará com o e-mail atual. Você pode alterar depois no perfil.',
+          });
         }
       }
 
