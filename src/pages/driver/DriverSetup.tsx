@@ -10,7 +10,12 @@ import {
 import leveiLogo from '@/assets/levei-logo.png';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Safely trims: returns '' for any non-string value (prevents TypeError on null/undefined) */
+function safeStr(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
+}
 
 function formatCPF(v: string) {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -83,7 +88,7 @@ async function uploadFile(userId: string, file: File, name: string): Promise<str
   const path = `${userId}/${name}.jpg`;
   const { error } = await supabase.storage
     .from('driver-documents').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
-  if (error) throw error;
+  if (error) throw new Error('Erro ao enviar documento: ' + error.message);
   return supabase.storage.from('driver-documents').getPublicUrl(path).data.publicUrl;
 }
 
@@ -96,10 +101,10 @@ async function fetchCEP(cep: string) {
   return data as { logradouro: string; bairro: string; localidade: string; uf: string };
 }
 
-// ── Draft persistence ──────────────────────────────────────────────────────────
+// ── Draft key ─────────────────────────────────────────────────────────────────
 const draftKey = (userId: string) => `levei-driver-setup-${userId}`;
 
-// ── Config ─────────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const VEHICLE_OPTIONS = [
   { value: 'motorcycle', label: 'Moto',       emoji: '🛵' },
@@ -124,7 +129,7 @@ type DocKey = 'cnhFront' | 'cnhBack' | 'selfie' | 'vehiclePhoto';
 interface DocState { file: File | null; preview: string | null }
 const emptyDoc = (): DocState => ({ file: null, preview: null });
 
-// ── Exit Modal ─────────────────────────────────────────────────────────────────
+// ── Exit Modal ────────────────────────────────────────────────────────────────
 
 function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -138,9 +143,7 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
         onClick={(e) => e.stopPropagation()}
         style={{ paddingBottom: 'calc(32px + env(safe-area-inset-bottom))' }}
       >
-        {/* Handle */}
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-
         <div className="text-center space-y-1.5 mb-5">
           <h2 className="text-lg font-bold text-gray-900">Sair do cadastro?</h2>
           <p className="text-sm text-gray-500 leading-relaxed">
@@ -148,7 +151,6 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
             Faça login novamente para continuar de onde parou.
           </p>
         </div>
-
         <button
           onClick={onConfirm}
           className="w-full h-12 rounded-2xl bg-red-50 border border-red-100 text-red-600 font-bold text-sm"
@@ -166,7 +168,7 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
   );
 }
 
-// ── Component ──────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DriverSetup() {
   const { user } = useAuth();
@@ -175,10 +177,8 @@ export default function DriverSetup() {
 
   const [step, setStep]         = useState(1);
   const [loading, setLoading]   = useState(false);
-  const [saving, setSaving]     = useState(false);
   const [showExit, setShowExit] = useState(false);
   const [restored, setRestored] = useState(false);
-  const [driverId, setDriverId] = useState<string | null>(null);
 
   // Step 1 — Dados pessoais
   const [email,     setEmail]     = useState(user?.email ?? '');
@@ -206,7 +206,7 @@ export default function DriverSetup() {
   const [hasBag,       setHasBag]       = useState<boolean | null>(null);
   const [bagType,      setBagType]      = useState('');
 
-  // Step 4 — Documentos
+  // Step 4 — Documentos (local files only — never persisted to DB until final submit)
   const [docs, setDocs] = useState<Record<DocKey, DocState>>({
     cnhFront:     emptyDoc(),
     cnhBack:      emptyDoc(),
@@ -220,88 +220,39 @@ export default function DriverSetup() {
     vehiclePhoto: useRef<HTMLInputElement>(null),
   };
 
+  // Doc URLs from DB — used as fallback when user already uploaded docs in a previous session
+  const [docUrls, setDocUrls] = useState<{
+    cnhFront:     string | null;
+    cnhBack:      string | null;
+    selfie:       string | null;
+    vehiclePhoto: string | null;
+  }>({ cnhFront: null, cnhBack: null, selfie: null, vehiclePhoto: null });
+
   // Step 5 — Categorias
   const [categories, setCategories] = useState<string[]>([]);
 
   // Step 6 — Termos
-  const [termsAccepted,  setTermsAccepted]  = useState(false);
+  const [termsAccepted,   setTermsAccepted]   = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [declareCNH,     setDeclareCNH]     = useState(false);
-  const [declareVehicle, setDeclareVehicle] = useState(false);
-  const [referralCode,   setReferralCode]   = useState('');
+  const [declareCNH,      setDeclareCNH]      = useState(false);
+  const [declareVehicle,  setDeclareVehicle]  = useState(false);
+  const [referralCode,    setReferralCode]    = useState('');
 
-  // Doc URLs from DB (used when user resumed from a draft that already had docs uploaded)
-  const [docUrls, setDocUrls] = useState<{
-    cnhFront: string | null;
-    cnhBack:  string | null;
-    selfie:   string | null;
-    vehiclePhoto: string | null;
-  }>({ cnhFront: null, cnhBack: null, selfie: null, vehiclePhoto: null });
-
-  // ── Draft key ──────────────────────────────────────────────────────────────
   const DRAFT_KEY = user?.id ? draftKey(user.id) : null;
 
-  // ── Restore draft on mount: DB first, localStorage fallback ───────────────
+  // ── Restore on mount: localStorage (primary), DB read-only for docUrls ──────
   useEffect(() => {
     if (!user?.id || restored) return;
 
     (async () => {
       try {
-        // 1. Check DB for existing draft (driver_status = 'draft' OR pending with no submitted_at)
-        const { data: dbDraft } = await supabase
-          .from('drivers')
-          .select('id,driver_status,onboarding_step,cpf,birth_date,phone,address_cep,address_street,address_number,address_complement,address_neighborhood,address_city,address_state,vehicle_type,license_plate,vehicle_model,vehicle_color,vehicle_year,has_bag,bag_type,accepted_product_types,submitted_at,drivers_license_url,cnh_back_url,selfie_url,vehicle_photo_url')
-          .eq('user_id', user.id)
-          .in('driver_status', ['draft', 'pending'])
-          .maybeSingle();
-
-        if (dbDraft && !dbDraft.submitted_at) {
-          // Resume from DB draft
-          setDriverId(dbDraft.id);
-          setStep(Math.min(dbDraft.onboarding_step || 1, TOTAL_STEPS));
-          if (dbDraft.cpf)               setCpf(dbDraft.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'));
-          if (dbDraft.birth_date)        setBirthDate(dbDraft.birth_date);
-          if (dbDraft.phone)             setPhone(dbDraft.phone);
-          if (dbDraft.address_cep)       setCep(dbDraft.address_cep.replace(/(\d{5})(\d{3})/, '$1-$2'));
-          if (dbDraft.address_street)    setStreet(dbDraft.address_street);
-          if (dbDraft.address_number)    setNumber(dbDraft.address_number);
-          if (dbDraft.address_complement)setComplement(dbDraft.address_complement);
-          if (dbDraft.address_neighborhood) setNeighborhood(dbDraft.address_neighborhood);
-          if (dbDraft.address_city)      setCity(dbDraft.address_city);
-          if (dbDraft.address_state)     setStateUF(dbDraft.address_state);
-          if (dbDraft.vehicle_type)      setVehicleType(dbDraft.vehicle_type);
-          if (dbDraft.license_plate)     setPlate(dbDraft.license_plate);
-          if (dbDraft.vehicle_model)     setVehicleModel(dbDraft.vehicle_model || '');
-          if (dbDraft.vehicle_color)     setVehicleColor(dbDraft.vehicle_color || '');
-          if (dbDraft.vehicle_year)      setVehicleYear(String(dbDraft.vehicle_year));
-          if (dbDraft.has_bag !== null && dbDraft.has_bag !== undefined) setHasBag(dbDraft.has_bag);
-          if (dbDraft.bag_type)          setBagType(dbDraft.bag_type);
-          if (dbDraft.accepted_product_types?.length) setCategories(dbDraft.accepted_product_types);
-
-          // Restore existing doc URLs so submit works even without re-uploading
-          setDocUrls({
-            cnhFront:    dbDraft.drivers_license_url || null,
-            cnhBack:     dbDraft.cnh_back_url        || null,
-            selfie:      dbDraft.selfie_url           || null,
-            vehiclePhoto: dbDraft.vehicle_photo_url  || null,
-          });
-
-          // Also try to get profile name
-          const { data: profile } = await supabase.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
-          if (profile?.full_name) setFullName(profile.full_name);
-          if (profile?.phone && !dbDraft.phone) setPhone(profile.phone);
-
-          setRestored(true);
-          return;
-        }
-
-        // 2. Fallback to localStorage
+        // 1. Restore text fields from localStorage
         if (DRAFT_KEY) {
-          try {
-            const saved = localStorage.getItem(DRAFT_KEY);
-            if (saved) {
+          const saved = localStorage.getItem(DRAFT_KEY);
+          if (saved) {
+            try {
               const d = JSON.parse(saved);
-              if (d.step)         setStep(Math.min(d.step, TOTAL_STEPS));
+              if (d.step)         setStep(Math.min(Number(d.step) || 1, TOTAL_STEPS));
               if (d.email)        setEmail(d.email);
               if (d.fullName)     setFullName(d.fullName);
               if (d.cpf)          setCpf(d.cpf);
@@ -321,26 +272,82 @@ export default function DriverSetup() {
               if (d.vehicleYear)  setVehicleYear(d.vehicleYear);
               if (d.hasBag !== undefined && d.hasBag !== null) setHasBag(d.hasBag);
               if (d.bagType)      setBagType(d.bagType);
-              if (d.categories?.length) setCategories(d.categories);
+              if (Array.isArray(d.categories) && d.categories.length) setCategories(d.categories);
               if (d.referralCode) setReferralCode(d.referralCode);
+            } catch {
+              // corrupt localStorage — ignore
             }
-          } catch {}
+          }
         }
 
-        // 3. Pre-fill from profile if available
-        const { data: profile } = await supabase.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
-        if (profile?.full_name && !fullName) setFullName(profile.full_name);
-        if (profile?.phone && !phone) setPhone(profile.phone);
+        // 2. Pre-fill name/phone from profile (only if not already restored)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name,phone')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile?.full_name) setFullName((prev) => prev || profile.full_name);
+        if (profile?.phone)     setPhone((prev) => prev || profile.phone);
 
+        // 3. Check DB for existing driver record — READ ONLY
+        //    We never write to DB during steps anymore.
+        //    We only read doc URLs for backwards compatibility (users who had the old system).
+        const { data: existing } = await supabase
+          .from('drivers')
+          .select(
+            'driver_status,submitted_at,drivers_license_url,cnh_back_url,selfie_url,vehicle_photo_url,' +
+            'onboarding_step,cpf,birth_date,phone,address_cep,address_street,address_number,' +
+            'address_complement,address_neighborhood,address_city,address_state,' +
+            'vehicle_type,license_plate,vehicle_model,vehicle_color,vehicle_year,' +
+            'has_bag,bag_type,accepted_product_types'
+          )
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (existing) {
+          // If this is a previously submitted record that came back (e.g. rejected),
+          // useUserSetup handles the redirect — we just grab doc URLs here.
+          setDocUrls({
+            cnhFront:    existing.drivers_license_url || null,
+            cnhBack:     existing.cnh_back_url        || null,
+            selfie:      existing.selfie_url           || null,
+            vehiclePhoto: existing.vehicle_photo_url  || null,
+          });
+
+          // If no localStorage draft was found, also restore text fields from DB
+          if (!localStorage.getItem(DRAFT_KEY ?? '') && !existing.submitted_at) {
+            if (existing.onboarding_step) setStep(Math.min(existing.onboarding_step, TOTAL_STEPS));
+            if (existing.cpf)             setCpf(existing.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4'));
+            if (existing.birth_date)      setBirthDate(existing.birth_date);
+            if (existing.phone)           setPhone(existing.phone);
+            if (existing.address_cep)     setCep(existing.address_cep.replace(/(\d{5})(\d{3})/, '$1-$2'));
+            if (existing.address_street)  setStreet(existing.address_street);
+            if (existing.address_number)  setNumber(existing.address_number);
+            if (existing.address_complement)   setComplement(existing.address_complement);
+            if (existing.address_neighborhood) setNeighborhood(existing.address_neighborhood);
+            if (existing.address_city)    setCity(existing.address_city);
+            if (existing.address_state)   setStateUF(existing.address_state);
+            if (existing.vehicle_type)    setVehicleType(existing.vehicle_type);
+            if (existing.license_plate)   setPlate(existing.license_plate);
+            if (existing.vehicle_model)   setVehicleModel(existing.vehicle_model || '');
+            if (existing.vehicle_color)   setVehicleColor(existing.vehicle_color || '');
+            if (existing.vehicle_year)    setVehicleYear(String(existing.vehicle_year));
+            if (existing.has_bag !== null && existing.has_bag !== undefined) setHasBag(existing.has_bag);
+            if (existing.bag_type)        setBagType(existing.bag_type);
+            if (Array.isArray(existing.accepted_product_types) && existing.accepted_product_types.length)
+              setCategories(existing.accepted_product_types);
+          }
+        }
       } catch (e) {
-        console.error('Error restoring draft:', e);
+        console.error('[restore] error:', e);
       }
+
       setRestored(true);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // ── Auto-save draft on every change ───────────────────────────────────────
+  // ── Auto-save to localStorage on every change ─────────────────────────────
   useEffect(() => {
     if (!DRAFT_KEY || !restored) return;
     try {
@@ -350,7 +357,7 @@ export default function DriverSetup() {
         vehicleType, plate, vehicleModel, vehicleColor, vehicleYear, hasBag, bagType,
         categories, referralCode,
       }));
-    } catch {}
+    } catch { /* storage full — ignore */ }
   }, [
     DRAFT_KEY, restored, step, email, fullName, cpf, birthDate, phone,
     cep, street, number, complement, neighborhood, city, stateUF,
@@ -358,24 +365,24 @@ export default function DriverSetup() {
     categories, referralCode,
   ]);
 
-  // ── Scroll top on step change ──────────────────────────────────────────────
+  // ── Scroll to top on step change ──────────────────────────────────────────
   useEffect(() => {
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [step]);
 
-  // ── Validation per step ────────────────────────────────────────────────────
+  // ── Validation per step ───────────────────────────────────────────────────
   const canProceed = (s: number): boolean => {
     switch (s) {
       case 1:
         return (
           isValidEmail(email) &&
-          !!fullName.trim() &&
+          !!safeStr(fullName) &&
           validateCPF(cpf) &&
           isOver18(birthDate) &&
           phone.replace(/\D/g, '').length >= 10
         );
       case 2:
-        return !!(street && number && neighborhood && city && stateUF);
+        return !!(safeStr(street) && safeStr(number) && safeStr(neighborhood) && safeStr(city) && safeStr(stateUF));
       case 3:
         return !!(vehicleType && hasBag !== null);
       case 4:
@@ -393,7 +400,7 @@ export default function DriverSetup() {
     }
   };
 
-  // ── CEP fetch ──────────────────────────────────────────────────────────────
+  // ── CEP lookup ────────────────────────────────────────────────────────────
   const handleCEP = async (raw: string) => {
     const formatted = formatCEP(raw);
     setCep(formatted);
@@ -413,7 +420,7 @@ export default function DriverSetup() {
     }
   };
 
-  // ── Document picker ────────────────────────────────────────────────────────
+  // ── Document picker ───────────────────────────────────────────────────────
   const pickDoc = (key: DocKey, file: File) => {
     if (file.size > 15 * 1024 * 1024) {
       toast({ variant: 'destructive', title: 'Arquivo muito grande', description: 'Máximo 15 MB.' });
@@ -423,228 +430,203 @@ export default function DriverSetup() {
     setDocs((prev) => ({ ...prev, [key]: { file, preview } }));
   };
 
-  // ── Category toggle ────────────────────────────────────────────────────────
+  // ── Category toggle ───────────────────────────────────────────────────────
   const toggleCat = (key: string) =>
     setCategories((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
 
-  // ── Navigation ─────────────────────────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────────────
   const goBack = () => {
-    if (step === 1) {
-      setShowExit(true);
-    } else {
-      setStep((s) => s - 1);
-    }
+    if (step === 1) setShowExit(true);
+    else setStep((s) => s - 1);
   };
 
   const handleExit = async () => {
     setShowExit(false);
-    // Draft já foi salvo automaticamente — desloga para evitar redirect loop
     await supabase.auth.signOut();
     navigate('/auth');
   };
 
-  // ── Save step to DB (upsert) ────────────────────────────────────────────────
-  const saveStepToDb = async (completedStep: number): Promise<boolean> => {
-    if (!user?.id) return false;
-    setSaving(true);
-    try {
-      const stepPayloads: Record<number, Record<string, any>> = {
-        1: {
-          cpf:        cpf.replace(/\D/g, ''),
-          birth_date: birthDate,
-          phone,
-        },
-        2: {
-          address_cep:          cep.replace(/\D/g, ''),
-          address_street:       street,
-          address_number:       number,
-          address_complement:   complement || null,
-          address_neighborhood: neighborhood,
-          address_city:         city,
-          address_state:        stateUF,
-        },
-        3: {
-          vehicle_type:  vehicleType as any,
-          license_plate: plate.trim().toUpperCase() || null,
-          vehicle_model: vehicleModel.trim() || null,
-          vehicle_color: vehicleColor.trim() || null,
-          vehicle_year:  vehicleYear ? parseInt(vehicleYear) : null,
-          has_bag:       hasBag!,
-          bag_type:      hasBag && bagType ? bagType : null,
-        },
-        5: {
-          accepted_product_types: categories,
-        },
-      };
-
-      const payload = stepPayloads[completedStep];
-      if (!payload) return true; // step 4 and 6 handled separately
-
-      const nextStep = completedStep + 1;
-
-      if (driverId) {
-        const { error } = await supabase.from('drivers')
-          .update({ ...payload, onboarding_step: nextStep })
-          .eq('id', driverId);
-        if (error) throw error;
-      } else {
-        // First save: create draft record
-        const { data, error } = await supabase.from('drivers')
-          .insert({
-            user_id:       user.id,
-            driver_status: 'draft' as any,
-            onboarding_step: nextStep,
-            is_approved:   false,
-            is_available:  false,
-            ...payload,
-          })
-          .select('id')
-          .single();
-        if (error) throw error;
-        setDriverId(data.id);
-
-        // Update profile full_name
-        if (fullName.trim()) {
-          supabase.from('profiles').update({ full_name: fullName.trim() }).eq('id', user.id).catch(() => {});
-        }
-      }
-      return true;
-    } catch (e: any) {
-      console.error('saveStepToDb error:', e);
-      toast({ variant: 'destructive', title: 'Aviso', description: 'Progresso salvo localmente. Continuando...' });
-      return true; // don't block navigation on save error
-    } finally {
-      setSaving(false);
+  // ── Advance step (no DB writes — only localStorage via the auto-save effect)
+  const goNext = async () => {
+    if (!canProceed(step)) {
+      toast({
+        variant: 'destructive',
+        title: 'Campos obrigatórios',
+        description: 'Preencha todos os campos antes de continuar.',
+      });
+      return;
     }
+    if (step === TOTAL_STEPS) {
+      handleSubmit();
+      return;
+    }
+    setStep((s) => s + 1);
   };
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
+  // ── Final submit: single atomic write to Supabase ─────────────────────────
   const handleSubmit = async () => {
     if (!user) {
-      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Faça login novamente.' });
+      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Faça login novamente e tente de novo.' });
       return;
     }
     setLoading(true);
-    console.log('[submit] starting — userId:', user.id, 'driverId:', driverId);
+    console.log('[submit] starting — userId:', user.id);
+
     try {
-      // 0. Atualiza e-mail se foi alterado (fire-and-forget — não bloqueia o cadastro)
-      if (email && email !== user.email) {
-        const { error: emailErr } = await supabase.auth.updateUser({ email });
-        if (emailErr) {
-          // Avisa mas não para o cadastro — e-mail pode ser atualizado no perfil depois
-          toast({
-            title: 'E-mail não atualizado',
-            description: 'O cadastro continuará com o e-mail atual. Você pode alterar depois no perfil.',
-          });
-        }
+      // ── 1. Sanitize all string fields ──────────────────────────────────────
+      const safeName    = safeStr(fullName);
+      const safeCPF     = safeStr(cpf).replace(/\D/g, '');
+      const safePhone   = safeStr(phone);
+      const safePlate   = safeStr(plate).toUpperCase() || null;
+      const safeModel   = safeStr(vehicleModel) || null;
+      const safeColor   = safeStr(vehicleColor) || null;
+      const safeCEP     = safeStr(cep).replace(/\D/g, '');
+      const safeStreet  = safeStr(street);
+      const safeNum     = safeStr(number);
+      const safeComp    = safeStr(complement) || null;
+      const safeNeigh   = safeStr(neighborhood);
+      const safeCity    = safeStr(city);
+      const safeState   = safeStr(stateUF);
+      const safeBagType = (hasBag && bagType) ? (safeStr(bagType) || null) : null;
+      const safeRef     = safeStr(referralCode).toUpperCase() || null;
+
+      // ── 2. Full validation before any network call ─────────────────────────
+      const missing: string[] = [];
+      if (!safeName)                              missing.push('Nome completo');
+      if (safeCPF.length !== 11)                  missing.push('CPF válido');
+      if (!birthDate)                             missing.push('Data de nascimento');
+      if (safePhone.replace(/\D/g, '').length < 10) missing.push('Telefone');
+      if (!safeStreet)                            missing.push('Rua/Logradouro');
+      if (!safeNum)                               missing.push('Número');
+      if (!safeNeigh)                             missing.push('Bairro');
+      if (!safeCity)                              missing.push('Cidade');
+      if (!safeState)                             missing.push('Estado');
+      if (!vehicleType)                           missing.push('Tipo de veículo');
+      if (hasBag === null)                        missing.push('Informação sobre bag');
+      if (!docs.cnhFront.file && !docUrls.cnhFront) missing.push('CNH frente');
+      if (!docs.cnhBack.file  && !docUrls.cnhBack)  missing.push('CNH verso');
+      if (!docs.selfie.file   && !docUrls.selfie)   missing.push('Selfie');
+      if (categories.length === 0)                missing.push('Categorias de entrega');
+      if (!termsAccepted || !privacyAccepted || !declareCNH || !declareVehicle)
+                                                  missing.push('Aceite dos termos');
+
+      if (missing.length > 0) {
+        throw new Error('Campos obrigatórios faltando: ' + missing.join(', '));
       }
 
-      // 1. Atualiza nome e telefone no perfil
-      console.log('[submit] step 1 — updating profile');
-      await supabase.from('profiles').update({ full_name: fullName.trim(), phone }).eq('id', user.id);
+      // ── 3. Update email (fire-and-forget — not critical) ───────────────────
+      if (email && email !== user.email) {
+        supabase.auth.updateUser({ email }).catch(() => {});
+      }
 
-      // 2. Upload docs (usa arquivo novo se selecionado; senão reutiliza URL do DB draft)
-      console.log('[submit] step 2 — uploading docs', {
-        cnhFrontFile:    !!docs.cnhFront.file,
-        cnhFrontUrl:     docUrls.cnhFront,
-        cnhBackFile:     !!docs.cnhBack.file,
-        cnhBackUrl:      docUrls.cnhBack,
-        selfieFile:      !!docs.selfie.file,
-        selfieUrl:       docUrls.selfie,
-        vehiclePhotoFile:!!docs.vehiclePhoto.file,
-        vehiclePhotoUrl: docUrls.vehiclePhoto,
-      });
-
-      if (!docs.cnhFront.file && !docUrls.cnhFront) throw new Error('CNH (frente) obrigatória. Volte ao passo 4 e envie o documento.');
-      if (!docs.cnhBack.file  && !docUrls.cnhBack)  throw new Error('CNH (verso) obrigatório. Volte ao passo 4 e envie o documento.');
-      if (!docs.selfie.file   && !docUrls.selfie)   throw new Error('Selfie obrigatória. Volte ao passo 4 e envie o documento.');
-
+      // ── 4. Upload documents ────────────────────────────────────────────────
+      console.log('[submit] uploading documents...');
       const [cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl] = await Promise.all([
-        docs.cnhFront.file    ? uploadFile(user.id, docs.cnhFront.file,    'cnh-front') : Promise.resolve(docUrls.cnhFront!),
-        docs.cnhBack.file     ? uploadFile(user.id, docs.cnhBack.file,     'cnh-back')  : Promise.resolve(docUrls.cnhBack!),
-        docs.selfie.file      ? uploadFile(user.id, docs.selfie.file,      'selfie')    : Promise.resolve(docUrls.selfie!),
-        docs.vehiclePhoto.file? uploadFile(user.id, docs.vehiclePhoto.file,'vehicle')   : Promise.resolve(docUrls.vehiclePhoto),
+        docs.cnhFront.file
+          ? uploadFile(user.id, docs.cnhFront.file, 'cnh-front')
+          : Promise.resolve(docUrls.cnhFront!),
+        docs.cnhBack.file
+          ? uploadFile(user.id, docs.cnhBack.file, 'cnh-back')
+          : Promise.resolve(docUrls.cnhBack!),
+        docs.selfie.file
+          ? uploadFile(user.id, docs.selfie.file, 'selfie')
+          : Promise.resolve(docUrls.selfie!),
+        docs.vehiclePhoto.file
+          ? uploadFile(user.id, docs.vehiclePhoto.file, 'vehicle')
+          : Promise.resolve(docUrls.vehiclePhoto),
       ]);
-      console.log('[submit] step 2 done — doc URLs:', { cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl });
+      console.log('[submit] documents uploaded');
 
-      // 3. Cria ou atualiza o registro do driver
+      // ── 5. Update profile ──────────────────────────────────────────────────
+      console.log('[submit] updating profile...');
+      const { error: profileErr } = await supabase
+        .from('profiles')
+        .update({ full_name: safeName, phone: safePhone })
+        .eq('id', user.id);
+      if (profileErr) {
+        // Non-fatal — log but continue
+        console.warn('[submit] profile update warning:', profileErr.message);
+      }
+
+      // ── 6. Build final driver payload ─────────────────────────────────────
       const finalPayload = {
-        cpf:                  cpf.replace(/\D/g, ''),
-        birth_date:           birthDate,
-        phone,
-        address_cep:          cep.replace(/\D/g, ''),
-        address_street:       street,
-        address_number:       number,
-        address_complement:   complement || null,
-        address_neighborhood: neighborhood,
-        address_city:         city,
-        address_state:        stateUF,
-        vehicle_type:         vehicleType as any,
-        license_plate:        plate.trim().toUpperCase() || null,
-        vehicle_model:        vehicleModel.trim() || null,
-        vehicle_color:        vehicleColor.trim() || null,
-        vehicle_year:         vehicleYear ? parseInt(vehicleYear) : null,
-        has_bag:              hasBag!,
-        bag_type:             hasBag && bagType ? bagType : null,
-        drivers_license_url:  cnhFrontUrl,
-        cnh_back_url:         cnhBackUrl,
-        selfie_url:           selfieUrl,
-        vehicle_photo_url:    vehiclePhotoUrl,
-        accepted_product_types: categories,
-        accepted_terms:       true,
-        terms_accepted_at:    new Date().toISOString(),
-        is_approved:          false,
-        is_available:         false,
-        driver_status:        'pending' as any,
-        submitted_at:         new Date().toISOString(),
-        onboarding_completed: true,
-        onboarding_step:      TOTAL_STEPS,
+        cpf:                    safeCPF,
+        birth_date:             birthDate,
+        phone:                  safePhone,
+        address_cep:            safeCEP,
+        address_street:         safeStreet,
+        address_number:         safeNum,
+        address_complement:     safeComp,
+        address_neighborhood:   safeNeigh,
+        address_city:           safeCity,
+        address_state:          safeState,
+        vehicle_type:           vehicleType as any,
+        license_plate:          safePlate,
+        vehicle_model:          safeModel,
+        vehicle_color:          safeColor,
+        vehicle_year:           vehicleYear ? parseInt(vehicleYear) : null,
+        has_bag:                hasBag!,
+        bag_type:               safeBagType,
+        drivers_license_url:    cnhFrontUrl,
+        cnh_back_url:           cnhBackUrl,
+        selfie_url:             selfieUrl,
+        vehicle_photo_url:      vehiclePhotoUrl,
+        accepted_product_types: categories.length > 0 ? categories : [],
+        accepted_terms:         true,
+        terms_accepted_at:      new Date().toISOString(),
+        is_approved:            false,
+        is_available:           false,
+        driver_status:          'pending' as any,
+        submitted_at:           new Date().toISOString(),
+        onboarding_completed:   true,
+        onboarding_step:        TOTAL_STEPS,
       };
+
+      // ── 7. Check for existing driver record and upsert ────────────────────
+      console.log('[submit] upserting driver record...');
+      const { data: existingDriver } = await supabase
+        .from('drivers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
       let newDriverId: string;
 
-      console.log('[submit] step 3 — upserting driver record, driverId:', driverId);
-      if (driverId) {
-        // Update existing draft
-        const { error } = await supabase.from('drivers').update(finalPayload).eq('id', driverId);
-        if (error) {
-          console.error('[submit] update error:', error);
-          throw error;
-        }
-        newDriverId = driverId;
+      if (existingDriver?.id) {
+        const { error } = await supabase
+          .from('drivers')
+          .update(finalPayload)
+          .eq('id', existingDriver.id);
+        if (error) throw new Error('Erro ao salvar cadastro: ' + error.message);
+        newDriverId = existingDriver.id;
       } else {
-        // No draft saved yet — full insert
         const { data: newDriver, error } = await supabase
           .from('drivers')
-          .insert([{ user_id: user.id, ...finalPayload }])
+          .insert({ user_id: user.id, ...finalPayload })
           .select('id')
           .single();
-        if (error || !newDriver) {
-          console.error('[submit] insert error:', error);
-          throw error ?? new Error('Erro ao criar cadastro');
-        }
+        if (error || !newDriver) throw new Error('Erro ao criar cadastro: ' + (error?.message ?? 'Tente novamente'));
         newDriverId = newDriver.id;
       }
-      console.log('[submit] step 3 done — newDriverId:', newDriverId);
 
-      // Update profile name
-      if (fullName.trim()) {
-        supabase.from('profiles').update({ full_name: fullName.trim() }).eq('id', user.id).catch(() => {});
+      console.log('[submit] driver saved, id:', newDriverId);
+
+      // ── 8. Referral (fire-and-forget) ─────────────────────────────────────
+      if (safeRef) {
+        supabase
+          .rpc('register_referral', { p_referral_code: safeRef, p_new_driver_id: newDriverId })
+          .catch(() => {});
       }
 
-      // 4. Indicação fire-and-forget
-      const code = referralCode.trim().toUpperCase();
-      if (code) {
-        supabase.rpc('register_referral', { p_referral_code: code, p_new_driver_id: newDriverId }).catch(() => {});
-      }
-
-      // 5. Limpa draft salvo
+      // ── 9. Clear local draft ───────────────────────────────────────────────
       if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
 
+      console.log('[submit] success! Redirecting to pending-approval...');
       navigate('/driver/pending-approval', { replace: true });
+
     } catch (e: any) {
-      console.error('[submit] FATAL error:', e);
-      const msg = e?.message ?? e?.error_description ?? JSON.stringify(e) ?? 'Erro desconhecido';
+      console.error('[submit] error:', e);
+      const msg = safeStr(e?.message) || safeStr(e?.error_description) || 'Erro desconhecido. Tente novamente.';
       toast({
         variant:     'destructive',
         title:       'Erro no cadastro',
@@ -655,22 +637,9 @@ export default function DriverSetup() {
     }
   };
 
-  const goNext = async () => {
-    if (!canProceed(step)) {
-      toast({ variant: 'destructive', title: 'Campos obrigatórios', description: 'Preencha todos os campos antes de continuar.' });
-      return;
-    }
-    if (step === TOTAL_STEPS) { handleSubmit(); return; }
-    // Save text steps to DB (steps 1, 2, 3, 5)
-    if ([1, 2, 3, 5].includes(step)) {
-      await saveStepToDb(step);
-    }
-    setStep((s) => s + 1);
-  };
-
   const stepInfo = STEP_LABELS[step - 1];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
 
@@ -723,7 +692,7 @@ export default function DriverSetup() {
       <div
         ref={contentRef}
         className="flex-1 px-4 py-5 space-y-4 overflow-y-auto"
-        style={{ paddingBottom: '100px' }} /* espaço para o teclado + footer */
+        style={{ paddingBottom: '100px' }}
       >
 
         {/* ═══════════════ STEP 1 — Dados pessoais ═══════════════ */}
@@ -731,7 +700,6 @@ export default function DriverSetup() {
           <div className="bg-white rounded-2xl shadow-sm p-4 space-y-4">
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Informações básicas</p>
 
-            {/* E-mail editável */}
             <Field label="E-mail *">
               <input
                 type="email"
@@ -755,7 +723,7 @@ export default function DriverSetup() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className={inputCls(!!fullName.trim())}
+                className={inputCls(!!safeStr(fullName))}
               />
             </Field>
 
@@ -838,7 +806,7 @@ export default function DriverSetup() {
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className={inputCls(!!street)}
+                className={inputCls(!!safeStr(street))}
               />
             </Field>
 
@@ -851,7 +819,7 @@ export default function DriverSetup() {
                   value={number}
                   onChange={(e) => setNumber(e.target.value)}
                   onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className={inputCls(!!number)}
+                  className={inputCls(!!safeStr(number))}
                 />
               </Field>
               <Field label="Complemento">
@@ -873,7 +841,7 @@ export default function DriverSetup() {
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
                 onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                className={inputCls(!!neighborhood)}
+                className={inputCls(!!safeStr(neighborhood))}
               />
             </Field>
 
@@ -885,7 +853,7 @@ export default function DriverSetup() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className={inputCls(!!city)}
+                  className={inputCls(!!safeStr(city))}
                 />
               </Field>
               <Field label="Estado *">
@@ -896,7 +864,7 @@ export default function DriverSetup() {
                   onChange={(e) => setStateUF(e.target.value.toUpperCase().slice(0, 2))}
                   onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                   maxLength={2}
-                  className={inputCls(!!stateUF)}
+                  className={inputCls(!!safeStr(stateUF))}
                 />
               </Field>
             </div>
@@ -1188,7 +1156,7 @@ export default function DriverSetup() {
       >
         <button
           onClick={goNext}
-          disabled={loading || saving || !canProceed(step)}
+          disabled={loading || !canProceed(step)}
           className={`w-full flex items-center justify-center gap-2 rounded-2xl font-bold text-base transition-all active:scale-[0.98] disabled:opacity-40 ${
             step === TOTAL_STEPS ? 'bg-green-600 text-white' : 'bg-primary text-white'
           }`}
@@ -1196,8 +1164,6 @@ export default function DriverSetup() {
         >
           {loading ? (
             <><Loader2 className="h-5 w-5 animate-spin" /> Enviando cadastro...</>
-          ) : saving ? (
-            <><Loader2 className="h-5 w-5 animate-spin" /> Salvando...</>
           ) : step === TOTAL_STEPS ? (
             <><CheckCircle2 className="h-5 w-5" /> Enviar cadastro</>
           ) : (
@@ -1217,7 +1183,7 @@ export default function DriverSetup() {
   );
 }
 
-// ── Sub-components ─────────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -1235,14 +1201,14 @@ function inputCls(valid: boolean) {
 }
 
 interface DocUploadCardProps {
-  label: string;
-  subtitle: string;
-  docKey: DocKey;
-  state: DocState;
+  label:       string;
+  subtitle:    string;
+  docKey:      DocKey;
+  state:       DocState;
   existingUrl?: string | null;
-  required: boolean;
-  inputRef: React.RefObject<HTMLInputElement>;
-  onPick: (key: DocKey, file: File) => void;
+  required:    boolean;
+  inputRef:    React.RefObject<HTMLInputElement>;
+  onPick:      (key: DocKey, file: File) => void;
 }
 
 function DocUploadCard({ label, subtitle, docKey, state, existingUrl, required, inputRef, onPick }: DocUploadCardProps) {
