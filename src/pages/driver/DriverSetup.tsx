@@ -170,10 +170,21 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/** Credenciais pendentes de cadastro — preenchidas em Auth.tsx e usadas no submit final */
+const REGISTER_KEY = 'levei-register';
+
 export default function DriverSetup() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
+
+  /** Dados do pré-cadastro (modo registro: usuário ainda não tem conta auth) */
+  const [pendingReg] = useState<{ email: string; password: string; role: string } | null>(() => {
+    try {
+      const s = sessionStorage.getItem(REGISTER_KEY);
+      return s ? JSON.parse(s) : null;
+    } catch { return null; }
+  });
 
   const [step, setStep]         = useState(1);
   const [loading, setLoading]   = useState(false);
@@ -181,7 +192,8 @@ export default function DriverSetup() {
   const [restored, setRestored] = useState(false);
 
   // Step 1 — Dados pessoais
-  const [email,     setEmail]     = useState(user?.email ?? '');
+  // Pre-fill email from auth session OR from pending registration credentials
+  const [email,     setEmail]     = useState(pendingReg?.email ?? user?.email ?? '');
   const [fullName,  setFullName]  = useState('');
   const [cpf,       setCpf]       = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -238,11 +250,27 @@ export default function DriverSetup() {
   const [declareVehicle,  setDeclareVehicle]  = useState(false);
   const [referralCode,    setReferralCode]    = useState('');
 
-  const DRAFT_KEY = user?.id ? draftKey(user.id) : null;
+  // DRAFT_KEY: usa user.id em modo autenticado; usa email em modo registro (ainda sem user.id)
+  const DRAFT_KEY = user?.id
+    ? draftKey(user.id)
+    : pendingReg?.email
+      ? `levei-driver-reg-${pendingReg.email}`
+      : null;
+
+  // ── Guard: redireciona para /auth se não há sessão nem pré-cadastro ────────
+  useEffect(() => {
+    if (authLoading || restored) return;
+    if (!user && !pendingReg) {
+      navigate('/auth', { replace: true });
+    }
+  }, [authLoading, user, pendingReg, restored, navigate]);
 
   // ── Restore on mount: localStorage (primary), DB read-only for docUrls ──────
   useEffect(() => {
-    if (!user?.id || restored) return;
+    // Aguarda auth carregar; em modo registro (pendingReg) o user será null — tudo bem
+    if (authLoading) return;
+    if (!user?.id && !pendingReg) return; // guard acima já cuida do redirect
+    if (restored) return;
 
     (async () => {
       try {
@@ -280,18 +308,24 @@ export default function DriverSetup() {
           }
         }
 
-        // 2. Pre-fill name/phone from profile (only if not already restored)
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name,phone')
-          .eq('id', user.id)
-          .maybeSingle();
-        if (profile?.full_name) setFullName((prev) => prev || profile.full_name);
-        if (profile?.phone)     setPhone((prev) => prev || profile.phone);
+        // 2. Pre-fill email from pendingReg (registration mode)
+        if (pendingReg?.email) setEmail(pendingReg.email);
 
-        // 3. Check DB for existing driver record — READ ONLY
-        //    We never write to DB during steps anymore.
-        //    We only read doc URLs for backwards compatibility (users who had the old system).
+        // 3. Pre-fill name/phone from profile (authenticated mode only)
+        if (user?.id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name,phone')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (profile?.full_name) setFullName((prev) => prev || profile.full_name);
+          if (profile?.phone)     setPhone((prev) => prev || profile.phone);
+        }
+
+        // 4. Check DB for existing driver record — READ ONLY (authenticated mode only)
+        //    We never write to DB during steps. Only read doc URLs for backwards compat.
+        if (!user?.id) { setRestored(true); return; }
+
         const { data: existing } = await supabase
           .from('drivers')
           .select(
@@ -345,7 +379,7 @@ export default function DriverSetup() {
       setRestored(true);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [authLoading, user?.id, pendingReg?.email]);
 
   // ── Auto-save to localStorage on every change ─────────────────────────────
   useEffect(() => {
@@ -465,12 +499,14 @@ export default function DriverSetup() {
 
   // ── Final submit: single atomic write to Supabase ─────────────────────────
   const handleSubmit = async () => {
-    if (!user) {
-      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Faça login novamente e tente de novo.' });
+    // Precisa de auth existente OU pendingReg para criar a conta no submit
+    if (!user && !pendingReg) {
+      toast({ variant: 'destructive', title: 'Sessão inválida', description: 'Inicie o cadastro novamente.' });
+      navigate('/auth');
       return;
     }
     setLoading(true);
-    console.log('[submit] starting — userId:', user.id);
+    console.log('[submit] starting — mode:', user ? 'authenticated' : 'registration');
 
     try {
       // ── 1. Sanitize all string fields ──────────────────────────────────────
@@ -514,25 +550,53 @@ export default function DriverSetup() {
         throw new Error('Campos obrigatórios faltando: ' + missing.join(', '));
       }
 
-      // ── 3. Update email (fire-and-forget — not critical) ───────────────────
-      if (email && email !== user.email) {
-        supabase.auth.updateUser({ email }).catch(() => {});
+      // ── 3. Obter userId — criar conta se for modo registro ────────────────
+      let userId: string;
+
+      if (user) {
+        // Modo autenticado: usuário já tem conta
+        userId = user.id;
+        // Atualiza email se foi alterado (fire-and-forget)
+        if (email && email !== user.email) {
+          supabase.auth.updateUser({ email }).catch(() => {});
+        }
+      } else {
+        // Modo registro: cria auth.users agora (somente no submit final)
+        console.log('[submit] creating auth account for:', pendingReg!.email);
+        const { data: authData, error: signUpErr } = await supabase.auth.signUp({
+          email:    pendingReg!.email,
+          password: pendingReg!.password,
+          options: {
+            data: { full_name: safeName, phone: safePhone },
+          },
+        });
+        if (signUpErr) throw new Error('Erro ao criar conta: ' + signUpErr.message);
+        if (!authData.user) throw new Error('Erro ao criar conta. Tente novamente.');
+
+        userId = authData.user.id;
+        console.log('[submit] account created, userId:', userId);
+
+        // Insere papel (role) do usuário
+        const { error: roleErr } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: 'driver' });
+        if (roleErr) console.warn('[submit] role insert warning:', roleErr.message);
       }
 
       // ── 4. Upload documents ────────────────────────────────────────────────
       console.log('[submit] uploading documents...');
       const [cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl] = await Promise.all([
         docs.cnhFront.file
-          ? uploadFile(user.id, docs.cnhFront.file, 'cnh-front')
+          ? uploadFile(userId, docs.cnhFront.file, 'cnh-front')
           : Promise.resolve(docUrls.cnhFront!),
         docs.cnhBack.file
-          ? uploadFile(user.id, docs.cnhBack.file, 'cnh-back')
+          ? uploadFile(userId, docs.cnhBack.file, 'cnh-back')
           : Promise.resolve(docUrls.cnhBack!),
         docs.selfie.file
-          ? uploadFile(user.id, docs.selfie.file, 'selfie')
+          ? uploadFile(userId, docs.selfie.file, 'selfie')
           : Promise.resolve(docUrls.selfie!),
         docs.vehiclePhoto.file
-          ? uploadFile(user.id, docs.vehiclePhoto.file, 'vehicle')
+          ? uploadFile(userId, docs.vehiclePhoto.file, 'vehicle')
           : Promise.resolve(docUrls.vehiclePhoto),
       ]);
       console.log('[submit] documents uploaded');
@@ -542,9 +606,8 @@ export default function DriverSetup() {
       const { error: profileErr } = await supabase
         .from('profiles')
         .update({ full_name: safeName, phone: safePhone })
-        .eq('id', user.id);
+        .eq('id', userId);
       if (profileErr) {
-        // Non-fatal — log but continue
         console.warn('[submit] profile update warning:', profileErr.message);
       }
 
@@ -587,7 +650,7 @@ export default function DriverSetup() {
       const { data: existingDriver } = await supabase
         .from('drivers')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       let newDriverId: string;
@@ -602,7 +665,7 @@ export default function DriverSetup() {
       } else {
         const { data: newDriver, error } = await supabase
           .from('drivers')
-          .insert({ user_id: user.id, ...finalPayload })
+          .insert({ user_id: userId, ...finalPayload })
           .select('id')
           .single();
         if (error || !newDriver) throw new Error('Erro ao criar cadastro: ' + (error?.message ?? 'Tente novamente'));
@@ -618,7 +681,8 @@ export default function DriverSetup() {
           .catch(() => {});
       }
 
-      // ── 9. Clear local draft ───────────────────────────────────────────────
+      // ── 9. Clear local draft e credenciais pendentes ───────────────────────
+      sessionStorage.removeItem(REGISTER_KEY);
       if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
 
       console.log('[submit] success! Redirecting to pending-approval...');

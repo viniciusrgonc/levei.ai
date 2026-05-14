@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useUserSetup, useAuthRedirect } from '@/hooks/useUserSetup';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { LogOut, Store, Bike, ArrowRight, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import leveiLogo from '@/assets/levei-logo.png';
@@ -23,6 +24,7 @@ function Splash({ label }: { label: string }) {
 export default function Dashboard() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role, loading } = useUserSetup();
   useAuthRedirect();
   const [submitting, setSubmitting] = useState(false);
@@ -41,9 +43,12 @@ export default function Dashboard() {
     if (error) {
       toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível selecionar o perfil' });
       setSubmitting(false);
-    } else {
-      window.location.href = selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup';
+      return;
     }
+    // Invalida o cache do React Query ANTES de navegar, evitando race condition com staleTime
+    await queryClient.invalidateQueries({ queryKey: ['user-setup', user.id] });
+    // Usa navigate() (sem reload de página) para manter o cache recém-invalidado
+    navigate(selectedRole === 'restaurant' ? '/restaurant/setup' : '/driver/setup');
   };
 
   if (loading) return <Splash label="Carregando..." />;

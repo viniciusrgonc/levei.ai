@@ -162,10 +162,26 @@ function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+const REGISTER_KEY = 'levei-register';
+
 export default function RestaurantSetup() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  /** Credenciais do pré-cadastro (modo registro: sem conta auth ainda) */
+  const [pendingReg] = useState<{ email: string; password: string; role: string } | null>(() => {
+    try {
+      const s = sessionStorage.getItem(REGISTER_KEY);
+      return s ? JSON.parse(s) : null;
+    } catch { return null; }
+  });
+
+  // Guard: redireciona para /auth se não há sessão nem pré-cadastro
+  if (!authLoading && !user && !pendingReg) {
+    navigate('/auth', { replace: true });
+    return null;
+  }
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -285,21 +301,42 @@ export default function RestaurantSetup() {
   // ── Submit ──────────────────────────────────────────────────────────────────
 
   async function handleSubmit() {
-    if (!user) return;
+    if (!user && !pendingReg) return;
     setLoading(true);
 
     const finalFullName = personType === 'pf' ? fullName : responsibleName;
 
     try {
+      // Determina userId — cria conta se for modo registro
+      let userId: string;
+      if (user) {
+        userId = user.id;
+      } else {
+        // Modo registro: cria auth.users no submit final
+        const { data: authData, error: signUpErr } = await supabase.auth.signUp({
+          email:    pendingReg!.email,
+          password: pendingReg!.password,
+          options: { data: { full_name: finalFullName, phone: phone.replace(/\D/g, '') } },
+        });
+        if (signUpErr) throw signUpErr;
+        if (!authData.user) throw new Error('Erro ao criar conta. Tente novamente.');
+
+        // Insere role do usuário
+        await supabase.from('user_roles').insert({ user_id: authData.user.id, role: 'restaurant' });
+        userId = authData.user.id;
+
+        sessionStorage.removeItem(REGISTER_KEY);
+      }
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ full_name: finalFullName, phone: phone.replace(/\D/g, '') })
-        .eq('id', user.id);
+        .eq('id', userId);
 
       if (profileError) throw profileError;
 
       const { error: restError } = await supabase.from('restaurants').insert({
-        user_id: user.id,
+        user_id: userId,
         business_name: personType === 'pj' ? (fantasyName || companyName) : fullName,
         person_type: personType,
         cpf: personType === 'pf' ? cpf.replace(/\D/g, '') : null,

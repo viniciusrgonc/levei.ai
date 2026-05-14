@@ -77,6 +77,13 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+
+            {/* Registro do motoboy — sem proteção de role (conta criada no submit final) */}
+            <Route path="/driver/register" element={<DriverSetup />} />
+
+            {/* Registro do solicitante — sem proteção de role (conta criada no submit final) */}
+            <Route path="/restaurant/register" element={<RestaurantSetup />} />
+
             <Route
               path="/dashboard"
               element={
