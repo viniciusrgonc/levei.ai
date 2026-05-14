@@ -9,6 +9,7 @@ import { DriverRoute } from "@/lib/DriverRoute";
 import { RestaurantRoute } from "@/lib/RestaurantRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import RestaurantSetup from "./pages/restaurant/RestaurantSetup";
 import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
@@ -77,11 +78,14 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/register" element={<Register />} />
 
             {/* Registro do motoboy — sem proteção de role (conta criada no submit final) */}
             <Route path="/driver/register" element={<DriverSetup />} />
 
             {/* Registro do solicitante — sem proteção de role (conta criada no submit final) */}
+            <Route path="/customer/register" element={<RestaurantSetup />} />
+            {/* Alias antigo mantido para compatibilidade */}
             <Route path="/restaurant/register" element={<RestaurantSetup />} />
 
             <Route

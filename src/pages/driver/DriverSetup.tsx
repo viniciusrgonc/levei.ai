@@ -147,15 +147,15 @@ function ExitModal({ onConfirm, onCancel }: { onConfirm: () => void; onCancel: (
         <div className="text-center space-y-1.5 mb-5">
           <h2 className="text-lg font-bold text-gray-900">Sair do cadastro?</h2>
           <p className="text-sm text-gray-500 leading-relaxed">
-            Seu progresso foi salvo automaticamente.<br />
-            Faça login novamente para continuar de onde parou.
+            Seu progresso foi salvo localmente.<br />
+            Você pode continuar de onde parou depois.
           </p>
         </div>
         <button
           onClick={onConfirm}
           className="w-full h-12 rounded-2xl bg-red-50 border border-red-100 text-red-600 font-bold text-sm"
         >
-          Sair e deslogar
+          Sair
         </button>
         <button
           onClick={onCancel}
@@ -179,12 +179,15 @@ export default function DriverSetup() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   /** Dados do pré-cadastro (modo registro: usuário ainda não tem conta auth) */
-  const [pendingReg] = useState<{ email: string; password: string; role: string } | null>(() => {
+  const [pendingReg] = useState<{ role: string } | null>(() => {
     try {
       const s = sessionStorage.getItem(REGISTER_KEY);
       return s ? JSON.parse(s) : null;
     } catch { return null; }
   });
+
+  /** true quando usuário ainda não tem conta — fluxo vindo de /register */
+  const isRegistrationMode = !user && !!pendingReg;
 
   const [step, setStep]         = useState(1);
   const [loading, setLoading]   = useState(false);
@@ -192,8 +195,10 @@ export default function DriverSetup() {
   const [restored, setRestored] = useState(false);
 
   // Step 1 — Dados pessoais
-  // Pre-fill email from auth session OR from pending registration credentials
-  const [email,     setEmail]     = useState(pendingReg?.email ?? user?.email ?? '');
+  const [email,           setEmail]           = useState(user?.email ?? '');
+  const [password,        setPassword]        = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword,    setShowPassword]    = useState(false);
   const [fullName,  setFullName]  = useState('');
   const [cpf,       setCpf]       = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -250,11 +255,11 @@ export default function DriverSetup() {
   const [declareVehicle,  setDeclareVehicle]  = useState(false);
   const [referralCode,    setReferralCode]    = useState('');
 
-  // DRAFT_KEY: usa user.id em modo autenticado; usa email em modo registro (ainda sem user.id)
+  // DRAFT_KEY: usa user.id em modo autenticado; usa chave fixa em modo registro
   const DRAFT_KEY = user?.id
     ? draftKey(user.id)
-    : pendingReg?.email
-      ? `levei-driver-reg-${pendingReg.email}`
+    : pendingReg
+      ? 'levei-driver-reg-draft'
       : null;
 
   // ── Guard: redireciona para /auth se não há sessão nem pré-cadastro ────────
@@ -308,10 +313,7 @@ export default function DriverSetup() {
           }
         }
 
-        // 2. Pre-fill email from pendingReg (registration mode)
-        if (pendingReg?.email) setEmail(pendingReg.email);
-
-        // 3. Pre-fill name/phone from profile (authenticated mode only)
+        // 2. Pre-fill name/phone from profile (authenticated mode only)
         if (user?.id) {
           const { data: profile } = await supabase
             .from('profiles')
@@ -379,7 +381,7 @@ export default function DriverSetup() {
       setRestored(true);
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, user?.id, pendingReg?.email]);
+  }, [authLoading, user?.id]);
 
   // ── Auto-save to localStorage on every change ─────────────────────────────
   useEffect(() => {
@@ -407,14 +409,18 @@ export default function DriverSetup() {
   // ── Validation per step ───────────────────────────────────────────────────
   const canProceed = (s: number): boolean => {
     switch (s) {
-      case 1:
-        return (
+      case 1: {
+        const baseOk =
           isValidEmail(email) &&
           !!safeStr(fullName) &&
           validateCPF(cpf) &&
           isOver18(birthDate) &&
-          phone.replace(/\D/g, '').length >= 10
-        );
+          phone.replace(/\D/g, '').length >= 10;
+        if (isRegistrationMode) {
+          return baseOk && password.length >= 8 && password === confirmPassword;
+        }
+        return baseOk;
+      }
       case 2:
         return !!(safeStr(street) && safeStr(number) && safeStr(neighborhood) && safeStr(city) && safeStr(stateUF));
       case 3:
@@ -476,8 +482,14 @@ export default function DriverSetup() {
 
   const handleExit = async () => {
     setShowExit(false);
-    await supabase.auth.signOut();
-    navigate('/auth');
+    if (isRegistrationMode) {
+      // Usuário ainda não tem conta — volta para a seleção de perfil
+      sessionStorage.removeItem(REGISTER_KEY);
+      navigate('/register');
+    } else {
+      await supabase.auth.signOut();
+      navigate('/auth');
+    }
   };
 
   // ── Advance step (no DB writes — only localStorage via the auto-save effect)
@@ -562,10 +574,10 @@ export default function DriverSetup() {
         }
       } else {
         // Modo registro: cria auth.users agora (somente no submit final)
-        console.log('[submit] creating auth account for:', pendingReg!.email);
+        console.log('[submit] creating auth account for:', email);
         const { data: authData, error: signUpErr } = await supabase.auth.signUp({
-          email:    pendingReg!.email,
-          password: pendingReg!.password,
+          email,
+          password,
           options: {
             data: { full_name: safeName, phone: safePhone },
           },
@@ -777,8 +789,49 @@ export default function DriverSetup() {
               {email && !isValidEmail(email) && (
                 <p className="text-[10px] text-red-500 mt-1">E-mail inválido</p>
               )}
-              <p className="text-[10px] text-blue-500">Pode ser alterado antes da aprovação</p>
             </Field>
+
+            {/* Senha — somente no fluxo de registro (/driver/register) */}
+            {isRegistrationMode && (
+              <>
+                <Field label="Senha *">
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Mínimo 8 caracteres"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                      className={inputCls(password.length >= 8)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  {password && password.length < 8 && (
+                    <p className="text-[10px] text-red-500 mt-1">Mínimo 8 caracteres</p>
+                  )}
+                </Field>
+
+                <Field label="Confirmar senha *">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Repita a senha"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onFocus={(e) => e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    className={inputCls(confirmPassword.length >= 8 && confirmPassword === password)}
+                  />
+                  {confirmPassword && confirmPassword !== password && (
+                    <p className="text-[10px] text-red-500 mt-1">As senhas não coincidem</p>
+                  )}
+                </Field>
+              </>
+            )}
 
             <Field label="Nome completo *">
               <input

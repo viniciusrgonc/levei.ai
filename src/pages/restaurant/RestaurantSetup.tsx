@@ -169,13 +169,16 @@ export default function RestaurantSetup() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  /** Credenciais do pré-cadastro (modo registro: sem conta auth ainda) */
-  const [pendingReg] = useState<{ email: string; password: string; role: string } | null>(() => {
+  /** Dados do pré-cadastro — apenas role (modo registro: sem conta auth ainda) */
+  const [pendingReg] = useState<{ role: string } | null>(() => {
     try {
       const s = sessionStorage.getItem(REGISTER_KEY);
       return s ? JSON.parse(s) : null;
     } catch { return null; }
   });
+
+  /** true quando usuário ainda não tem conta — fluxo vindo de /register */
+  const isRegistrationMode = !user && !!pendingReg;
 
   // Guard: redireciona para /auth se não há sessão nem pré-cadastro
   if (!authLoading && !user && !pendingReg) {
@@ -186,6 +189,12 @@ export default function RestaurantSetup() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
+
+  // Credenciais — coletados no Step 1 (somente em modo registro)
+  const [email,           setEmail]           = useState(user?.email ?? '');
+  const [password,        setPassword]        = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword,    setShowPassword]    = useState(false);
 
   // Step 1
   const [personType, setPersonType] = useState<PersonType>('pf');
@@ -221,12 +230,20 @@ export default function RestaurantSetup() {
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
+  function isValidEmail(e: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  }
+
   function canProceed(s: number): boolean {
     if (s === 1) {
+      const credOk = !isRegistrationMode || (
+        isValidEmail(email) && password.length >= 8 && password === confirmPassword
+      );
       if (personType === 'pf') {
-        return fullName.trim().length > 2 && validateCPF(cpf) && phone.replace(/\D/g, '').length >= 10;
+        return credOk && fullName.trim().length > 2 && validateCPF(cpf) && phone.replace(/\D/g, '').length >= 10;
       }
       return (
+        credOk &&
         companyName.trim().length > 1 &&
         validateCNPJ(cnpj) &&
         responsibleName.trim().length > 2 &&
@@ -314,8 +331,8 @@ export default function RestaurantSetup() {
       } else {
         // Modo registro: cria auth.users no submit final
         const { data: authData, error: signUpErr } = await supabase.auth.signUp({
-          email:    pendingReg!.email,
-          password: pendingReg!.password,
+          email,
+          password,
           options: { data: { full_name: finalFullName, phone: phone.replace(/\D/g, '') } },
         });
         if (signUpErr) throw signUpErr;
@@ -397,8 +414,13 @@ export default function RestaurantSetup() {
         {/* Botão sair — sempre visível para evitar armadilha no step 1 */}
         <button
           onClick={async () => {
-            await supabase.auth.signOut();
-            navigate('/auth');
+            if (isRegistrationMode) {
+              sessionStorage.removeItem(REGISTER_KEY);
+              navigate('/register');
+            } else {
+              await supabase.auth.signOut();
+              navigate('/auth');
+            }
           }}
           aria-label="Sair"
           className="absolute top-4 right-4 flex items-center gap-1 text-white/70 hover:text-white text-xs font-medium transition-colors"
@@ -418,6 +440,58 @@ export default function RestaurantSetup() {
         {/* ── Step 1 ── */}
         {step === 1 && (
           <div className="rounded-2xl shadow-sm bg-white p-5 flex flex-col gap-4">
+
+            {/* Credenciais — somente no fluxo de registro (/customer/register) */}
+            {isRegistrationMode && (
+              <>
+                <p className="text-sm font-semibold text-gray-600">Acesso à conta</p>
+                <Field label="E-mail *">
+                  <TextInput
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    inputMode="email"
+                  />
+                  {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                    <p className="text-xs text-red-500">E-mail inválido</p>
+                  )}
+                </Field>
+                <Field label="Senha *">
+                  <div className="relative">
+                    <TextInput
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Mínimo 8 caracteres"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-base"
+                    >
+                      {showPassword ? '🙈' : '👁️'}
+                    </button>
+                  </div>
+                  {password && password.length < 8 && (
+                    <p className="text-xs text-red-500">Mínimo 8 caracteres</p>
+                  )}
+                </Field>
+                <Field label="Confirmar senha *">
+                  <TextInput
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Repita a senha"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                  />
+                  {confirmPassword && confirmPassword !== password && (
+                    <p className="text-xs text-red-500">As senhas não coincidem</p>
+                  )}
+                </Field>
+                <div className="border-t border-gray-100 pt-2" />
+              </>
+            )}
+
             <p className="text-sm font-semibold text-gray-600">Tipo de pessoa</p>
             <div className="flex gap-3">
               {(['pf', 'pj'] as PersonType[]).map(t => (
