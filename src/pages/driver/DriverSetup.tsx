@@ -230,6 +230,14 @@ export default function DriverSetup() {
   const [declareVehicle, setDeclareVehicle] = useState(false);
   const [referralCode,   setReferralCode]   = useState('');
 
+  // Doc URLs from DB (used when user resumed from a draft that already had docs uploaded)
+  const [docUrls, setDocUrls] = useState<{
+    cnhFront: string | null;
+    cnhBack:  string | null;
+    selfie:   string | null;
+    vehiclePhoto: string | null;
+  }>({ cnhFront: null, cnhBack: null, selfie: null, vehiclePhoto: null });
+
   // ── Draft key ──────────────────────────────────────────────────────────────
   const DRAFT_KEY = user?.id ? draftKey(user.id) : null;
 
@@ -242,7 +250,7 @@ export default function DriverSetup() {
         // 1. Check DB for existing draft (driver_status = 'draft' OR pending with no submitted_at)
         const { data: dbDraft } = await supabase
           .from('drivers')
-          .select('id,driver_status,onboarding_step,cpf,birth_date,phone,address_cep,address_street,address_number,address_complement,address_neighborhood,address_city,address_state,vehicle_type,license_plate,vehicle_model,vehicle_color,vehicle_year,has_bag,bag_type,accepted_product_types,submitted_at')
+          .select('id,driver_status,onboarding_step,cpf,birth_date,phone,address_cep,address_street,address_number,address_complement,address_neighborhood,address_city,address_state,vehicle_type,license_plate,vehicle_model,vehicle_color,vehicle_year,has_bag,bag_type,accepted_product_types,submitted_at,drivers_license_url,cnh_back_url,selfie_url,vehicle_photo_url')
           .eq('user_id', user.id)
           .in('driver_status', ['draft', 'pending'])
           .maybeSingle();
@@ -269,6 +277,14 @@ export default function DriverSetup() {
           if (dbDraft.has_bag !== null && dbDraft.has_bag !== undefined) setHasBag(dbDraft.has_bag);
           if (dbDraft.bag_type)          setBagType(dbDraft.bag_type);
           if (dbDraft.accepted_product_types?.length) setCategories(dbDraft.accepted_product_types);
+
+          // Restore existing doc URLs so submit works even without re-uploading
+          setDocUrls({
+            cnhFront:    dbDraft.drivers_license_url || null,
+            cnhBack:     dbDraft.cnh_back_url        || null,
+            selfie:      dbDraft.selfie_url           || null,
+            vehiclePhoto: dbDraft.vehicle_photo_url  || null,
+          });
 
           // Also try to get profile name
           const { data: profile } = await supabase.from('profiles').select('full_name,phone').eq('id', user.id).maybeSingle();
@@ -363,7 +379,11 @@ export default function DriverSetup() {
       case 3:
         return !!(vehicleType && hasBag !== null);
       case 4:
-        return !!(docs.cnhFront.file && docs.cnhBack.file && docs.selfie.file);
+        return !!(
+          (docs.cnhFront.file  || docUrls.cnhFront) &&
+          (docs.cnhBack.file   || docUrls.cnhBack)  &&
+          (docs.selfie.file    || docUrls.selfie)
+        );
       case 5:
         return categories.length > 0;
       case 6:
@@ -500,8 +520,12 @@ export default function DriverSetup() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Sessão expirada', description: 'Faça login novamente.' });
+      return;
+    }
     setLoading(true);
+    console.log('[submit] starting — userId:', user.id, 'driverId:', driverId);
     try {
       // 0. Atualiza e-mail se foi alterado (fire-and-forget — não bloqueia o cadastro)
       if (email && email !== user.email) {
@@ -516,15 +540,32 @@ export default function DriverSetup() {
       }
 
       // 1. Atualiza nome e telefone no perfil
+      console.log('[submit] step 1 — updating profile');
       await supabase.from('profiles').update({ full_name: fullName.trim(), phone }).eq('id', user.id);
 
-      // 2. Upload docs em paralelo (com compressão automática)
+      // 2. Upload docs (usa arquivo novo se selecionado; senão reutiliza URL do DB draft)
+      console.log('[submit] step 2 — uploading docs', {
+        cnhFrontFile:    !!docs.cnhFront.file,
+        cnhFrontUrl:     docUrls.cnhFront,
+        cnhBackFile:     !!docs.cnhBack.file,
+        cnhBackUrl:      docUrls.cnhBack,
+        selfieFile:      !!docs.selfie.file,
+        selfieUrl:       docUrls.selfie,
+        vehiclePhotoFile:!!docs.vehiclePhoto.file,
+        vehiclePhotoUrl: docUrls.vehiclePhoto,
+      });
+
+      if (!docs.cnhFront.file && !docUrls.cnhFront) throw new Error('CNH (frente) obrigatória. Volte ao passo 4 e envie o documento.');
+      if (!docs.cnhBack.file  && !docUrls.cnhBack)  throw new Error('CNH (verso) obrigatório. Volte ao passo 4 e envie o documento.');
+      if (!docs.selfie.file   && !docUrls.selfie)   throw new Error('Selfie obrigatória. Volte ao passo 4 e envie o documento.');
+
       const [cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl] = await Promise.all([
-        uploadFile(user.id, docs.cnhFront.file!, 'cnh-front'),
-        uploadFile(user.id, docs.cnhBack.file!, 'cnh-back'),
-        uploadFile(user.id, docs.selfie.file!, 'selfie'),
-        docs.vehiclePhoto.file ? uploadFile(user.id, docs.vehiclePhoto.file, 'vehicle') : Promise.resolve(null),
+        docs.cnhFront.file    ? uploadFile(user.id, docs.cnhFront.file,    'cnh-front') : Promise.resolve(docUrls.cnhFront!),
+        docs.cnhBack.file     ? uploadFile(user.id, docs.cnhBack.file,     'cnh-back')  : Promise.resolve(docUrls.cnhBack!),
+        docs.selfie.file      ? uploadFile(user.id, docs.selfie.file,      'selfie')    : Promise.resolve(docUrls.selfie!),
+        docs.vehiclePhoto.file? uploadFile(user.id, docs.vehiclePhoto.file,'vehicle')   : Promise.resolve(docUrls.vehiclePhoto),
       ]);
+      console.log('[submit] step 2 done — doc URLs:', { cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl });
 
       // 3. Cria ou atualiza o registro do driver
       const finalPayload = {
@@ -562,10 +603,14 @@ export default function DriverSetup() {
 
       let newDriverId: string;
 
+      console.log('[submit] step 3 — upserting driver record, driverId:', driverId);
       if (driverId) {
         // Update existing draft
         const { error } = await supabase.from('drivers').update(finalPayload).eq('id', driverId);
-        if (error) throw error;
+        if (error) {
+          console.error('[submit] update error:', error);
+          throw error;
+        }
         newDriverId = driverId;
       } else {
         // No draft saved yet — full insert
@@ -574,9 +619,13 @@ export default function DriverSetup() {
           .insert([{ user_id: user.id, ...finalPayload }])
           .select('id')
           .single();
-        if (error || !newDriver) throw error ?? new Error('Erro ao criar cadastro');
+        if (error || !newDriver) {
+          console.error('[submit] insert error:', error);
+          throw error ?? new Error('Erro ao criar cadastro');
+        }
         newDriverId = newDriver.id;
       }
+      console.log('[submit] step 3 done — newDriverId:', newDriverId);
 
       // Update profile name
       if (fullName.trim()) {
@@ -594,7 +643,13 @@ export default function DriverSetup() {
 
       navigate('/driver/pending-approval', { replace: true });
     } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Erro no cadastro', description: e?.message ?? 'Tente novamente.' });
+      console.error('[submit] FATAL error:', e);
+      const msg = e?.message ?? e?.error_description ?? JSON.stringify(e) ?? 'Erro desconhecido';
+      toast({
+        variant:     'destructive',
+        title:       'Erro no cadastro',
+        description: msg,
+      });
     } finally {
       setLoading(false);
     }
@@ -982,6 +1037,7 @@ export default function DriverSetup() {
               subtitle="Foto nítida da frente da carteira"
               docKey="cnhFront"
               state={docs.cnhFront}
+              existingUrl={docUrls.cnhFront}
               required
               inputRef={inputRefs.cnhFront}
               onPick={pickDoc}
@@ -991,6 +1047,7 @@ export default function DriverSetup() {
               subtitle="Foto nítida do verso da carteira"
               docKey="cnhBack"
               state={docs.cnhBack}
+              existingUrl={docUrls.cnhBack}
               required
               inputRef={inputRefs.cnhBack}
               onPick={pickDoc}
@@ -1000,6 +1057,7 @@ export default function DriverSetup() {
               subtitle="Selfie clara mostrando seu rosto"
               docKey="selfie"
               state={docs.selfie}
+              existingUrl={docUrls.selfie}
               required
               inputRef={inputRefs.selfie}
               onPick={pickDoc}
@@ -1009,6 +1067,7 @@ export default function DriverSetup() {
               subtitle="Foto frontal ou lateral do veículo (opcional)"
               docKey="vehiclePhoto"
               state={docs.vehiclePhoto}
+              existingUrl={docUrls.vehiclePhoto}
               required={false}
               inputRef={inputRefs.vehiclePhoto}
               onPick={pickDoc}
@@ -1180,12 +1239,17 @@ interface DocUploadCardProps {
   subtitle: string;
   docKey: DocKey;
   state: DocState;
+  existingUrl?: string | null;
   required: boolean;
   inputRef: React.RefObject<HTMLInputElement>;
   onPick: (key: DocKey, file: File) => void;
 }
 
-function DocUploadCard({ label, subtitle, docKey, state, required, inputRef, onPick }: DocUploadCardProps) {
+function DocUploadCard({ label, subtitle, docKey, state, existingUrl, required, inputRef, onPick }: DocUploadCardProps) {
+  // Show local preview first; fall back to the URL already saved in DB
+  const previewSrc = state.preview ?? existingUrl ?? null;
+  const hasDoc = !!previewSrc;
+
   return (
     <div className="bg-white rounded-2xl shadow-sm p-4 space-y-3">
       <div className="flex items-center gap-2">
@@ -1194,7 +1258,7 @@ function DocUploadCard({ label, subtitle, docKey, state, required, inputRef, onP
           <p className="text-sm font-semibold text-gray-800">{label}</p>
           <p className="text-[11px] text-gray-400">{subtitle}</p>
         </div>
-        {state.file
+        {hasDoc
           ? <CheckCircle2 className="h-4 w-4 text-green-500" />
           : required
             ? <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-semibold">Obrigatório</span>
@@ -1211,9 +1275,14 @@ function DocUploadCard({ label, subtitle, docKey, state, required, inputRef, onP
         onChange={(e) => { if (e.target.files?.[0]) onPick(docKey, e.target.files[0]); e.target.value = ''; }}
       />
 
-      {state.preview ? (
+      {previewSrc ? (
         <div className="relative">
-          <img src={state.preview} alt={label} className="w-full h-40 object-cover rounded-xl" />
+          <img src={previewSrc} alt={label} className="w-full h-40 object-cover rounded-xl" />
+          {existingUrl && !state.preview && (
+            <div className="absolute top-2 left-2 bg-green-600/90 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold backdrop-blur-sm">
+              ✓ Já enviado
+            </div>
+          )}
           <button
             onClick={() => inputRef.current?.click()}
             className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2.5 py-1.5 rounded-xl flex items-center gap-1 backdrop-blur-sm"
