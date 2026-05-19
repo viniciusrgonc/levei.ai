@@ -386,7 +386,7 @@ export type Database = {
           cnh_back_url: string | null
           cpf: string | null
           created_at: string
-          driver_status: 'pending' | 'approved' | 'rejected' | 'blocked'
+          driver_status: 'draft' | 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url: string | null
           earnings_balance: number
           has_bag: boolean
@@ -397,6 +397,8 @@ export type Database = {
           latitude: number | null
           license_plate: string | null
           longitude: number | null
+          onboarding_completed: boolean
+          onboarding_step: number
           pending_balance: number
           phone: string | null
           points: number
@@ -406,6 +408,7 @@ export type Database = {
           referred_by: string | null
           rejection_reason: string | null
           selfie_url: string | null
+          submitted_at: string | null
           terms_accepted_at: string | null
           total_deliveries: number | null
           updated_at: string
@@ -431,7 +434,7 @@ export type Database = {
           cnh_back_url?: string | null
           cpf?: string | null
           created_at?: string
-          driver_status?: 'pending' | 'approved' | 'rejected' | 'blocked'
+          driver_status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url?: string | null
           earnings_balance?: number
           has_bag?: boolean
@@ -442,6 +445,8 @@ export type Database = {
           latitude?: number | null
           license_plate?: string | null
           longitude?: number | null
+          onboarding_completed?: boolean
+          onboarding_step?: number
           pending_balance?: number
           phone?: string | null
           points?: number
@@ -451,6 +456,7 @@ export type Database = {
           referred_by?: string | null
           rejection_reason?: string | null
           selfie_url?: string | null
+          submitted_at?: string | null
           terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string
@@ -476,7 +482,7 @@ export type Database = {
           cnh_back_url?: string | null
           cpf?: string | null
           created_at?: string
-          driver_status?: 'pending' | 'approved' | 'rejected' | 'blocked'
+          driver_status?: 'draft' | 'pending' | 'approved' | 'rejected' | 'blocked'
           drivers_license_url?: string | null
           earnings_balance?: number
           has_bag?: boolean
@@ -487,6 +493,8 @@ export type Database = {
           latitude?: number | null
           license_plate?: string | null
           longitude?: number | null
+          onboarding_completed?: boolean
+          onboarding_step?: number
           pending_balance?: number
           phone?: string | null
           points?: number
@@ -496,6 +504,7 @@ export type Database = {
           referred_by?: string | null
           rejection_reason?: string | null
           selfie_url?: string | null
+          submitted_at?: string | null
           terms_accepted_at?: string | null
           total_deliveries?: number | null
           updated_at?: string
