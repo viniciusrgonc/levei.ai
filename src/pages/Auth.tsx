@@ -6,11 +6,12 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useAuthRedirect } from '@/hooks/useUserSetup';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { Mail, Lock, Eye, EyeOff, MapPin } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, MapPin, ArrowLeft } from 'lucide-react';
 import leveiLogo from '@/assets/levei-logo.png';
 
 export default function Auth() {
@@ -18,6 +19,12 @@ export default function Auth() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Recuperação de senha
+  const [showForgot, setShowForgot]     = useState(false);
+  const [forgotEmail, setForgotEmail]   = useState('');
+  const [forgotSent,  setForgotSent]    = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const { loading: redirecting } = useAuthRedirect();
 
@@ -33,6 +40,21 @@ export default function Auth() {
   }
 
   if (user) return null;
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast({ variant: 'destructive', title: 'Erro', description: error.message });
+    } else {
+      setForgotSent(true);
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -163,9 +185,7 @@ export default function Auth() {
                 <button
                   type="button"
                   className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
-                  onClick={() =>
-                    toast({ title: 'Em breve', description: 'Recuperação de senha será ativada em breve' })
-                  }
+                  onClick={() => { setShowForgot(true); setForgotSent(false); setForgotEmail(''); }}
                 >
                   Esqueceu sua senha?
                 </button>
@@ -223,6 +243,71 @@ export default function Auth() {
           </p>
         </div>
       </div>
+
+      {/* ── Modal recuperação de senha ── */}
+      {showForgot && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50"
+          onClick={() => setShowForgot(false)}
+        >
+          <div
+            className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl px-6 pt-5 pb-10 sm:pb-8 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto sm:hidden" />
+
+            {forgotSent ? (
+              <div className="text-center py-4 space-y-3">
+                <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+                  <Mail className="h-7 w-7 text-green-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">E-mail enviado!</h3>
+                <p className="text-sm text-gray-500">
+                  Verifique sua caixa de entrada em <strong>{forgotEmail}</strong> e clique no link para criar uma nova senha.
+                </p>
+                <button
+                  onClick={() => setShowForgot(false)}
+                  className="w-full h-12 rounded-xl bg-primary text-white font-semibold text-sm mt-2"
+                >
+                  Fechar
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => setShowForgot(false)} className="text-gray-400 hover:text-gray-600">
+                    <ArrowLeft className="h-5 w-5" />
+                  </button>
+                  <h3 className="text-lg font-bold text-gray-900">Recuperar senha</h3>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Digite seu e-mail e enviaremos um link para criar uma nova senha.
+                </p>
+                <form onSubmit={handleForgotPassword} className="space-y-3">
+                  <div className="relative">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                    <Input
+                      type="email"
+                      placeholder="seu@email.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      required
+                      className="pl-10 h-12 rounded-xl border-gray-200 bg-gray-50 text-sm"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-12 rounded-xl text-sm font-semibold bg-primary hover:bg-primary/90"
+                    loading={forgotLoading}
+                  >
+                    Enviar link de recuperação
+                  </Button>
+                </form>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
