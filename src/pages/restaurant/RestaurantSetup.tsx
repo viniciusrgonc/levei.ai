@@ -347,8 +347,7 @@ export default function RestaurantSetup() {
 
       const { error: profileError } = await supabase
         .from('profiles')
-        .update({ full_name: finalFullName, phone: phone.replace(/\D/g, '') })
-        .eq('id', userId);
+        .upsert({ id: userId, full_name: finalFullName, phone: phone.replace(/\D/g, '') }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
 
@@ -357,6 +356,7 @@ export default function RestaurantSetup() {
         business_name: personType === 'pj' ? (fantasyName || companyName) : fullName,
         person_type: personType,
         cpf: personType === 'pf' ? cpf.replace(/\D/g, '') : null,
+        cnpj: personType === 'pj' ? cnpj.replace(/\D/g, '') : null,
         company_name: personType === 'pj' ? companyName : null,
         fantasy_name: personType === 'pj' ? (fantasyName || null) : null,
         phone: phone.replace(/\D/g, ''),
