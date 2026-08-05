@@ -10,8 +10,16 @@ import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Loader2, Star, Camera, History, Wallet, Settings, LogOut, ChevronRight, UserPen,
+  MapPin, Car, Package, ShieldCheck,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
+import { PRODUCT_TYPES } from '@/lib/productTypes';
+
+const maskCpf = (cpf: string) => {
+  const d = cpf.replace(/\D/g, '');
+  if (d.length !== 11) return cpf;
+  return `***.***.${ d.slice(6, 9)}-${d.slice(9)}`;
+};
 
 export default function DriverProfile() {
   const { signOut, user } = useAuth();
@@ -31,7 +39,7 @@ export default function DriverProfile() {
 
       const [{ data: profileData }, { data: driverData }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-        supabase.from('drivers').select('rating, total_deliveries, vehicle_type, points').eq('user_id', user.id).maybeSingle(),
+        supabase.from('drivers').select('rating, total_deliveries, vehicle_type, points, cpf, address_city, address_state, vehicle_model, vehicle_color, vehicle_year, has_bag, bag_type, accepted_product_types').eq('user_id', user.id).maybeSingle(),
       ]);
 
       setFullName(profileData?.full_name || '');
@@ -221,6 +229,91 @@ export default function DriverProfile() {
             </button>
           ))}
         </div>
+
+        {/* Dados cadastrais */}
+        {(profile?.cpf || profile?.address_city || profile?.vehicle_model || (profile?.accepted_product_types as string[] | undefined)?.length) && (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 pt-4 pb-2">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Dados cadastrais</h3>
+            </div>
+            <div className="divide-y divide-gray-50">
+
+              {/* CPF */}
+              {profile?.cpf && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">CPF</p>
+                    <p className="text-sm font-medium text-gray-900">{maskCpf(profile.cpf)}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Localização */}
+              {(profile?.address_city || profile?.address_state) && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Localização</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {[profile.address_city, profile.address_state].filter(Boolean).join(' — ')}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Veículo */}
+              {(profile?.vehicle_model || profile?.vehicle_color || profile?.vehicle_year) && (
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <Car className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Veículo</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {[profile.vehicle_model, profile.vehicle_color, profile.vehicle_year].filter(Boolean).join(' · ')}
+                    </p>
+                    {profile?.has_bag && (
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Mochila {profile.bag_type ? `· ${profile.bag_type}` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Categorias aceitas */}
+              {(profile?.accepted_product_types as string[] | undefined)?.length > 0 && (
+                <div className="flex items-start gap-3 px-4 py-3">
+                  <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Package className="h-4 w-4 text-gray-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-1.5">O que entrego</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(profile.accepted_product_types as string[]).map((key) => {
+                        const pt = PRODUCT_TYPES.find((p) => p.key === key);
+                        return (
+                          <span
+                            key={key}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                          >
+                            {pt?.icon} {pt?.label ?? key}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
 
         {/* Edit form */}
         {isEditing && (
