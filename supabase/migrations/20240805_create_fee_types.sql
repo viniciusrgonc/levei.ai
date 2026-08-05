@@ -1,0 +1,46 @@
+-- Cria tabela fee_types para gerenciar taxas de serviço
+create table if not exists fee_types (
+  id          uuid primary key default gen_random_uuid(),
+  nome        text not null,
+  percentual  numeric(5, 2) not null default 0,
+  ativo       boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+-- Índice para listagens frequentes
+create index if not exists idx_fee_types_ativo on fee_types (ativo);
+
+-- Trigger para atualizar updated_at automaticamente
+create or replace function update_updated_at_column()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+create trigger fee_types_updated_at
+  before update on fee_types
+  for each row execute function update_updated_at_column();
+
+-- RLS
+alter table fee_types enable row level security;
+
+-- Somente admins (role = 'admin' no perfil) têm acesso total
+create policy "admins_full_access" on fee_types
+  for all
+  using (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and profiles.role = 'admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from profiles
+      where profiles.id = auth.uid()
+        and profiles.role = 'admin'
+    )
+  );

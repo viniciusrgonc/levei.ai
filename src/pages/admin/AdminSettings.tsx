@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,13 +13,6 @@ import { toast } from 'sonner';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
-interface PlatformSetting {
-  id: string;
-  key: string;
-  value: string;
-  description: string;
-}
-
 interface DeliveryCategory {
   id: string;
   name: string;
@@ -28,23 +21,50 @@ interface DeliveryCategory {
   is_active: boolean;
 }
 
+interface PricingConfig {
+  id: string;
+  platform_commission_percentage: number;
+}
+
 export default function AdminSettings() {
   const queryClient = useQueryClient();
-  const [feeValues, setFeeValues] = useState<Record<string, string>>({});
+  const [commission, setCommission] = useState('');
   const [categoryValues, setCategoryValues] = useState<Record<string, { base_price: string; price_per_km: string }>>({});
 
-  const { data: settings, isLoading: loadingSettings } = useQuery({
-    queryKey: ['platform_settings'],
+  // ── pricing_config ──────────────────────────────────────────────────────────
+  const { data: config, isLoading: loadingConfig } = useQuery({
+    queryKey: ['pricing-config'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('platform_settings')
-        .select('*')
-        .order('key');
+        .from('pricing_config')
+        .select('id, platform_commission_percentage')
+        .maybeSingle();
       if (error) throw error;
-      return data as PlatformSetting[];
+      if (data) setCommission(String(data.platform_commission_percentage ?? 20));
+      return data as PricingConfig | null;
     },
   });
 
+  const saveCommissionMutation = useMutation({
+    mutationFn: async (pct: number) => {
+      if (!config?.id) throw new Error('Configuração não encontrada');
+      const { error } = await supabase
+        .from('pricing_config')
+        .update({ platform_commission_percentage: pct })
+        .eq('id', config.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pricing-config'] });
+      toast.success('Comissão salva com sucesso!');
+    },
+    onError: (e: any) => toast.error(e.message ?? 'Erro ao salvar comissão'),
+  });
+
+  const platformFee = parseFloat(commission) || 20;
+  const driverCommission = 100 - platformFee;
+
+  // ── delivery_categories ─────────────────────────────────────────────────────
   const { data: categories, isLoading: loadingCategories } = useQuery({
     queryKey: ['delivery_categories'],
     queryFn: async () => {
@@ -53,69 +73,31 @@ export default function AdminSettings() {
         .select('*')
         .order('name');
       if (error) throw error;
+      const vals: Record<string, { base_price: string; price_per_km: string }> = {};
+      (data ?? []).forEach((c: DeliveryCategory) => {
+        vals[c.id] = { base_price: c.base_price.toString(), price_per_km: c.price_per_km.toString() };
+      });
+      setCategoryValues(vals);
       return data as DeliveryCategory[];
     },
   });
 
-  useEffect(() => {
-    if (settings) {
-      const vals: Record<string, string> = {};
-      settings.forEach(s => { vals[s.key] = s.value; });
-      setFeeValues(vals);
-    }
-  }, [settings]);
-
-  useEffect(() => {
-    if (categories) {
-      const vals: Record<string, { base_price: string; price_per_km: string }> = {};
-      categories.forEach(c => {
-        vals[c.id] = {
-          base_price: c.base_price.toString(),
-          price_per_km: c.price_per_km.toString(),
-        };
-      });
-      setCategoryValues(vals);
-    }
-  }, [categories]);
-
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (updates: { key: string; value: string }[]) => {
-      for (const update of updates) {
-        const { error } = await supabase
-          .from('platform_settings')
-          .update({ value: update.value })
-          .eq('key', update.key);
-        if (error) throw error;
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['platform_settings'] });
-      toast.success('Taxas e comissões salvas com sucesso!');
-    },
-    onError: () => toast.error('Erro ao salvar configurações'),
-  });
-
   const saveCategoriesMutation = useMutation({
     mutationFn: async (updates: { id: string; base_price: number; price_per_km: number }[]) => {
-      for (const update of updates) {
+      for (const u of updates) {
         const { error } = await supabase
           .from('delivery_categories')
-          .update({ base_price: update.base_price, price_per_km: update.price_per_km })
-          .eq('id', update.id);
+          .update({ base_price: u.base_price, price_per_km: u.price_per_km })
+          .eq('id', u.id);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['delivery_categories'] });
-      toast.success('Preços por categoria salvos com sucesso!');
+      toast.success('Preços por categoria salvos!');
     },
-    onError: () => toast.error('Erro ao salvar preços'),
+    onError: (e: any) => toast.error(e.message ?? 'Erro ao salvar preços'),
   });
-
-  const handleSaveFees = () => {
-    const updates = Object.entries(feeValues).map(([key, value]) => ({ key, value }));
-    saveSettingsMutation.mutate(updates);
-  };
 
   const handleSaveCategories = () => {
     if (!categories) return;
@@ -126,9 +108,6 @@ export default function AdminSettings() {
     }));
     saveCategoriesMutation.mutate(updates);
   };
-
-  const platformFee = parseFloat(feeValues['platform_fee_percentage'] || '20');
-  const driverCommission = parseFloat(feeValues['driver_commission_percentage'] || '80');
 
   return (
     <SidebarProvider>
@@ -149,41 +128,59 @@ export default function AdminSettings() {
                     <CardTitle>Taxas e Comissões</CardTitle>
                   </div>
                   <CardDescription>
-                    Configure as taxas da plataforma e comissões dos entregadores
+                    Percentual que a plataforma retém de cada entrega
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {loadingSettings ? (
+                  {loadingConfig ? (
                     <div className="space-y-4">
-                      <Skeleton className="h-10 w-full" />
                       <Skeleton className="h-10 w-full" />
                       <Skeleton className="h-10 w-full" />
                     </div>
                   ) : (
                     <>
-                      {settings?.map(setting => (
-                        <div key={setting.key} className="space-y-2">
-                          <Label htmlFor={setting.key}>{setting.description}</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Comissão da plataforma (%)</Label>
                           <Input
-                            id={setting.key}
                             type="number"
+                            min="0"
+                            max="100"
                             step="0.1"
-                            value={feeValues[setting.key] ?? setting.value}
-                            onChange={(e) => setFeeValues(prev => ({ ...prev, [setting.key]: e.target.value }))}
+                            value={commission}
+                            onChange={e => setCommission(e.target.value)}
                           />
                         </div>
-                      ))}
+                        <div className="space-y-2">
+                          <Label className="text-muted-foreground">Repasse ao entregador (%)</Label>
+                          <Input
+                            type="number"
+                            value={driverCommission.toFixed(1)}
+                            readOnly
+                            className="bg-muted/40 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
 
-                      <div className="bg-muted/50 p-4 rounded-lg mt-4">
-                        <p className="text-sm font-medium mb-2">Exemplo de distribuição para R$ 100,00:</p>
-                        <p className="text-sm text-muted-foreground">• Entregador recebe: <strong>R$ {(100 * driverCommission / 100).toFixed(2)}</strong></p>
-                        <p className="text-sm text-muted-foreground">• Plataforma recebe: <strong>R$ {(100 * platformFee / 100).toFixed(2)}</strong></p>
+                      <div className="bg-muted/50 p-4 rounded-lg">
+                        <p className="text-sm font-medium mb-2">Exemplo para uma entrega de R$ 100,00:</p>
+                        <p className="text-sm text-muted-foreground">
+                          • Entregador recebe: <strong>R$ {(100 * driverCommission / 100).toFixed(2)}</strong>
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          • Plataforma recebe: <strong>R$ {(100 * platformFee / 100).toFixed(2)}</strong>
+                        </p>
                       </div>
 
                       <div className="flex justify-end pt-2">
-                        <Button onClick={handleSaveFees} disabled={saveSettingsMutation.isPending}>
-                          {saveSettingsMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                          Salvar Taxas
+                        <Button
+                          onClick={() => saveCommissionMutation.mutate(platformFee)}
+                          disabled={saveCommissionMutation.isPending}
+                        >
+                          {saveCommissionMutation.isPending
+                            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            : <Save className="h-4 w-4 mr-2" />}
+                          Salvar Comissão
                         </Button>
                       </div>
                     </>
@@ -207,13 +204,13 @@ export default function AdminSettings() {
                     <div className="space-y-4">
                       {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full" />)}
                     </div>
-                  ) : categories?.length === 0 ? (
+                  ) : !categories?.length ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       Nenhuma categoria cadastrada. Adicione em <strong>Categorias de Entrega</strong>.
                     </p>
                   ) : (
                     <>
-                      {categories?.map((cat, index) => (
+                      {categories.map((cat, index) => (
                         <div key={cat.id}>
                           {index > 0 && <Separator className="mb-6" />}
                           <div className="space-y-3">
@@ -230,9 +227,9 @@ export default function AdminSettings() {
                                   type="number"
                                   step="0.01"
                                   value={categoryValues[cat.id]?.base_price ?? cat.base_price}
-                                  onChange={(e) => setCategoryValues(prev => ({
+                                  onChange={e => setCategoryValues(prev => ({
                                     ...prev,
-                                    [cat.id]: { ...prev[cat.id], base_price: e.target.value }
+                                    [cat.id]: { ...prev[cat.id], base_price: e.target.value },
                                   }))}
                                 />
                               </div>
@@ -242,9 +239,9 @@ export default function AdminSettings() {
                                   type="number"
                                   step="0.01"
                                   value={categoryValues[cat.id]?.price_per_km ?? cat.price_per_km}
-                                  onChange={(e) => setCategoryValues(prev => ({
+                                  onChange={e => setCategoryValues(prev => ({
                                     ...prev,
-                                    [cat.id]: { ...prev[cat.id], price_per_km: e.target.value }
+                                    [cat.id]: { ...prev[cat.id], price_per_km: e.target.value },
                                   }))}
                                 />
                               </div>
@@ -255,7 +252,9 @@ export default function AdminSettings() {
 
                       <div className="flex justify-end pt-2">
                         <Button onClick={handleSaveCategories} disabled={saveCategoriesMutation.isPending}>
-                          {saveCategoriesMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                          {saveCategoriesMutation.isPending
+                            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            : <Save className="h-4 w-4 mr-2" />}
                           Salvar Preços
                         </Button>
                       </div>
