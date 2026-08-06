@@ -3,6 +3,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, Search, MapPin, Loader2, Check, X, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import {
+  googleMapsEnabled,
+  searchPlaces,
+  getPlaceDetails,
+  reverseGeocodeGoogle,
+  geocodeAddressGoogle,
+  type PlaceSuggestion,
+} from '@/lib/googleMaps';
 
 // Fix default marker icon issue with Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -12,10 +20,20 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-interface AddressSuggestion {
+interface NominatimSuggestion {
   display_name: string;
   lat: string;
   lon: string;
+}
+
+// unified suggestion type for the search list
+interface AddressSuggestion {
+  label: string;
+  // Nominatim path
+  lat?: string;
+  lon?: string;
+  // Google path
+  placeId?: string;
 }
 
 interface LocationPickerProps {
@@ -28,12 +46,12 @@ interface LocationPickerProps {
 
 type Tab = 'map' | 'search' | 'manual';
 
-// ── small helper: reverse geocode lat/lng → address string ────────────────
-async function reverseGeocode(lat: number, lng: number): Promise<string> {
+// ── Nominatim fallbacks (used when Google Maps API key is not set) ────────────
+async function reverseGeocodeNominatim(lat: number, lng: number): Promise<string> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-      { headers: { 'Accept-Language': 'pt-BR' } }
+      { headers: { 'Accept-Language': 'pt-BR' } },
     );
     const data = await res.json();
     return data.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -42,21 +60,35 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
   }
 }
 
-// ── small helper: geocode address string → { lat, lng } | null ─────────────
-async function geocodeAddress(q: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodeAddressNominatim(q: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1&countrycodes=br`,
-      { headers: { 'Accept-Language': 'pt-BR' } }
+      { headers: { 'Accept-Language': 'pt-BR' } },
     );
     const data = await res.json();
-    if (data?.[0]) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
+    if (data?.[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
     return null;
   } catch {
     return null;
   }
+}
+
+// ── Unified helpers (Google first, Nominatim as fallback) ─────────────────────
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  if (googleMapsEnabled()) {
+    const result = await reverseGeocodeGoogle(lat, lng);
+    if (result) return result;
+  }
+  return reverseGeocodeNominatim(lat, lng);
+}
+
+async function geocodeAddress(q: string): Promise<{ lat: number; lng: number } | null> {
+  if (googleMapsEnabled()) {
+    const result = await geocodeAddressGoogle(q);
+    if (result) return result;
+  }
+  return geocodeAddressNominatim(q);
 }
 
 export default function LocationPicker({
@@ -193,11 +225,17 @@ export default function LocationPicker({
     searchTimeout.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=br`,
-          { headers: { 'Accept-Language': 'pt-BR' } }
-        );
-        setSuggestions((await res.json()) || []);
+        if (googleMapsEnabled()) {
+          const results: PlaceSuggestion[] = await searchPlaces(value);
+          setSuggestions(results.map((r) => ({ label: r.description, placeId: r.placeId })));
+        } else {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=br`,
+            { headers: { 'Accept-Language': 'pt-BR' } },
+          );
+          const data: NominatimSuggestion[] = (await res.json()) || [];
+          setSuggestions(data.map((d) => ({ label: d.display_name, lat: d.lat, lon: d.lon })));
+        }
       } catch {
         setSuggestions([]);
       } finally {
@@ -207,13 +245,21 @@ export default function LocationPicker({
   };
 
   // Select from autocomplete: confirm directly, no tab switch
-  const selectSuggestion = (s: AddressSuggestion) => {
-    const lat = parseFloat(s.lat);
-    const lng = parseFloat(s.lon);
-    if (isNaN(lat) || isNaN(lng)) return;
+  const selectSuggestion = async (s: AddressSuggestion) => {
     setSuggestions([]);
     setSearchQuery('');
-    confirm(lat, lng, s.display_name);
+    if (s.placeId) {
+      // Google Places path
+      setSearching(true);
+      const details = await getPlaceDetails(s.placeId);
+      setSearching(false);
+      if (details) confirm(details.lat, details.lng, details.address);
+    } else if (s.lat && s.lon) {
+      // Nominatim path
+      const lat = parseFloat(s.lat);
+      const lng = parseFloat(s.lon);
+      if (!isNaN(lat) && !isNaN(lng)) confirm(lat, lng, s.label);
+    }
   };
 
   // ── Manual tab ────────────────────────────────────────────────────────────
@@ -326,7 +372,7 @@ export default function LocationPicker({
                   className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-50 last:border-0 transition-colors min-h-[52px]"
                 >
                   <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <span className="text-sm text-gray-700 line-clamp-2">{s.display_name}</span>
+                  <span className="text-sm text-gray-700 line-clamp-2">{s.label}</span>
                 </button>
               ))}
             </div>
