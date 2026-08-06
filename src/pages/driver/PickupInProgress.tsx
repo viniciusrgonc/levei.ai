@@ -19,6 +19,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getGoogleMapsLink } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 
 // ── Leaflet icon setup ─────────────────────────────────────────────────────
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -109,6 +110,7 @@ export default function PickupInProgress() {
   const { deliveryId } = useParams<{ deliveryId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
 
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
@@ -206,7 +208,7 @@ export default function PickupInProgress() {
     : null;
   const isNearby = distToPickupM !== null && distToPickupM < 100;
 
-  const earnings = delivery ? Number(delivery.price_adjusted || delivery.price) : 0;
+  const earnings = delivery ? calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct) : 0;
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleConfirmPickup = async () => {
@@ -321,7 +323,7 @@ export default function PickupInProgress() {
             className="flex-1 flex flex-col items-center py-2 rounded-2xl"
             style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)' }}
           >
-            <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Valor</span>
+            <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">Ganho</span>
             <span className="text-lg font-extrabold text-white leading-tight">
               R$ {earnings.toFixed(2)}
             </span>
@@ -483,10 +485,10 @@ export default function PickupInProgress() {
                 <div className="flex items-center justify-between px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-500">Valor</span>
+                    <span className="text-xs text-gray-500">Seu ganho</span>
                   </div>
                   <span className="text-xs font-semibold text-gray-700">
-                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct).toFixed(2)}
                   </span>
                 </div>
 

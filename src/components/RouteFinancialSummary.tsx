@@ -6,9 +6,7 @@ import { Wallet, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 interface RouteSummary {
-  total_gross: number;
   total_net: number;
-  total_platform_fee: number;
   delivery_count: number;
   completed_count: number;
   pending_payment: boolean;
@@ -103,23 +101,15 @@ export function RouteFinancialSummary({ driverId }: RouteFinancialSummaryProps) 
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Financial breakdown */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-background/50 rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">Valor bruto total</p>
-            <p className="text-lg font-bold text-foreground">
-              R$ {summary.total_gross.toFixed(2)}
-            </p>
+        {/* Financial summary — only driver net shown */}
+        <div className="bg-success/10 rounded-lg p-3">
+          <div className="flex items-center gap-1 mb-1">
+            <Wallet className="w-3 h-3 text-success" />
+            <p className="text-xs text-success font-medium">Seu ganho nesta rota</p>
           </div>
-          <div className="bg-success/10 rounded-lg p-3">
-            <div className="flex items-center gap-1 mb-1">
-              <Wallet className="w-3 h-3 text-success" />
-              <p className="text-xs text-success font-medium">Seu ganho (80%)</p>
-            </div>
-            <p className="text-lg font-bold text-success">
-              R$ {summary.total_net.toFixed(2)}
-            </p>
-          </div>
+          <p className="text-2xl font-bold text-success">
+            R$ {summary.total_net.toFixed(2)}
+          </p>
         </div>
 
         {summary.pending_payment && summary.delivery_count > 1 && (

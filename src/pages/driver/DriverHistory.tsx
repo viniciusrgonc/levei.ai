@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, Package, Search, Loader2, ArrowLeft } from 'lucide-react';
 import { getStatusConfig } from '@/lib/deliveryStatus';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 
 const PAGE_SIZE = 15;
 
@@ -34,6 +35,7 @@ function shortAddress(addr: string) {
 export default function DriverHistory() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
 
   const [driverId, setDriverId] = useState<string | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -75,7 +77,7 @@ export default function DriverHistory() {
         setStats({
           total: data.length,
           delivered: delivered.length,
-          earned: delivered.reduce((s, d) => s + Number(d.price) * 0.8, 0),
+          earned: delivered.reduce((s, d) => s + calcDriverAmount(Number(d.price), driverPct), 0),
         });
       });
   }, [driverId]);
@@ -166,7 +168,7 @@ export default function DriverHistory() {
             {[
               { label: 'Total',     value: stats.total },
               { label: 'Entregues', value: stats.delivered },
-              { label: 'Ganhos (80%)', value: `R$ ${stats.earned.toFixed(2)}` },
+              { label: 'Ganhos', value: `R$ ${stats.earned.toFixed(2)}` },
             ].map((kpi) => (
               <div key={kpi.label} className="bg-white/10 border border-white/20 rounded-xl p-3 text-center">
                 <p className="text-white font-bold text-lg leading-none">{kpi.value}</p>
@@ -256,7 +258,7 @@ export default function DriverHistory() {
 
                     <div className="text-right flex-shrink-0">
                       <p className="text-base font-bold text-green-600">
-                        +R$ {Number(delivery.price).toFixed(2)}
+                        +R$ {calcDriverAmount(Number(delivery.price), driverPct).toFixed(2)}
                       </p>
                     </div>
                   </div>

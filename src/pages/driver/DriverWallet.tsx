@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Wallet, TrendingUp, Clock, ArrowUpCircle, ArrowLeft, PackageCheck, Gift, AlertCircle } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { subDays, startOfDay, isAfter } from 'date-fns';
+import { useDriverCommission } from '@/lib/driverEarnings';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface WalletData {
@@ -82,6 +83,7 @@ export default function DriverWallet() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [period, setPeriod] = useState<Period>('30d');
+  const driverPct = useDriverCommission();
 
   const { data, isLoading } = useQuery({
     queryKey: ['driver-wallet', user?.id],
@@ -214,7 +216,7 @@ export default function DriverWallet() {
               Histórico de pagamentos
             </p>
             <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-              80% por entrega
+              {driverPct}% por entrega
             </span>
           </div>
 

@@ -413,7 +413,7 @@ export default function DriverDashboard() {
                       R$ {(Number(delivery.price_adjusted || delivery.price) * driverCommissionPct / 100).toFixed(2)}
                     </p>
                     <p className="text-[10px] text-gray-400 mt-0.5">
-                      seu ganho ({driverCommissionPct}%) · total R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                      seu ganho ({driverCommissionPct}%)
                     </p>
                   </div>
                 </div>
@@ -605,6 +605,7 @@ export default function DriverDashboard() {
         <DeliveryNotificationCard
           delivery={notificationDelivery}
           accepting={accepting}
+          driverPct={driverCommissionPct}
           onAccept={() => {
             handleAccept(notificationDelivery.id);
             setNotificationDelivery(null);

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { MapPin, Navigation, ChevronRight, Lock, Wallet } from 'lucide-react';
 import { getStatusConfig, DeliveryStatus } from '@/lib/deliveryStatus';
 import { RouteFinancialSummary } from './RouteFinancialSummary';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 interface Delivery {
   id: string;
   status: string;
@@ -26,6 +27,7 @@ interface DriverActiveDeliveriesProps {
 
 export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps) {
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -113,8 +115,7 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
   };
 
   // Calculate route totals
-  const totalGross = deliveries.reduce((sum, d) => sum + Number(d.price_adjusted), 0);
-  const totalNet = totalGross * 0.80;
+  const totalNet = deliveries.reduce((sum, d) => sum + calcDriverAmount(Number(d.price_adjusted), driverPct), 0);
 
   return (
     <div className="space-y-3">
@@ -196,7 +197,7 @@ export function DriverActiveDeliveries({ driverId }: DriverActiveDeliveriesProps
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-primary">
-                    R$ {Number(delivery.price_adjusted).toFixed(2)}
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted), driverPct).toFixed(2)}
                   </span>
                   {!isLocked && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                 </div>

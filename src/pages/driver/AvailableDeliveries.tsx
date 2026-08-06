@@ -11,6 +11,7 @@ import leveiLogo from '@/assets/levei-logo.png';
 import NotificationBell from '@/components/NotificationBell';
 import { getProductTypeIcon, getProductTypeLabel } from '@/lib/productTypes';
 import { toast } from '@/hooks/use-toast';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 
 interface Driver {
   id: string;
@@ -23,6 +24,8 @@ export default function AvailableDeliveries() {
   const navigate = useNavigate();
   const [driver, setDriver] = useState<Driver | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const driverPct = useDriverCommission();
 
   const { acceptDelivery, loading: accepting, acceptingId } = useAcceptDelivery({
     onSuccess: (deliveryId) => navigate(`/driver/pickup/${deliveryId}`, { replace: true }),
@@ -199,9 +202,12 @@ export default function AvailableDeliveries() {
                     </span>
                   </div>
                 </div>
-                <span className="text-lg font-bold text-blue-600">
-                  R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
-                </span>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-blue-600">
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-gray-400">seu ganho</p>
+                </div>
               </div>
 
               {/* Addresses */}

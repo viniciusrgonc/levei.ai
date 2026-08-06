@@ -9,6 +9,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 import leveiLogo from '@/assets/levei-logo.png';
 import NotificationBell from '@/components/NotificationBell';
 
@@ -47,6 +48,7 @@ function shortAddress(addr: string) {
 export default function DriverMap() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
   const [driverId, setDriverId] = useState('');
   const [isAvailable, setIsAvailable] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(null);
@@ -148,7 +150,7 @@ export default function DriverMap() {
                 <Popup>
                   <div className="text-xs">
                     <p className="font-semibold">{shortAddress(d.pickup_address)}</p>
-                    <p className="text-gray-500">{Number(d.distance_km).toFixed(1)} km · R$ {Number(d.price_adjusted || d.price).toFixed(2)}</p>
+                    <p className="text-gray-500">{Number(d.distance_km).toFixed(1)} km · R$ {calcDriverAmount(Number(d.price_adjusted || d.price), driverPct).toFixed(2)}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -207,9 +209,12 @@ export default function DriverMap() {
                     </span>
                   </div>
                 </div>
-                <span className="text-base font-bold text-blue-600">
-                  R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
-                </span>
+                <div className="text-right">
+                  <p className="text-base font-bold text-blue-600">
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] text-gray-400">seu ganho</p>
+                </div>
               </div>
               <div className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-2.5">

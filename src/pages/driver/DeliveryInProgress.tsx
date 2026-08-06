@@ -21,6 +21,7 @@ import 'leaflet/dist/leaflet.css';
 import { toast } from '@/hooks/use-toast';
 import { getGoogleMapsLink } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -116,6 +117,7 @@ export default function DeliveryInProgress() {
   const { deliveryId } = useParams<{ deliveryId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
 
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
@@ -189,7 +191,7 @@ export default function DeliveryInProgress() {
         isLastDelivery: transaction.is_last_delivery,
         totalRouteEarnings: transaction.total_route_earnings,
       } : {
-        earnings: delivery ? Number(delivery.price_adjusted || delivery.price) * 0.80 : 0,
+        earnings: delivery ? calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct) : 0,
         isLastDelivery: true, totalRouteEarnings: 0,
       });
       setShowSuccess(true);
@@ -246,7 +248,7 @@ export default function DeliveryInProgress() {
     : null;
   const isNearby = distToDestM !== null && distToDestM < 150;
 
-  const earnings = delivery ? Number(delivery.price_adjusted || delivery.price) * 0.80 : 0;
+  const earnings = delivery ? calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct) : 0;
 
   // ── Handlers ──────────────────────────────────────────────────────────
   const handleCompleteDelivery = async () => {
@@ -612,10 +614,10 @@ export default function DeliveryInProgress() {
                 <div className="flex items-center justify-between px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs text-gray-500">Valor total</span>
+                    <span className="text-xs text-gray-500">Seu ganho</span>
                   </div>
                   <span className="text-xs font-semibold text-gray-700">
-                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct).toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between px-3 py-2.5">

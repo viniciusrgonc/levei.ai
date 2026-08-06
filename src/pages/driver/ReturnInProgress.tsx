@@ -20,6 +20,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { toast } from '@/hooks/use-toast';
 import { getGoogleMapsLink } from '@/lib/utils';
+import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -77,6 +78,7 @@ export default function ReturnInProgress() {
   const { deliveryId } = useParams<{ deliveryId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const driverPct = useDriverCommission();
 
   const [currentPosition, setCurrentPosition] = useState<[number, number] | null>(null);
   const [geoError, setGeoError] = useState(false);
@@ -143,7 +145,7 @@ export default function ReturnInProgress() {
   // ── Complete delivery ─────────────────────────────────────────────────────
   const { completeDelivery, loading: completing } = useCompleteDelivery({
     onSuccess: async (_, __, transaction) => {
-      setEarnings(transaction?.driver_earnings ?? Number(delivery?.price_adjusted || delivery?.price || 0) * 0.8);
+      setEarnings(transaction?.driver_earnings ?? calcDriverAmount(Number(delivery?.price_adjusted || delivery?.price || 0), driverPct));
       setShowSuccess(true);
 
       // Busca dados do restaurante para avaliação
@@ -183,7 +185,7 @@ export default function ReturnInProgress() {
       .from('deliveries').select('status').eq('id', deliveryId).single();
 
     if (fresh?.status === 'delivered') {
-      setEarnings(Number(delivery.price_adjusted || delivery.price) * 0.8);
+      setEarnings(calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct));
       setShowSuccess(true);
       return;
     }
@@ -346,9 +348,9 @@ export default function ReturnInProgress() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-base font-bold text-orange-600">
-                    R$ {Number(delivery.price_adjusted || delivery.price).toFixed(2)}
+                    R$ {calcDriverAmount(Number(delivery.price_adjusted || delivery.price), driverPct).toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-400">ao retornar</p>
+                  <p className="text-xs text-gray-400">seu ganho</p>
                 </div>
               </div>
             </div>

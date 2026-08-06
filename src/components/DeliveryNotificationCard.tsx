@@ -19,6 +19,7 @@ interface Props {
   onAccept: () => void;
   onDecline: () => void;
   accepting?: boolean;
+  driverPct?: number;
 }
 
 // ── Web Audio notification sound ───────────────────────────────────────────
@@ -52,7 +53,7 @@ function vibrate() {
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function DeliveryNotificationCard({ delivery, onAccept, onDecline, accepting }: Props) {
+export function DeliveryNotificationCard({ delivery, onAccept, onDecline, accepting, driverPct = 80 }: Props) {
   const [visible, setVisible] = useState(false);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [dragX, setDragX] = useState(0);
@@ -61,7 +62,7 @@ export function DeliveryNotificationCard({ delivery, onAccept, onDecline, accept
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dismissedRef = useRef(false);
 
-  const price = Number(delivery.price_adjusted || delivery.price);
+  const price = Number(delivery.price_adjusted || delivery.price) * (driverPct / 100);
   const distanceKm = Number(delivery.distance_km);
   const estMin = Math.ceil(distanceKm * 3);
   const progress = (timeLeft / TIMER_SECONDS) * 100;
