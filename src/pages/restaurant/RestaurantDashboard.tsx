@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,8 +16,9 @@ import leveiLogo from '@/assets/levei-logo.png';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowRight, Crosshair, Map, MapPin, ChevronRight,
-  Eye, X, Package, CheckCircle2, AlertCircle, Layers, Navigation2,
+  Eye, X, Package, CheckCircle2, AlertCircle, Layers, Loader2, Navigation2,
 } from 'lucide-react';
+import { searchPlaces, getPlaceDetails, googleMapsEnabled } from '@/lib/googleMaps';
 
 // ── Types ─────────────────────────────────────────────────────────────────
 type Restaurant = {
@@ -72,6 +73,9 @@ export default function RestaurantDashboard() {
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<string | null>(null);
   const [pickupInput, setPickupInput] = useState('');
   const [deliveryInput, setDeliveryInput] = useState('');
+  const [deliverySuggestions, setDeliverySuggestions] = useState<{ label: string; placeId?: string }[]>([]);
+  const [deliverySearching, setDeliverySearching] = useState(false);
+  const deliverySearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
   const {
@@ -133,6 +137,44 @@ export default function RestaurantDashboard() {
       },
       () => {} // silently fail — user can type instead
     );
+  };
+
+  const handleDeliveryChange = (value: string) => {
+    setDeliveryInput(value);
+    if (deliverySearchTimeout.current) clearTimeout(deliverySearchTimeout.current);
+    if (value.length < 3) { setDeliverySuggestions([]); return; }
+    deliverySearchTimeout.current = setTimeout(async () => {
+      setDeliverySearching(true);
+      try {
+        if (googleMapsEnabled()) {
+          const results = await searchPlaces(value);
+          if (results.length > 0) {
+            setDeliverySuggestions(results.map(r => ({ label: r.description, placeId: r.placeId })));
+            return;
+          }
+        }
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=br`,
+          { headers: { 'Accept-Language': 'pt-BR' } },
+        );
+        const data = await res.json() || [];
+        setDeliverySuggestions(data.map((d: any) => ({ label: d.display_name })));
+      } catch {
+        setDeliverySuggestions([]);
+      } finally {
+        setDeliverySearching(false);
+      }
+    }, 500);
+  };
+
+  const selectDeliverySuggestion = async (s: { label: string; placeId?: string }) => {
+    setDeliverySuggestions([]);
+    if (s.placeId) {
+      const details = await getPlaceDetails(s.placeId);
+      setDeliveryInput(details?.address ?? s.label);
+    } else {
+      setDeliveryInput(s.label);
+    }
   };
 
   const handleContinuar = () => {
@@ -254,15 +296,33 @@ export default function RestaurantDashboard() {
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 flex-shrink-0" />
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Para (entrega)</p>
+                    {deliverySearching && <Loader2 className="h-3 w-3 text-gray-400 animate-spin ml-auto" />}
                   </div>
                   <input
                     className="w-full text-sm text-gray-900 placeholder-gray-400 bg-transparent outline-none py-0.5"
                     placeholder="Digite o endereço de destino"
                     value={deliveryInput}
-                    onChange={(e) => setDeliveryInput(e.target.value)}
+                    onChange={(e) => handleDeliveryChange(e.target.value)}
                   />
                 </div>
               </div>
+
+              {/* Autocomplete suggestions */}
+              {deliverySuggestions.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+                  {deliverySuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => selectDeliverySuggestion(s)}
+                      className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition-colors"
+                    >
+                      <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <span className="text-sm text-gray-700 line-clamp-2">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* CTA: Continuar (enabled when both filled) or quick hint */}
               {pickupInput.trim() && deliveryInput.trim() ? (
@@ -326,7 +386,7 @@ export default function RestaurantDashboard() {
                   {recentDestinations.map((address, i) => (
                     <button
                       key={i}
-                      onClick={() => setDeliveryInput(address)}
+                      onClick={() => { setDeliveryInput(address); setDeliverySuggestions([]); }}
                       className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50 transition-colors text-left"
                     >
                       <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">

@@ -4,9 +4,36 @@ export function googleMapsEnabled(): boolean {
   return !!API_KEY && API_KEY !== 'COLE_SUA_CHAVE_AQUI';
 }
 
-// Mantido para compatibilidade — mapa continua Leaflet (OSM)
+// ── Maps JS SDK loader (5 s timeout → Leaflet fallback) ──────────────────────
+let _sdkLoaded = false;
+let _sdkPromise: Promise<boolean> | null = null;
+
 export function loadGoogleMapsScript(): Promise<boolean> {
-  return Promise.resolve(false);
+  if (!googleMapsEnabled()) return Promise.resolve(false);
+  if (_sdkLoaded && (window as any).google?.maps) return Promise.resolve(true);
+  if (_sdkPromise) return _sdkPromise;
+
+  _sdkPromise = new Promise<boolean>((resolve) => {
+    const tid = setTimeout(() => {
+      console.warn('[Google Maps] script timeout — falling back to Leaflet');
+      _sdkPromise = null;
+      resolve(false);
+    }, 5000);
+
+    (window as any).__gmInit = () => {
+      clearTimeout(tid);
+      _sdkLoaded = true;
+      resolve(true);
+    };
+
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=__gmInit`;
+    s.async = true;
+    s.onerror = () => { clearTimeout(tid); _sdkPromise = null; resolve(false); };
+    document.head.appendChild(s);
+  });
+
+  return _sdkPromise;
 }
 
 // ── Places Autocomplete (New) — REST com CORS ─────────────────────────────────
