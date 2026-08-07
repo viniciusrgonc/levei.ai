@@ -5,6 +5,7 @@ import { Navigation, Search, MapPin, Loader2, Check, X, AlertCircle } from 'luci
 import { Input } from '@/components/ui/input';
 import {
   googleMapsEnabled,
+  loadGoogleMapsScript,
   searchPlaces,
   getPlaceDetails,
   reverseGeocodeGoogle,
@@ -12,27 +13,16 @@ import {
   type PlaceSuggestion,
 } from '@/lib/googleMaps';
 
-// Fix default marker icon issue with Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
-
 interface NominatimSuggestion {
   display_name: string;
   lat: string;
   lon: string;
 }
 
-// unified suggestion type for the search list
 interface AddressSuggestion {
   label: string;
-  // Nominatim path
   lat?: string;
   lon?: string;
-  // Google path
   placeId?: string;
 }
 
@@ -46,7 +36,7 @@ interface LocationPickerProps {
 
 type Tab = 'map' | 'search' | 'manual';
 
-// ── Nominatim fallbacks (used when Google Maps API key is not set) ────────────
+// ── Nominatim fallbacks ───────────────────────────────────────────────────────
 async function reverseGeocodeNominatim(lat: number, lng: number): Promise<string> {
   try {
     const res = await fetch(
@@ -74,19 +64,19 @@ async function geocodeAddressNominatim(q: string): Promise<{ lat: number; lng: n
   }
 }
 
-// ── Unified helpers (Google first, Nominatim as fallback) ─────────────────────
+// ── Unified helpers ───────────────────────────────────────────────────────────
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   if (googleMapsEnabled()) {
-    const result = await reverseGeocodeGoogle(lat, lng);
-    if (result) return result;
+    const r = await reverseGeocodeGoogle(lat, lng);
+    if (r) return r;
   }
   return reverseGeocodeNominatim(lat, lng);
 }
 
 async function geocodeAddress(q: string): Promise<{ lat: number; lng: number } | null> {
   if (googleMapsEnabled()) {
-    const result = await geocodeAddressGoogle(q);
-    if (result) return result;
+    const r = await geocodeAddressGoogle(q);
+    if (r) return r;
   }
   return geocodeAddressNominatim(q);
 }
@@ -98,24 +88,20 @@ export default function LocationPicker({
   initialLng,
   initialAddress,
 }: LocationPickerProps) {
-  // ── confirmed state (what parent has) ────────────────────────────────────
   const [confirmedLat, setConfirmedLat] = useState<number | null>(initialLat ?? null);
   const [confirmedLng, setConfirmedLng] = useState<number | null>(initialLng ?? null);
   const [confirmedAddress, setConfirmedAddress] = useState<string>(initialAddress || '');
 
-  // ── map internal position (used only for the map pin) ────────────────────
   const [mapLat, setMapLat] = useState(initialLat ?? -19.874976);
   const [mapLng, setMapLng] = useState(initialLng ?? -44.99354);
 
   const [activeTab, setActiveTab] = useState<Tab>('search');
 
-  // search state
   const [searchQuery, setSearchQuery] = useState('');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // manual state
   const [street, setStreet] = useState('');
   const [number, setNumber] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
@@ -124,16 +110,19 @@ export default function LocationPicker({
   const [manualError, setManualError] = useState('');
   const [manualLoading, setManualLoading] = useState(false);
 
-  // GPS
   const [geoLoading, setGeoLoading] = useState(false);
 
-  // map refs
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  // typed as any to support both Google Maps and Leaflet fallback
+  const mapRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
   const reverseGeocodeInProgress = useRef(false);
+  const mapLatLngRef = useRef({ lat: mapLat, lng: mapLng });
 
-  // ── confirm helper: set confirmed state + notify parent ─────────────────
+  useEffect(() => {
+    mapLatLngRef.current = { lat: mapLat, lng: mapLng };
+  }, [mapLat, mapLng]);
+
   const confirm = useCallback(
     (lat: number, lng: number, addr: string) => {
       setConfirmedLat(lat);
@@ -143,59 +132,128 @@ export default function LocationPicker({
       setMapLng(lng);
       onLocationSelect(lat, lng, addr);
     },
-    [onLocationSelect]
+    [onLocationSelect],
   );
 
-  // ── Initialize / destroy Leaflet map (only when tab is 'map') ────────────
+  // ── Map tab: Google Maps (falls back to OpenStreetMap via Leaflet) ────────
   useEffect(() => {
     if (activeTab !== 'map') return;
     if (!mapContainerRef.current || mapRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: [mapLat, mapLng],
-      zoom: 15,
-      zoomControl: true,
-    });
-    mapRef.current = map;
+    let cancelled = false;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    const initGoogleMap = async () => {
+      const ok = await loadGoogleMapsScript();
+      if (cancelled || !mapContainerRef.current) return;
 
-    const marker = L.marker([mapLat, mapLng], { draggable: true }).addTo(map);
-    markerRef.current = marker;
+      if (ok) {
+        const gm = (window as any).google.maps;
+        const { lat, lng } = mapLatLngRef.current;
 
-    const handleMapInteraction = async (lat: number, lng: number) => {
-      if (reverseGeocodeInProgress.current) return;
-      reverseGeocodeInProgress.current = true;
-      marker.setLatLng([lat, lng]);
-      map.setView([lat, lng], map.getZoom());
-      const addr = await reverseGeocode(lat, lng);
-      confirm(lat, lng, addr);
-      reverseGeocodeInProgress.current = false;
+        const map = new gm.Map(mapContainerRef.current, {
+          center: { lat, lng },
+          zoom: 15,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+        });
+
+        const marker = new gm.Marker({
+          position: { lat, lng },
+          map,
+          draggable: true,
+        });
+
+        mapRef.current = map;
+        markerRef.current = marker;
+
+        const handleInteraction = async (latV: number, lngV: number) => {
+          if (reverseGeocodeInProgress.current) return;
+          reverseGeocodeInProgress.current = true;
+          const addr = await reverseGeocode(latV, lngV);
+          if (!cancelled) confirm(latV, lngV, addr);
+          reverseGeocodeInProgress.current = false;
+        };
+
+        gm.event.addListener(marker, 'dragend', () => {
+          const pos = marker.getPosition();
+          handleInteraction(pos.lat(), pos.lng());
+        });
+
+        gm.event.addListener(map, 'click', (e: any) => {
+          marker.setPosition(e.latLng);
+          handleInteraction(e.latLng.lat(), e.latLng.lng());
+        });
+      } else {
+        // Fallback: Leaflet + OpenStreetMap
+        if (cancelled || !mapContainerRef.current) return;
+
+        delete (L.Icon.Default.prototype as any)._getIconUrl;
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        });
+
+        const { lat, lng } = mapLatLngRef.current;
+        const map = L.map(mapContainerRef.current, { center: [lat, lng], zoom: 15, zoomControl: true });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(map);
+
+        const marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        mapRef.current = map;
+        markerRef.current = marker;
+
+        const handleInteraction = async (latV: number, lngV: number) => {
+          if (reverseGeocodeInProgress.current) return;
+          reverseGeocodeInProgress.current = true;
+          marker.setLatLng([latV, lngV]);
+          map.setView([latV, lngV], map.getZoom());
+          const addr = await reverseGeocode(latV, lngV);
+          if (!cancelled) confirm(latV, lngV, addr);
+          reverseGeocodeInProgress.current = false;
+        };
+
+        marker.on('dragend', (e: any) => {
+          const pos = e.target.getLatLng();
+          handleInteraction(pos.lat, pos.lng);
+        });
+        map.on('click', (e: any) => handleInteraction(e.latlng.lat, e.latlng.lng));
+      }
     };
 
-    marker.on('dragend', (e: L.DragEndEvent) => {
-      const pos = (e.target as L.Marker).getLatLng();
-      handleMapInteraction(pos.lat, pos.lng);
-    });
-
-    map.on('click', (e: L.LeafletMouseEvent) => {
-      handleMapInteraction(e.latlng.lat, e.latlng.lng);
-    });
+    initGoogleMap();
 
     return () => {
-      map.remove();
+      cancelled = true;
+      if (mapRef.current) {
+        const gm = (window as any).google?.maps;
+        if (gm) {
+          gm.event.clearInstanceListeners(mapRef.current);
+          if (markerRef.current) gm.event.clearInstanceListeners(markerRef.current);
+        } else {
+          // Leaflet cleanup
+          mapRef.current.remove?.();
+        }
+      }
       mapRef.current = null;
       markerRef.current = null;
     };
   }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Sync marker when mapLat/mapLng change (e.g. after geocoding) ─────────
+  // ── Sync map position when coords change ─────────────────────────────────
   useEffect(() => {
-    if (mapRef.current && markerRef.current) {
-      markerRef.current.setLatLng([mapLat, mapLng]);
-      mapRef.current.setView([mapLat, mapLng], mapRef.current.getZoom());
+    if (!mapRef.current || !markerRef.current) return;
+    const gm = (window as any).google?.maps;
+    if (gm) {
+      const pos = new gm.LatLng(mapLat, mapLng);
+      markerRef.current.setPosition(pos);
+      mapRef.current.panTo(pos);
+    } else {
+      // Leaflet
+      markerRef.current.setLatLng?.([mapLat, mapLng]);
+      mapRef.current.setView?.([mapLat, mapLng], mapRef.current.getZoom?.());
     }
   }, [mapLat, mapLng]);
 
@@ -213,7 +271,7 @@ export default function LocationPicker({
         setGeoLoading(false);
       },
       () => setGeoLoading(false),
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 8000 },
     );
   };
 
@@ -222,20 +280,24 @@ export default function LocationPicker({
     setSearchQuery(value);
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     if (value.length < 3) { setSuggestions([]); return; }
+
     searchTimeout.current = setTimeout(async () => {
       setSearching(true);
       try {
         if (googleMapsEnabled()) {
           const results: PlaceSuggestion[] = await searchPlaces(value);
-          setSuggestions(results.map((r) => ({ label: r.description, placeId: r.placeId })));
-        } else {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=br`,
-            { headers: { 'Accept-Language': 'pt-BR' } },
-          );
-          const data: NominatimSuggestion[] = (await res.json()) || [];
-          setSuggestions(data.map((d) => ({ label: d.display_name, lat: d.lat, lon: d.lon })));
+          if (results.length > 0) {
+            setSuggestions(results.map((r) => ({ label: r.description, placeId: r.placeId })));
+            return;
+          }
         }
+        // Fallback: Nominatim
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5&countrycodes=br`,
+          { headers: { 'Accept-Language': 'pt-BR' } },
+        );
+        const data: NominatimSuggestion[] = (await res.json()) || [];
+        setSuggestions(data.map((d) => ({ label: d.display_name, lat: d.lat, lon: d.lon })));
       } catch {
         setSuggestions([]);
       } finally {
@@ -244,18 +306,15 @@ export default function LocationPicker({
     }, 500);
   };
 
-  // Select from autocomplete: confirm directly, no tab switch
   const selectSuggestion = async (s: AddressSuggestion) => {
     setSuggestions([]);
     setSearchQuery('');
     if (s.placeId) {
-      // Google Places path
       setSearching(true);
       const details = await getPlaceDetails(s.placeId);
       setSearching(false);
       if (details) confirm(details.lat, details.lng, details.address);
     } else if (s.lat && s.lon) {
-      // Nominatim path
       const lat = parseFloat(s.lat);
       const lng = parseFloat(s.lon);
       if (!isNaN(lat) && !isNaN(lng)) confirm(lat, lng, s.label);
@@ -281,12 +340,9 @@ export default function LocationPicker({
     const coords = await geocodeAddress(fullAddress);
 
     if (coords) {
-      // Geocoding found coordinates → confirm immediately
       confirm(coords.lat, coords.lng, fullAddress);
       setManualLoading(false);
     } else {
-      // Geocoding failed → switch to map so user can pin the location manually
-      // Keep the address text (we'll save it when user pins on map)
       setConfirmedAddress(fullAddress);
       setManualError('Não encontramos esse endereço automaticamente. Confirme a localização no mapa abaixo.');
       setManualLoading(false);
@@ -294,7 +350,6 @@ export default function LocationPicker({
     }
   };
 
-  // ── Tabs config ───────────────────────────────────────────────────────────
   const tabs: { key: Tab; label: string }[] = [
     { key: 'search', label: 'Buscar' },
     { key: 'map',    label: 'Mapa'   },

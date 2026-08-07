@@ -4,7 +4,12 @@ export function googleMapsEnabled(): boolean {
   return !!API_KEY && API_KEY !== 'COLE_SUA_CHAVE_AQUI';
 }
 
-// ── Places Autocomplete (New) ─────────────────────────────────────────────────
+// Mantido para compatibilidade — mapa continua Leaflet (OSM)
+export function loadGoogleMapsScript(): Promise<boolean> {
+  return Promise.resolve(false);
+}
+
+// ── Places Autocomplete (New) — REST com CORS ─────────────────────────────────
 
 export interface PlaceSuggestion {
   placeId: string;
@@ -13,66 +18,94 @@ export interface PlaceSuggestion {
 
 export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
   if (!googleMapsEnabled()) return [];
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&components=country:br&language=pt-BR&key=${API_KEY}`,
-  );
-  const data = await res.json();
-  if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-    console.error('[Google Places]', data.status, data.error_message);
+  try {
+    const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY!,
+        'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text',
+      },
+      body: JSON.stringify({
+        input: query,
+        includedRegionCodes: ['br'],
+        languageCode: 'pt-BR',
+      }),
+    });
+    if (!res.ok) {
+      console.warn('[Google Places] status', res.status);
+      return [];
+    }
+    const data = await res.json();
+    return (data.suggestions ?? [])
+      .filter((s: any) => s.placePrediction)
+      .map((s: any) => ({
+        placeId: s.placePrediction.placeId,
+        description: s.placePrediction.text.text,
+      }));
+  } catch {
     return [];
   }
-  return (data.predictions ?? []).map((p: any) => ({
-    placeId: p.place_id,
-    description: p.description,
-  }));
 }
 
-// ── Place Details: placeId → { lat, lng, address } ───────────────────────────
+// ── Place Details ─────────────────────────────────────────────────────────────
 
 export async function getPlaceDetails(
   placeId: string,
 ): Promise<{ lat: number; lng: number; address: string } | null> {
   if (!googleMapsEnabled()) return null;
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry,formatted_address&language=pt-BR&key=${API_KEY}`,
-  );
-  const data = await res.json();
-  if (data.status !== 'OK') {
-    console.error('[Google Place Details]', data.status);
+  try {
+    const res = await fetch(`https://places.googleapis.com/v1/places/${placeId}`, {
+      headers: {
+        'X-Goog-Api-Key': API_KEY!,
+        'X-Goog-FieldMask': 'location,formattedAddress',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const loc = data.location;
+    return loc
+      ? { lat: loc.latitude, lng: loc.longitude, address: data.formattedAddress }
+      : null;
+  } catch {
     return null;
   }
-  const loc = data.result?.geometry?.location;
-  return loc
-    ? { lat: loc.lat, lng: loc.lng, address: data.result.formatted_address }
-    : null;
 }
 
-// ── Geocoding: address → { lat, lng } ────────────────────────────────────────
+// ── Geocoding REST ────────────────────────────────────────────────────────────
 
 export async function geocodeAddressGoogle(
   address: string,
 ): Promise<{ lat: number; lng: number } | null> {
   if (!googleMapsEnabled()) return null;
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=br&language=pt-BR&key=${API_KEY}`,
-  );
-  const data = await res.json();
-  if (data.status !== 'OK') return null;
-  const loc = data.results?.[0]?.geometry?.location;
-  return loc ? { lat: loc.lat, lng: loc.lng } : null;
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=br&language=pt-BR&key=${API_KEY}`,
+    );
+    const data = await res.json();
+    if (data.status !== 'OK') return null;
+    const loc = data.results?.[0]?.geometry?.location;
+    return loc ? { lat: loc.lat, lng: loc.lng } : null;
+  } catch {
+    return null;
+  }
 }
 
-// ── Reverse geocoding: { lat, lng } → address string ─────────────────────────
+// ── Reverse Geocoding REST ────────────────────────────────────────────────────
 
 export async function reverseGeocodeGoogle(
   lat: number,
   lng: number,
 ): Promise<string | null> {
   if (!googleMapsEnabled()) return null;
-  const res = await fetch(
-    `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=pt-BR&key=${API_KEY}`,
-  );
-  const data = await res.json();
-  if (data.status !== 'OK') return null;
-  return data.results?.[0]?.formatted_address ?? null;
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&language=pt-BR&key=${API_KEY}`,
+    );
+    const data = await res.json();
+    if (data.status !== 'OK') return null;
+    return data.results?.[0]?.formatted_address ?? null;
+  } catch {
+    return null;
+  }
 }

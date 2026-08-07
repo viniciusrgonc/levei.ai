@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { formatAddress } from '@/lib/utils';
 import { calculateDeliveryPrice, PricingBreakdown } from '@/lib/pricing';
+import { geocodeAddressGoogle, googleMapsEnabled } from '@/lib/googleMaps';
 
 interface ProductTypeSetting {
   product_type: string;
@@ -66,6 +68,7 @@ interface ParentDeliveryInfo {
 }
 
 export default function NewDelivery() {
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -154,19 +157,31 @@ export default function NewDelivery() {
     if (!prefilledDeliveryAddress) return;
     setDeliveryAddress(prefilledDeliveryAddress);
     setGeocodingDelivery(true);
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(prefilledDeliveryAddress)}&format=json&limit=1`)
-      .then(r => r.json())
-      .then(data => {
-        if (data?.[0]) {
-          setDeliveryLat(parseFloat(data[0].lat));
-          setDeliveryLng(parseFloat(data[0].lon));
-        } else {
-          // Geocoding falhou — volta ao step 2 para o usuário ajustar
-          setStep(2);
+
+    const geocode = async () => {
+      // Tenta Google Maps primeiro
+      if (googleMapsEnabled()) {
+        const result = await geocodeAddressGoogle(prefilledDeliveryAddress);
+        if (result) {
+          setDeliveryLat(result.lat);
+          setDeliveryLng(result.lng);
+          return;
         }
-      })
-      .catch(() => { setStep(2); }) // em caso de erro, mostra step 2
-      .finally(() => setGeocodingDelivery(false));
+      }
+      // Fallback: Nominatim
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(prefilledDeliveryAddress)}&format=json&limit=1`,
+      );
+      const data = await res.json();
+      if (data?.[0]) {
+        setDeliveryLat(parseFloat(data[0].lat));
+        setDeliveryLng(parseFloat(data[0].lon));
+      } else {
+        setStep(2);
+      }
+    };
+
+    geocode().catch(() => setStep(2)).finally(() => setGeocodingDelivery(false));
   }, [prefilledDeliveryAddress]);
 
   useEffect(() => {
@@ -499,7 +514,7 @@ export default function NewDelivery() {
                   <DeliveryMap
                     pickupLat={pickupLat} pickupLng={pickupLng}
                     deliveryLat={deliveryLat} deliveryLng={deliveryLng}
-                    heightPx={140}
+                    heightPx={isMobile ? 140 : 280}
                   />
                 </div>
               </div>
@@ -641,7 +656,7 @@ export default function NewDelivery() {
               <DeliveryMap
                 pickupLat={pickupLat} pickupLng={pickupLng}
                 deliveryLat={deliveryLat} deliveryLng={deliveryLng}
-                heightPx={192}
+                heightPx={isMobile ? 192 : 320}
               />
             )}
 

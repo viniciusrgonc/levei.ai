@@ -27,20 +27,21 @@ create trigger fee_types_updated_at
 -- RLS
 alter table fee_types enable row level security;
 
--- Somente admins (role = 'admin' no perfil) têm acesso total
+-- Somente admins têm acesso total (usa tabela user_roles)
+drop policy if exists "admins_full_access" on fee_types;
 create policy "admins_full_access" on fee_types
   for all
   using (
     exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+      select 1 from user_roles
+      where user_roles.user_id = auth.uid()
+        and user_roles.role = 'admin'::app_role
     )
   )
   with check (
     exists (
-      select 1 from profiles
-      where profiles.id = auth.uid()
-        and profiles.role = 'admin'
+      select 1 from user_roles
+      where user_roles.user_id = auth.uid()
+        and user_roles.role = 'admin'::app_role
     )
   );
