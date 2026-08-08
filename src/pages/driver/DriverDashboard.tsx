@@ -160,22 +160,6 @@ export default function DriverDashboard() {
     }
   }, [position]);
 
-  // ── Sync online status to marker color ────────────────────────────────────
-  useEffect(() => {
-    if (!markerInstanceRef.current || !isGoogleRef.current) return;
-    const gm = (window as any).google?.maps;
-    if (!gm) return;
-    const color = (driver?.is_available ?? false) ? '#22c55e' : '#6b7280';
-    markerInstanceRef.current.setIcon({
-      path: gm.SymbolPath.CIRCLE,
-      scale: 10,
-      fillColor: color,
-      fillOpacity: 1,
-      strokeWeight: 3,
-      strokeColor: 'white',
-    });
-  }, [driver?.is_available]);
-
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: driverProfile } = useQuery({
     queryKey: ['driver-profile', user?.id],
@@ -191,6 +175,22 @@ export default function DriverDashboard() {
     staleTime: 2 * 60 * 1000,
     retry: (count, err: any) => err?.message !== 'SETUP_REQUIRED' && count < 2,
   });
+
+  // ── Sync online status to marker color ────────────────────────────────────
+  useEffect(() => {
+    if (!markerInstanceRef.current || !isGoogleRef.current) return;
+    const gm = (window as any).google?.maps;
+    if (!gm) return;
+    const color = (driver?.is_available ?? false) ? '#22c55e' : '#6b7280';
+    markerInstanceRef.current.setIcon({
+      path: gm.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeWeight: 3,
+      strokeColor: 'white',
+    });
+  }, [driver?.is_available]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: activeDelivery } = useQuery({
     queryKey: ['active-delivery', user?.id],
