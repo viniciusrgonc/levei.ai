@@ -11,10 +11,9 @@ import {
 } from 'lucide-react';
 import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
 import { DriverDrawer } from '@/components/DriverDrawer';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import { DivIcon } from 'leaflet';
-import { renderToStaticMarkup } from 'react-dom/server';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { loadGoogleMapsScript } from '@/lib/googleMaps';
 import { useNearbyDeliveries } from '@/hooks/useNearbyDeliveries';
 import NotificationBell from '@/components/NotificationBell';
 import { useRealtimeDeliveries } from '@/hooks/useRealtimeDeliveries';
@@ -73,50 +72,6 @@ async function fetchTodayEarnings(userId: string) {
   return { earnings, count: data?.length ?? 0 };
 }
 
-// ── Recenter map on position change ────────────────────────────────────────
-function RecenterMap({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => { map.setView([lat, lng], map.getZoom()); }, [lat, lng]);
-  return null;
-}
-
-// ── Driver marker ──────────────────────────────────────────────────────────
-function driverIcon(online: boolean) {
-  const color = online ? '#22c55e' : '#6b7280';
-  return new DivIcon({
-    html: renderToStaticMarkup(
-      <div style={{ position: 'relative', width: 56, height: 56 }}>
-        {online && (
-          <>
-            <div style={{
-              position: 'absolute', inset: -2, borderRadius: '50%',
-              background: `${color}22`,
-              animation: 'ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite',
-            }} />
-            <div style={{
-              position: 'absolute', inset: 4, borderRadius: '50%',
-              background: `${color}30`,
-              animation: 'ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite 0.8s',
-            }} />
-          </>
-        )}
-        <div style={{
-          position: 'absolute', inset: 10, borderRadius: '50%',
-          background: color, border: '3px solid white',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </div>
-      </div>
-    ),
-    className: '',
-    iconSize: [56, 56],
-    iconAnchor: [28, 28],
-  });
-}
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function DriverDashboard() {
@@ -125,6 +80,10 @@ export default function DriverDashboard() {
   const queryClient = useQueryClient();
   const [position, setPosition] = useState<[number, number] | null>(null);
   const watchRef = useRef<number | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerInstanceRef = useRef<any>(null);
+  const isGoogleRef = useRef(false);
 
   const { acceptDelivery, loading: accepting, acceptingId } = useAcceptDelivery({
     onSuccess: (id) => navigate(`/driver/pickup/${id}`, { replace: true }),
@@ -144,6 +103,78 @@ export default function DriverDashboard() {
     );
     return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
   }, []);
+
+  // ── Map initialization (Google Maps SDK → Leaflet fallback) ───────────────
+  useEffect(() => {
+    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    const defaultCenter: [number, number] = [-19.9167, -43.9345];
+
+    loadGoogleMapsScript().then((ok) => {
+      if (!mapContainerRef.current) return;
+      if (ok) {
+        isGoogleRef.current = true;
+        const gm = (window as any).google.maps;
+        const map = new gm.Map(mapContainerRef.current, {
+          center: { lat: defaultCenter[0], lng: defaultCenter[1] },
+          zoom: 15,
+          disableDefaultUI: true,
+          gestureHandling: 'greedy',
+        });
+        const marker = new gm.Marker({ map });
+        mapInstanceRef.current = map;
+        markerInstanceRef.current = marker;
+      } else {
+        isGoogleRef.current = false;
+        const map = L.map(mapContainerRef.current, {
+          center: defaultCenter, zoom: 15, zoomControl: false, attributionControl: false,
+        });
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: ['0', '1', '2', '3'], maxZoom: 20,
+        }).addTo(map);
+        const marker = L.circleMarker(defaultCenter, {
+          radius: 10, fillColor: '#22c55e', color: 'white', weight: 3, fillOpacity: 1,
+        }).addTo(map);
+        mapInstanceRef.current = map;
+        markerInstanceRef.current = marker;
+      }
+    });
+
+    return () => {
+      if (mapInstanceRef.current && !isGoogleRef.current) mapInstanceRef.current.remove?.();
+      mapInstanceRef.current = null;
+      markerInstanceRef.current = null;
+    };
+  }, []); // eslint-disable-line
+
+  // ── Sync GPS position to map ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!position || !mapInstanceRef.current || !markerInstanceRef.current) return;
+    if (isGoogleRef.current) {
+      const pos = { lat: position[0], lng: position[1] };
+      mapInstanceRef.current.panTo(pos);
+      markerInstanceRef.current.setPosition(pos);
+      markerInstanceRef.current.setMap(mapInstanceRef.current);
+    } else {
+      markerInstanceRef.current.setLatLng(position);
+      mapInstanceRef.current.setView(position, mapInstanceRef.current.getZoom());
+    }
+  }, [position]);
+
+  // ── Sync online status to marker color ────────────────────────────────────
+  useEffect(() => {
+    if (!markerInstanceRef.current || !isGoogleRef.current) return;
+    const gm = (window as any).google?.maps;
+    if (!gm) return;
+    const color = (driver?.is_available ?? false) ? '#22c55e' : '#6b7280';
+    markerInstanceRef.current.setIcon({
+      path: gm.SymbolPath.CIRCLE,
+      scale: 10,
+      fillColor: color,
+      fillOpacity: 1,
+      strokeWeight: 3,
+      strokeColor: 'white',
+    });
+  }, [driver?.is_available]);
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: driverProfile } = useQuery({
@@ -262,28 +293,16 @@ export default function DriverDashboard() {
 
   const isOnline = driver?.is_available ?? false;
   const safeDeliveries = Array.isArray(availableDeliveries) ? availableDeliveries : [];
-  const mapCenter: [number, number] = position ?? [-19.9167, -43.9345];
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-gray-900">
 
       {/* ── MAPA (fundo) ── */}
-      <MapContainer
-        center={mapCenter}
-        zoom={15}
-        zoomControl={false}
-        scrollWheelZoom={false}
+      <div
+        ref={mapContainerRef}
         className="absolute inset-0 h-full w-full z-0"
         style={{ height: '100%', width: '100%' }}
-      >
-        <TileLayer url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" subdomains="0123" attribution="&copy; Google Maps" maxZoom={20} />
-        {position && (
-          <>
-            <Marker position={position} icon={driverIcon(isOnline)} />
-            <RecenterMap lat={position[0]} lng={position[1]} />
-          </>
-        )}
-      </MapContainer>
+      />
 
       {/* ── OVERLAY ── */}
       <div
