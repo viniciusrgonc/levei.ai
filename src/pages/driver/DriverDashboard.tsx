@@ -276,7 +276,7 @@ export default function DriverDashboard() {
         className="absolute inset-0 h-full w-full z-0"
         style={{ height: '100%', width: '100%' }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="" />
+        <TileLayer url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" subdomains="0123" attribution="&copy; Google Maps" maxZoom={20} />
         {position && (
           <>
             <Marker position={position} icon={driverIcon(isOnline)} />

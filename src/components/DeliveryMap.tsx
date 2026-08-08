@@ -107,8 +107,10 @@ export default function DeliveryMap({
         scrollWheelZoom={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+          subdomains="0123"
+          attribution="&copy; Google Maps"
+          maxZoom={20}
         />
         
         {/* Pickup marker */}

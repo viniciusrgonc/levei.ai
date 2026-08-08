@@ -382,8 +382,10 @@ export default function PickupInProgress() {
               attributionControl={false}
             >
               <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution="OSM"
+                url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+                subdomains="0123"
+                attribution="&copy; Google Maps"
+                maxZoom={20}
               />
               <MapClickTracker onUserInteract={handleUserInteract} />
               {autoCenter && <RecenterMap center={currentPosition} />}

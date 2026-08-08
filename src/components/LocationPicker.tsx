@@ -197,8 +197,10 @@ export default function LocationPicker({
 
         const { lat, lng } = mapLatLngRef.current;
         const map = L.map(mapContainerRef.current, { center: [lat, lng], zoom: 15, zoomControl: true });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: ['0', '1', '2', '3'],
+          attribution: '&copy; Google Maps',
+          maxZoom: 20,
         }).addTo(map);
 
         const marker = L.marker([lat, lng], { draggable: true }).addTo(map);

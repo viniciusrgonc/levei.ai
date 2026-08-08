@@ -299,7 +299,7 @@ export default function ReturnInProgress() {
               style={{ height: '100%', width: '100%', minHeight: '55vh' }}
               zoomControl={false} attributionControl={false}
             >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" subdomains="0123" attribution="&copy; Google Maps" maxZoom={20} />
               <MapBounds
                 bounds={route?.coordinates?.length ? route.coordinates : [currentPosition, destination]}
               />
