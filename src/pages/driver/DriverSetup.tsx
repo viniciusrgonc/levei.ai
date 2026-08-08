@@ -374,8 +374,8 @@ export default function DriverSetup() {
               setCategories(existing.accepted_product_types);
           }
         }
-      } catch (e) {
-        console.error('[restore] error:', e);
+      } catch {
+        // silent — draft restore is best-effort
       }
 
       setRestored(true);
@@ -518,7 +518,6 @@ export default function DriverSetup() {
       return;
     }
     setLoading(true);
-    console.log('[submit] starting — mode:', user ? 'authenticated' : 'registration');
 
     try {
       // ── 1. Sanitize all string fields ──────────────────────────────────────
@@ -574,7 +573,6 @@ export default function DriverSetup() {
         }
       } else {
         // Modo registro: cria auth.users agora (somente no submit final)
-        console.log('[submit] creating auth account for:', email);
         const { data: authData, error: signUpErr } = await supabase.auth.signUp({
           email,
           password,
@@ -586,17 +584,15 @@ export default function DriverSetup() {
         if (!authData.user) throw new Error('Erro ao criar conta. Tente novamente.');
 
         userId = authData.user.id;
-        console.log('[submit] account created, userId:', userId);
 
         // Insere papel (role) do usuário
         const { error: roleErr } = await supabase
           .from('user_roles')
           .insert({ user_id: userId, role: 'driver' });
-        if (roleErr) console.warn('[submit] role insert warning:', roleErr.message);
+        if (roleErr) { /* role insert is best-effort — user still proceeds */ }
       }
 
       // ── 4. Upload documents ────────────────────────────────────────────────
-      console.log('[submit] uploading documents...');
       const [cnhFrontUrl, cnhBackUrl, selfieUrl, vehiclePhotoUrl] = await Promise.all([
         docs.cnhFront.file
           ? uploadFile(userId, docs.cnhFront.file, 'cnh-front')
@@ -611,16 +607,13 @@ export default function DriverSetup() {
           ? uploadFile(userId, docs.vehiclePhoto.file, 'vehicle')
           : Promise.resolve(docUrls.vehiclePhoto),
       ]);
-      console.log('[submit] documents uploaded');
-
       // ── 5. Update profile ──────────────────────────────────────────────────
-      console.log('[submit] updating profile...');
       const { error: profileErr } = await supabase
         .from('profiles')
         .update({ full_name: safeName, phone: safePhone })
         .eq('id', userId);
       if (profileErr) {
-        console.warn('[submit] profile update warning:', profileErr.message);
+        // profile update is best-effort — driver record is the source of truth
       }
 
       // ── 6. Build final driver payload ─────────────────────────────────────
@@ -658,7 +651,6 @@ export default function DriverSetup() {
       };
 
       // ── 7. Check for existing driver record and upsert ────────────────────
-      console.log('[submit] upserting driver record...');
       const { data: existingDriver } = await supabase
         .from('drivers')
         .select('id')
@@ -684,7 +676,6 @@ export default function DriverSetup() {
         newDriverId = newDriver.id;
       }
 
-      console.log('[submit] driver saved, id:', newDriverId);
 
       // ── 8. Referral (fire-and-forget) ─────────────────────────────────────
       if (safeRef) {
@@ -697,11 +688,9 @@ export default function DriverSetup() {
       sessionStorage.removeItem(REGISTER_KEY);
       if (DRAFT_KEY) localStorage.removeItem(DRAFT_KEY);
 
-      console.log('[submit] success! Redirecting to pending-approval...');
       navigate('/driver/pending-approval', { replace: true });
 
     } catch (e: any) {
-      console.error('[submit] error:', e);
       const msg = safeStr(e?.message) || safeStr(e?.error_description) || 'Erro desconhecido. Tente novamente.';
       toast({
         variant:     'destructive',

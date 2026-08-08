@@ -51,9 +51,17 @@ const vehicleLabel: Record<string, string> = {
 
 // ── Query functions ────────────────────────────────────────────────────────
 
-async function fetchDelivery(deliveryId: string): Promise<Delivery> {
+async function fetchDelivery(deliveryId: string, userId: string): Promise<Delivery> {
+  // Verify ownership: only fetch if the delivery belongs to this user's restaurant
+  const { data: restaurant } = await supabase
+    .from('restaurants').select('id').eq('user_id', userId).maybeSingle();
+  if (!restaurant) throw new Error('Restaurante não encontrado');
+
   const { data, error } = await supabase
-    .from('deliveries').select('*').eq('id', deliveryId).single();
+    .from('deliveries').select('*')
+    .eq('id', deliveryId)
+    .eq('restaurant_id', restaurant.id)
+    .single();
   if (error || !data) throw new Error('Entrega não encontrada');
   return data as Delivery;
 }
@@ -95,9 +103,9 @@ export default function DeliveryTracking() {
     isLoading,
     error: deliveryError,
   } = useQuery<Delivery>({
-    queryKey: ['delivery-tracking', deliveryId],
-    queryFn: () => fetchDelivery(deliveryId!),
-    enabled: !!deliveryId,
+    queryKey: ['delivery-tracking', deliveryId, user?.id],
+    queryFn: () => fetchDelivery(deliveryId!, user!.id),
+    enabled: !!deliveryId && !!user?.id,
     staleTime: 10 * 1000,          // 10s — realtime vai invalidar
     refetchInterval: 20 * 1000,    // fallback polling 20s
   });

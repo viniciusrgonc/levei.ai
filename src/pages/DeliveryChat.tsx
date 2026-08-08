@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, MessageCircle } from 'lucide-react';
 import { useDeliveryChat } from '@/hooks/useDeliveryChat';
 import { useAuth } from '@/lib/auth';
+import { useUserSetup } from '@/hooks/useUserSetup';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import leveiLogo from '@/assets/levei-logo.png';
 
 export default function DeliveryChat() {
   const { deliveryId } = useParams<{ deliveryId: string }>();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // role vem da URL: ?role=driver ou ?role=restaurant
-  const role = (searchParams.get('role') || 'driver') as 'driver' | 'restaurant';
+  // Sender role is derived from the authenticated user's actual DB role — never from URL params
+  const { role: userRole, loading: roleLoading } = useUserSetup();
+  const role = (userRole === 'driver' || userRole === 'restaurant') ? userRole : 'driver' as const;
 
   const [text, setText] = useState('');
   const [otherName, setOtherName] = useState('');

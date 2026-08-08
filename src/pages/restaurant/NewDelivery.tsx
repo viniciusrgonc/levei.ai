@@ -72,9 +72,11 @@ export default function NewDelivery() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const parentDeliveryId = searchParams.get('parent');
-  // Endereço de destino pré-preenchido vindo do ConfirmDelivery
-  const prefilledTo = searchParams.get('to') || '';
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const rawParent = searchParams.get('parent');
+  const parentDeliveryId = rawParent && UUID_RE.test(rawParent) ? rawParent : null;
+  // Endereço de destino pré-preenchido vindo do ConfirmDelivery — capped at 200 chars to prevent oversized payloads
+  const prefilledTo = (searchParams.get('to') || '').slice(0, 200);
 
   // Se vier com ?to= pré-preenchido, pula step 2 (já confirmado na tela anterior) e vai direto ao step 3
   const [step, setStep] = useState(prefilledTo ? 3 : 1);

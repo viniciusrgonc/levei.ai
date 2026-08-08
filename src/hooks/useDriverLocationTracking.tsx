@@ -14,10 +14,10 @@ interface LastLocation {
   timestamp: number;
 }
 
-export function useDriverLocationTracking({ 
-  driverId, 
-  deliveryId, 
-  isActive 
+export function useDriverLocationTracking({
+  driverId,
+  deliveryId,
+  isActive
 }: UseDriverLocationTrackingProps) {
   const intervalRef = useRef<ReturnType<typeof setTimeout>>();
   const [lastLocation, setLastLocation] = useState<LastLocation | null>(null);
@@ -32,7 +32,7 @@ export function useDriverLocationTracking({
               Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distance = R * c;
-    
+
     const timeInHours = (timestamp - last.timestamp) / (1000 * 60 * 60);
     return distance / timeInHours;
   };
@@ -44,7 +44,6 @@ export function useDriverLocationTracking({
 
       // Validate coordinate bounds
       if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-        console.error('Coordenadas GPS inválidas');
         return;
       }
 
@@ -58,7 +57,6 @@ export function useDriverLocationTracking({
       if (lastLocation) {
         const speed = calculateSpeed(lastLocation, { latitude, longitude }, timestamp);
         if (speed > 150) {
-          console.error('Velocidade impossível detectada - possível spoofing de GPS');
           return;
         }
       }
@@ -87,8 +85,8 @@ export function useDriverLocationTracking({
       // Store last location for speed validation
       setLastLocation({ latitude, longitude, timestamp });
 
-    } catch (error) {
-      console.error('Erro ao atualizar localização:', error);
+    } catch {
+      // Location update failed silently — next interval will retry
     }
   };
 
@@ -103,8 +101,7 @@ export function useDriverLocationTracking({
       (position) => {
         updateLocation(position);
       },
-      (error) => {
-        console.error('Erro ao obter localização inicial:', error);
+      () => {
         toast.error('Não foi possível obter sua localização');
       },
       {
@@ -120,9 +117,7 @@ export function useDriverLocationTracking({
         (position) => {
           updateLocation(position);
         },
-        (error) => {
-          console.error('Erro ao obter localização:', error);
-        },
+        () => { /* silent — retry on next interval */ },
         {
           enableHighAccuracy: true,
           timeout: 5000,
