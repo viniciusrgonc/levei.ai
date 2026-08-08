@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,67 +14,13 @@ import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { useRouteDeliveries } from '@/hooks/useRouteDeliveries';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { OpenDisputeModal } from '@/components/OpenDisputeModal';
-import { MapContainer, TileLayer, Marker, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { loadGoogleMapsScript } from '@/lib/googleMaps';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { getGoogleMapsLink } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
 
-// ── Leaflet icon setup ─────────────────────────────────────────────────────
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-const driverIcon = new L.DivIcon({
-  html: `<div style="
-    width:44px;height:44px;border-radius:50%;
-    background:#3b82f6;border:3px solid white;
-    box-shadow:0 2px 8px rgba(0,0,0,0.35);
-    display:flex;align-items:center;justify-content:center;
-  ">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-    </svg>
-  </div>`,
-  iconSize: [44, 44], iconAnchor: [22, 22], className: '',
-});
-
-const pickupIcon = new L.DivIcon({
-  html: `<div style="
-    width:48px;height:48px;border-radius:50%;
-    background:#f97316;border:3px solid white;
-    box-shadow:0 2px 12px rgba(249,115,22,0.5);
-    display:flex;align-items:center;justify-content:center;
-    animation: pulse-orange 1.5s infinite;
-  ">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
-      <path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.51 16.49 1 14.64 1 13.27 1 12.38 1.74 11.6 2.72L10 4.66 8.4 2.72C7.62 1.74 6.73 1 5.36 1 3.51 1 2 2.51 2 4.64c0 .48.11.92.18 1.36H0v14h20V6zM14.64 3c.94 0 1.36.64 1.36 1.64 0 1-.72 1.87-1.84 3.04L10 11.71 9.84 7.68C11.6 5.59 12.33 3 14.64 3zM5.36 3c2.31 0 3.04 2.59 4.8 4.68L10 11.71 6.84 7.68C5.72 6.51 5 5.64 5 4.64 5 3.64 5.42 3 5.36 3z"/>
-    </svg>
-  </div>
-  <style>
-    @keyframes pulse-orange {
-      0%,100%{box-shadow:0 2px 12px rgba(249,115,22,0.5)}
-      50%{box-shadow:0 2px 24px rgba(249,115,22,0.9)}
-    }
-  </style>`,
-  iconSize: [48, 48], iconAnchor: [24, 24], className: '',
-});
-
-// ── Map utilities ──────────────────────────────────────────────────────────
-function RecenterMap({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => { map.setView(center, map.getZoom(), { animate: true }); }, [center, map]);
-  return null;
-}
-
-function MapClickTracker({ onUserInteract }: { onUserInteract: () => void }) {
-  useMapEvents({ drag: onUserInteract, zoom: onUserInteract });
-  return null;
-}
 
 // ── Haversine distance (km) ────────────────────────────────────────────────
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -119,6 +65,13 @@ export default function PickupInProgress() {
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [autoCenter, setAutoCenter] = useState(true);
   const [userInteracted, setUserInteracted] = useState(false);
+
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+  const destMarkerRef = useRef<any>(null);
+  const routePolylineRef = useRef<any>(null);
+  const isGoogleRef = useRef(false);
 
   // ── Queries ───────────────────────────────────────────────────────────
   const { data: driverData } = useQuery({
@@ -193,6 +146,99 @@ export default function PickupInProgress() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
+  // ── Map: init ────────────────────────────────────────────────────────────
+  const hasMapData = !!currentPosition && !!destination;
+  useEffect(() => {
+    if (!hasMapData || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!currentPosition || !destination) return;
+    loadGoogleMapsScript().then((ok) => {
+      if (!mapContainerRef.current || mapInstanceRef.current) return;
+      if (ok) {
+        isGoogleRef.current = true;
+        const gm = (window as any).google.maps;
+        const map = new gm.Map(mapContainerRef.current, {
+          center: { lat: currentPosition[0], lng: currentPosition[1] },
+          zoom: 15, disableDefaultUI: true, gestureHandling: 'greedy',
+        });
+        driverMarkerRef.current = new gm.Marker({
+          position: { lat: currentPosition[0], lng: currentPosition[1] },
+          map,
+          icon: { path: gm.SymbolPath.CIRCLE, scale: 8, fillColor: '#3b82f6', fillOpacity: 1, strokeWeight: 2.5, strokeColor: 'white' },
+          zIndex: 10,
+        });
+        destMarkerRef.current = new gm.Marker({
+          position: { lat: destination[0], lng: destination[1] },
+          map,
+          icon: { path: gm.SymbolPath.CIRCLE, scale: 10, fillColor: '#f97316', fillOpacity: 1, strokeWeight: 3, strokeColor: 'white' },
+          zIndex: 9,
+        });
+        map.addListener('dragstart', () => { setUserInteracted(true); setAutoCenter(false); });
+        map.addListener('zoom_changed', () => { setUserInteracted(true); setAutoCenter(false); });
+        mapInstanceRef.current = map;
+      } else {
+        isGoogleRef.current = false;
+        const map = L.map(mapContainerRef.current, {
+          center: currentPosition, zoom: 15, zoomControl: false, attributionControl: false,
+        });
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: ['0', '1', '2', '3'], maxZoom: 20,
+        }).addTo(map);
+        driverMarkerRef.current = L.circleMarker(currentPosition, {
+          radius: 8, fillColor: '#3b82f6', color: 'white', weight: 2.5, fillOpacity: 1,
+        }).addTo(map);
+        destMarkerRef.current = L.circleMarker(destination, {
+          radius: 10, fillColor: '#f97316', color: 'white', weight: 3, fillOpacity: 1,
+        }).addTo(map);
+        map.on('dragstart', () => { setUserInteracted(true); setAutoCenter(false); });
+        map.on('zoomstart', () => { setUserInteracted(true); setAutoCenter(false); });
+        mapInstanceRef.current = map;
+      }
+    });
+    return () => {
+      if (mapInstanceRef.current && !isGoogleRef.current) mapInstanceRef.current.remove?.();
+      mapInstanceRef.current = null;
+      driverMarkerRef.current = null;
+      destMarkerRef.current = null;
+      routePolylineRef.current = null;
+    };
+  }, [hasMapData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Map: atualiza posição do entregador ───────────────────────────────────
+  useEffect(() => {
+    if (!currentPosition || !mapInstanceRef.current || !driverMarkerRef.current) return;
+    if (isGoogleRef.current) {
+      const pos = { lat: currentPosition[0], lng: currentPosition[1] };
+      driverMarkerRef.current.setPosition(pos);
+      if (autoCenter) mapInstanceRef.current.panTo(pos);
+    } else {
+      driverMarkerRef.current.setLatLng(currentPosition);
+      if (autoCenter) mapInstanceRef.current.setView(currentPosition, mapInstanceRef.current.getZoom(), { animate: true });
+    }
+  }, [currentPosition, autoCenter]);
+
+  // ── Map: atualiza polyline da rota ────────────────────────────────────────
+  useEffect(() => {
+    if (!mapInstanceRef.current || !route?.coordinates?.length) return;
+    if (isGoogleRef.current) {
+      const gm = (window as any).google?.maps;
+      if (!gm) return;
+      if (routePolylineRef.current) routePolylineRef.current.setMap(null);
+      routePolylineRef.current = new gm.Polyline({
+        path: route.coordinates.map((c: [number, number]) => ({ lat: c[0], lng: c[1] })),
+        geodesic: true,
+        strokeColor: '#f97316',
+        strokeOpacity: 0.85,
+        strokeWeight: 6,
+        map: mapInstanceRef.current,
+      });
+    } else {
+      if (routePolylineRef.current) routePolylineRef.current.remove();
+      routePolylineRef.current = L.polyline(route.coordinates, {
+        color: '#f97316', weight: 6, opacity: 0.85,
+      }).addTo(mapInstanceRef.current);
+    }
+  }, [route]);
+
   // ── Derived values ────────────────────────────────────────────────────
   const estimatedMin = route
     ? Math.ceil(route.duration / 60)
@@ -228,11 +274,6 @@ export default function PickupInProgress() {
     setAutoCenter(true);
     setUserInteracted(false);
   };
-
-  const handleUserInteract = useCallback(() => {
-    setUserInteracted(true);
-    setAutoCenter(false);
-  }, []);
 
   // ── Loading ───────────────────────────────────────────────────────────
   if (loading) {
@@ -373,33 +414,13 @@ export default function PickupInProgress() {
 
         {/* ── MAPA FULLSCREEN ── */}
         <div className="flex-1 relative" style={{ minHeight: '55vh' }}>
-          {currentPosition && destination ? (
-            <MapContainer
-              center={currentPosition}
-              zoom={15}
-              style={{ height: '100%', width: '100%', minHeight: '55vh' }}
-              zoomControl={false}
-              attributionControl={false}
-            >
-              <TileLayer
-                url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-                subdomains="0123"
-                attribution="&copy; Google Maps"
-                maxZoom={20}
-              />
-              <MapClickTracker onUserInteract={handleUserInteract} />
-              {autoCenter && <RecenterMap center={currentPosition} />}
-
-              {/* Rota laranja (coleta) */}
-              {route?.coordinates?.length ? (
-                <Polyline positions={route.coordinates} color="#f97316" weight={6} opacity={0.85} />
-              ) : null}
-
-              <Marker position={currentPosition} icon={driverIcon} />
-              <Marker position={destination} icon={pickupIcon} />
-            </MapContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center bg-gray-800 min-h-[55vh]">
+          <div
+            ref={mapContainerRef}
+            className="absolute inset-0"
+            style={{ height: '100%', width: '100%', minHeight: '55vh' }}
+          />
+          {(!currentPosition || !destination) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 z-10">
               {geoError ? (
                 <div className="text-center">
                   <AlertCircle className="h-10 w-10 text-yellow-400 mx-auto mb-2" />

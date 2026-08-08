@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +15,7 @@ import { useDriverLocationTracking } from '@/hooks/useDriverLocationTracking';
 import { useMapNavigation } from '@/hooks/useMapNavigation';
 import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { RatingModal } from '@/components/RatingModal';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { loadGoogleMapsScript } from '@/lib/googleMaps';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { toast } from '@/hooks/use-toast';
@@ -31,31 +31,6 @@ import {
 } from '@/components/ui/dialog';
 import { formatAddress } from '@/lib/utils';
 
-// Fix Leaflet icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
-const driverIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-});
-
-const pickupIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
-});
-
-function MapBounds({ bounds }: { bounds: L.LatLngBoundsExpression }) {
-  const map = useMap();
-  useEffect(() => { map.fitBounds(bounds, { padding: [60, 60] }); }, [map, bounds]);
-  return null;
-}
 
 interface Delivery {
   id: string;
@@ -87,6 +62,13 @@ export default function ReturnInProgress() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [restaurantForRating, setRestaurantForRating] = useState<{ userId: string; name: string } | null>(null);
+
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+  const destMarkerRef = useRef<any>(null);
+  const routePolylineRef = useRef<any>(null);
+  const isGoogleRef = useRef(false);
 
   // ── Queries ───────────────────────────────────────────────────────────────
   const { data: driverData } = useQuery({
@@ -176,6 +158,96 @@ export default function ReturnInProgress() {
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
+
+  // ── Map: init ────────────────────────────────────────────────────────────
+  const hasMapData = !!currentPosition && !!destination;
+  useEffect(() => {
+    if (!hasMapData || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!currentPosition || !destination) return;
+    loadGoogleMapsScript().then((ok) => {
+      if (!mapContainerRef.current || mapInstanceRef.current) return;
+      if (ok) {
+        isGoogleRef.current = true;
+        const gm = (window as any).google.maps;
+        const map = new gm.Map(mapContainerRef.current, {
+          center: { lat: currentPosition[0], lng: currentPosition[1] },
+          zoom: 14, disableDefaultUI: true, gestureHandling: 'greedy',
+        });
+        driverMarkerRef.current = new gm.Marker({
+          position: { lat: currentPosition[0], lng: currentPosition[1] },
+          map,
+          icon: { path: gm.SymbolPath.CIRCLE, scale: 8, fillColor: '#3b82f6', fillOpacity: 1, strokeWeight: 2.5, strokeColor: 'white' },
+          zIndex: 10,
+        });
+        destMarkerRef.current = new gm.Marker({
+          position: { lat: destination[0], lng: destination[1] },
+          map,
+          icon: { path: gm.SymbolPath.CIRCLE, scale: 10, fillColor: '#f97316', fillOpacity: 1, strokeWeight: 3, strokeColor: 'white' },
+          zIndex: 9,
+        });
+        mapInstanceRef.current = map;
+      } else {
+        isGoogleRef.current = false;
+        const map = L.map(mapContainerRef.current, {
+          center: currentPosition, zoom: 14, zoomControl: false, attributionControl: false,
+        });
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+          subdomains: ['0', '1', '2', '3'], maxZoom: 20,
+        }).addTo(map);
+        driverMarkerRef.current = L.circleMarker(currentPosition, {
+          radius: 8, fillColor: '#3b82f6', color: 'white', weight: 2.5, fillOpacity: 1,
+        }).addTo(map);
+        destMarkerRef.current = L.circleMarker(destination, {
+          radius: 10, fillColor: '#f97316', color: 'white', weight: 3, fillOpacity: 1,
+        }).addTo(map);
+        mapInstanceRef.current = map;
+      }
+    });
+    return () => {
+      if (mapInstanceRef.current && !isGoogleRef.current) mapInstanceRef.current.remove?.();
+      mapInstanceRef.current = null;
+      driverMarkerRef.current = null;
+      destMarkerRef.current = null;
+      routePolylineRef.current = null;
+    };
+  }, [hasMapData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Map: atualiza posição do entregador ───────────────────────────────────
+  useEffect(() => {
+    if (!currentPosition || !mapInstanceRef.current || !driverMarkerRef.current) return;
+    if (isGoogleRef.current) {
+      driverMarkerRef.current.setPosition({ lat: currentPosition[0], lng: currentPosition[1] });
+    } else {
+      driverMarkerRef.current.setLatLng(currentPosition);
+    }
+  }, [currentPosition]);
+
+  // ── Map: polyline + fitBounds quando rota atualizar ───────────────────────
+  useEffect(() => {
+    if (!mapInstanceRef.current || !route?.coordinates?.length) return;
+    if (isGoogleRef.current) {
+      const gm = (window as any).google?.maps;
+      if (!gm) return;
+      if (routePolylineRef.current) routePolylineRef.current.setMap(null);
+      routePolylineRef.current = new gm.Polyline({
+        path: route.coordinates.map((c: [number, number]) => ({ lat: c[0], lng: c[1] })),
+        geodesic: true,
+        strokeColor: '#f97316',
+        strokeOpacity: 0.85,
+        strokeWeight: 5,
+        map: mapInstanceRef.current,
+      });
+      const bounds = new gm.LatLngBounds();
+      route.coordinates.forEach(([lat, lng]: [number, number]) => bounds.extend({ lat, lng }));
+      mapInstanceRef.current.fitBounds(bounds);
+    } else {
+      if (routePolylineRef.current) routePolylineRef.current.remove();
+      routePolylineRef.current = L.polyline(route.coordinates, {
+        color: '#f97316', weight: 5, opacity: 0.85,
+      }).addTo(mapInstanceRef.current);
+      mapInstanceRef.current.fitBounds(route.coordinates as any, { padding: [60, 60] });
+    }
+  }, [route]);
 
   // ── Confirm return ────────────────────────────────────────────────────────
   const handleConfirmReturn = async () => {
@@ -293,24 +365,13 @@ export default function ReturnInProgress() {
 
         {/* Mapa fullscreen */}
         <div className="flex-1 relative" style={{ minHeight: '55vh' }}>
-          {currentPosition && destination ? (
-            <MapContainer
-              center={currentPosition} zoom={14}
-              style={{ height: '100%', width: '100%', minHeight: '55vh' }}
-              zoomControl={false} attributionControl={false}
-            >
-              <TileLayer url="https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}" subdomains="0123" attribution="&copy; Google Maps" maxZoom={20} />
-              <MapBounds
-                bounds={route?.coordinates?.length ? route.coordinates : [currentPosition, destination]}
-              />
-              <Marker position={currentPosition} icon={driverIcon} />
-              {route && route.coordinates.length > 0 && (
-                <Polyline positions={route.coordinates} color="#f97316" weight={5} opacity={0.85} />
-              )}
-              <Marker position={destination} icon={pickupIcon} />
-            </MapContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center bg-gray-800 min-h-[55vh]">
+          <div
+            ref={mapContainerRef}
+            className="absolute inset-0"
+            style={{ height: '100%', width: '100%', minHeight: '55vh' }}
+          />
+          {(!currentPosition || !destination) && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-800 z-10">
               {geoError ? (
                 <div className="text-center">
                   <AlertCircle className="h-10 w-10 text-yellow-400 mx-auto mb-2" />
