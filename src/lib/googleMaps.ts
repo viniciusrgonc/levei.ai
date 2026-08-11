@@ -27,7 +27,7 @@ export function loadGoogleMapsScript(): Promise<boolean> {
     };
 
     const s = document.createElement('script');
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=__gmInit`;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=__gmInit&loading=async`;
     s.async = true;
     s.onerror = () => { clearTimeout(tid); _sdkPromise = null; resolve(false); };
     document.head.appendChild(s);
