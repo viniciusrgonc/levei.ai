@@ -246,6 +246,8 @@ export default function DriverDashboard() {
       navigate(`/driver/delivery/${activeDelivery.id}`, { replace: true });
     else if (activeDelivery.status === 'returning')
       navigate(`/driver/return/${activeDelivery.id}`, { replace: true });
+    else if (['cancelled_return_pending', 'returning_package'].includes(activeDelivery.status))
+      navigate(`/driver/return-cancel/${activeDelivery.id}`, { replace: true });
   }, [activeDelivery]);
 
   // ── New delivery notification ─────────────────────────────────────────────

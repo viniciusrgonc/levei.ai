@@ -116,6 +116,8 @@ export default function DeliveryInProgress() {
       const status = msg.replace('wrong-status:', '');
       if (status === 'returning') {
         navigate(`/driver/return/${deliveryId}`, { replace: true });
+      } else if (status === 'cancelled_return_pending' || status === 'returning_package') {
+        navigate(`/driver/return-cancel/${deliveryId}`, { replace: true });
       } else if (status === 'accepted') {
         navigate(`/driver/pickup/${deliveryId}`, { replace: true });
       } else {
@@ -775,6 +777,10 @@ export default function DeliveryInProgress() {
           onCancelled={() => {
             setShowCancelModal(false);
             navigate('/driver/dashboard', { replace: true });
+          }}
+          onReturnRequired={() => {
+            setShowCancelModal(false);
+            navigate(`/driver/return-cancel/${deliveryId}`, { replace: true });
           }}
         />
       )}

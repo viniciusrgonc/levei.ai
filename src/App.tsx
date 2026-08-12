@@ -38,6 +38,7 @@ import AvailableDeliveries from "./pages/driver/AvailableDeliveries";
 import PickupInProgress from "./pages/driver/PickupInProgress";
 import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
 import ReturnInProgress from "./pages/driver/ReturnInProgress";
+import CancelledReturnInProgress from "./pages/driver/CancelledReturnInProgress";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminDrivers from "./pages/admin/AdminDrivers";
 import AdminRestaurants from "./pages/admin/AdminRestaurants";
@@ -239,6 +240,14 @@ const App = () => (
               element={
                 <DriverRoute>
                   <ReturnInProgress />
+                </DriverRoute>
+              }
+            />
+            <Route
+              path="/driver/return-cancel/:deliveryId"
+              element={
+                <DriverRoute>
+                  <CancelledReturnInProgress />
                 </DriverRoute>
               }
             />

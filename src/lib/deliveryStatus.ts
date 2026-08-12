@@ -5,15 +5,20 @@
  */
 
 export type DeliveryStatus =
-  | 'scheduled'    // Agendada — aguardando o horário programado
-  | 'pending'      // Disponível para aceitar
-  | 'accepted'     // Aceito - Indo para coleta
-  | 'picking_up'   // A caminho da coleta (driver)
-  | 'picked_up'    // Coletado - Indo para entrega
-  | 'delivering'   // Em rota de entrega (driver)
-  | 'delivered'    // Entregue (final para entregas normais; intermediário para entregas com retorno)
-  | 'returning'    // Retornando ao ponto de coleta (só para requires_return=true)
-  | 'cancelled';   // Cancelada
+  | 'scheduled'               // Agendada — aguardando o horário programado
+  | 'pending'                 // Disponível para aceitar
+  | 'accepted'                // Aceito - Indo para coleta
+  | 'picking_up'              // A caminho da coleta (driver)
+  | 'picked_up'               // Coletado - Indo para entrega
+  | 'delivering'              // Em rota de entrega (driver)
+  | 'delivered'               // Entregue
+  | 'returning'               // Retornando ao ponto de coleta (requires_return=true)
+  | 'cancelled'               // Cancelada (antes da coleta)
+  | 'cancelled_before_pickup' // Cancelada antes da coleta (alias explícito)
+  | 'cancelled_return_pending'// Cancelada após coleta — devolução pendente
+  | 'returning_package'       // Driver retornando o pacote ao ponto de coleta
+  | 'package_returned'        // Pacote devolvido
+  | 'cancellation_completed'; // Cancelamento encerrado com devolução confirmada
 
 interface StatusConfig {
   label: string;
@@ -100,6 +105,46 @@ const STATUS_MAP: Record<DeliveryStatus, StatusConfig> = {
     dot: 'bg-red-400',
     variant: 'destructive',
   },
+  cancelled_before_pickup: {
+    label: 'Cancelada',
+    icon: '❌',
+    color: 'text-red-600',
+    badge: 'bg-red-100 text-red-800 border-red-200',
+    dot: 'bg-red-400',
+    variant: 'destructive',
+  },
+  cancelled_return_pending: {
+    label: 'Devolução pendente',
+    icon: '⚠️',
+    color: 'text-orange-700',
+    badge: 'bg-orange-100 text-orange-800 border-orange-300',
+    dot: 'bg-orange-500',
+    variant: 'destructive',
+  },
+  returning_package: {
+    label: 'Devolvendo pacote',
+    icon: '↩️',
+    color: 'text-orange-600',
+    badge: 'bg-orange-100 text-orange-800 border-orange-200',
+    dot: 'bg-orange-400',
+    variant: 'default',
+  },
+  package_returned: {
+    label: 'Pacote devolvido',
+    icon: '✅',
+    color: 'text-green-600',
+    badge: 'bg-green-100 text-green-800 border-green-200',
+    dot: 'bg-green-400',
+    variant: 'default',
+  },
+  cancellation_completed: {
+    label: 'Cancelamento concluído',
+    icon: '✅',
+    color: 'text-gray-600',
+    badge: 'bg-gray-100 text-gray-700 border-gray-200',
+    dot: 'bg-gray-400',
+    variant: 'secondary',
+  },
 };
 
 const FALLBACK: StatusConfig = {
@@ -140,7 +185,8 @@ export function getStatusVariant(status: string): 'default' | 'secondary' | 'des
 }
 
 export function isDeliveryActive(status: string): boolean {
-  return ['accepted', 'picking_up', 'picked_up', 'delivering', 'returning'].includes(status);
+  return ['accepted', 'picking_up', 'picked_up', 'delivering', 'returning',
+    'cancelled_return_pending', 'returning_package'].includes(status);
 }
 
 export function isPickupPhase(status: string): boolean {
@@ -152,24 +198,35 @@ export function isDeliveryPhase(status: string): boolean {
 }
 
 export function isDeliveryComplete(status: string): boolean {
-  return status === 'delivered' || status === 'cancelled';
+  return ['delivered', 'cancelled', 'cancelled_before_pickup',
+    'package_returned', 'cancellation_completed'].includes(status);
 }
 
 export function isReturning(status: string): boolean {
   return status === 'returning';
 }
 
+/** True quando driver tem o pacote mas a corrida foi cancelada — devolução obrigatória */
+export function isCancellationReturnRequired(status: string): boolean {
+  return status === 'cancelled_return_pending' || status === 'returning_package';
+}
+
 export function getNextPossibleStatuses(status: DeliveryStatus): DeliveryStatus[] {
   const transitions: Record<DeliveryStatus, DeliveryStatus[]> = {
-    scheduled: ['pending', 'cancelled'],
-    pending: ['accepted', 'cancelled'],
-    accepted: ['picking_up', 'picked_up', 'cancelled'],
-    picking_up: ['picked_up', 'cancelled'],
-    picked_up: ['delivering', 'delivered', 'returning', 'cancelled'],
-    delivering: ['delivered', 'returning', 'cancelled'],
-    returning: ['delivered', 'cancelled'],
-    delivered: [],
-    cancelled: [],
+    scheduled:                ['pending', 'cancelled'],
+    pending:                  ['accepted', 'cancelled'],
+    accepted:                 ['picking_up', 'picked_up', 'cancelled_before_pickup'],
+    picking_up:               ['picked_up', 'cancelled_before_pickup'],
+    picked_up:                ['delivering', 'delivered', 'returning', 'cancelled_return_pending'],
+    delivering:               ['delivered', 'returning', 'cancelled_return_pending'],
+    returning:                ['delivered', 'cancelled'],
+    delivered:                [],
+    cancelled:                [],
+    cancelled_before_pickup:  [],
+    cancelled_return_pending: ['returning_package'],
+    returning_package:        ['cancellation_completed'],
+    package_returned:         ['cancellation_completed'],
+    cancellation_completed:   [],
   };
   return transitions[status] ?? [];
 }

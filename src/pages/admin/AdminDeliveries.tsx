@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminPageHeader } from '@/components/AdminPageHeader';
-import { Search, MapPin, DollarSign, Calendar, User, Bike } from 'lucide-react';
+import { Search, MapPin, DollarSign, Calendar, User, Bike, Clock, AlertTriangle, RotateCcw, CheckCircle2, PackageX } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -44,25 +44,43 @@ interface Delivery {
   driver_name?: string;
   product_type?: string | null;
   product_note?: string | null;
+  cancellation_reason?: string | null;
+  cancelled_at?: string | null;
+  cancelled_by_role?: string | null;
+  picked_up_at?: string | null;
+  return_started_at?: string | null;
+  package_returned_at?: string | null;
+  return_distance_km?: number | null;
+  return_failed_reason?: string | null;
   restaurants: {
     business_name: string;
   };
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'secondary',
-  accepted: 'default',
-  picked_up: 'default',
-  delivered: 'default',
-  cancelled: 'destructive'
+  pending:                  'secondary',
+  accepted:                 'default',
+  picked_up:                'default',
+  delivered:                'default',
+  cancelled:                'destructive',
+  cancelled_before_pickup:  'destructive',
+  cancelled_return_pending: 'destructive',
+  returning_package:        'default',
+  package_returned:         'default',
+  cancellation_completed:   'secondary',
 };
 
 const statusLabels: Record<string, string> = {
-  pending: 'Pendente',
-  accepted: 'Aceita',
-  picked_up: 'Coletada',
-  delivered: 'Entregue',
-  cancelled: 'Cancelada'
+  pending:                  'Pendente',
+  accepted:                 'Aceita',
+  picked_up:                'Coletada',
+  delivered:                'Entregue',
+  cancelled:                'Cancelada',
+  cancelled_before_pickup:  'Cancelada (s/ coleta)',
+  cancelled_return_pending: 'Devolução pendente',
+  returning_package:        'Devolvendo pacote',
+  package_returned:         'Pacote devolvido',
+  cancellation_completed:   'Cancelamento concluído',
 };
 
 export default function AdminDeliveries() {
@@ -187,6 +205,9 @@ export default function AdminDeliveries() {
                         <SelectItem value="picked_up">Coletada</SelectItem>
                         <SelectItem value="delivered">Entregue</SelectItem>
                         <SelectItem value="cancelled">Cancelada</SelectItem>
+                        <SelectItem value="cancelled_return_pending">Devolução pendente</SelectItem>
+                        <SelectItem value="returning_package">Devolvendo pacote</SelectItem>
+                        <SelectItem value="cancellation_completed">Cancelamento concluído</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -358,7 +379,96 @@ export default function AdminDeliveries() {
                     {new Date(selectedDelivery.created_at).toLocaleString('pt-BR')}
                   </p>
                 </div>
+
+                {/* Timestamps */}
+                {selectedDelivery.picked_up_at && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      Coletado em
+                    </label>
+                    <p className="text-foreground">{new Date(selectedDelivery.picked_up_at).toLocaleString('pt-BR')}</p>
+                  </div>
+                )}
+                {selectedDelivery.cancelled_at && (
+                  <div>
+                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Cancelado em
+                    </label>
+                    <p className="text-foreground">{new Date(selectedDelivery.cancelled_at).toLocaleString('pt-BR')}</p>
+                  </div>
+                )}
               </div>
+
+              {/* Cancellation section */}
+              {selectedDelivery.cancellation_reason && (
+                <div className="border border-red-200 bg-red-50 dark:bg-red-950/30 rounded-lg p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-400 flex items-center gap-2">
+                    <PackageX className="h-4 w-4" />
+                    Informações do Cancelamento
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Cancelado por</p>
+                      <p className="font-medium capitalize">{selectedDelivery.cancelled_by_role === 'driver' ? 'Entregador' : selectedDelivery.cancelled_by_role === 'restaurant' ? 'Solicitante' : selectedDelivery.cancelled_by_role ?? '—'}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Pacote coletado?</p>
+                      <p className="font-medium">{selectedDelivery.picked_up_at ? 'Sim' : 'Não'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Motivo</p>
+                      <p className="font-medium">{selectedDelivery.cancellation_reason}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Return section */}
+              {selectedDelivery.picked_up_at && selectedDelivery.cancelled_at && (
+                <div className="border border-orange-200 bg-orange-50 dark:bg-orange-950/30 rounded-lg p-4 space-y-3">
+                  <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-400 flex items-center gap-2">
+                    <RotateCcw className="h-4 w-4" />
+                    Fluxo de Devolução
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Status da devolução</p>
+                      <p className="font-medium">{statusLabels[selectedDelivery.status] ?? selectedDelivery.status}</p>
+                    </div>
+                    {selectedDelivery.return_started_at && (
+                      <div>
+                        <p className="text-muted-foreground">Retorno iniciado</p>
+                        <p className="font-medium">{new Date(selectedDelivery.return_started_at).toLocaleString('pt-BR')}</p>
+                      </div>
+                    )}
+                    {selectedDelivery.package_returned_at && (
+                      <div className="col-span-2 flex items-center gap-2 text-green-700">
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                        <div>
+                          <p className="text-muted-foreground text-xs">Pacote devolvido em</p>
+                          <p className="font-semibold">{new Date(selectedDelivery.package_returned_at).toLocaleString('pt-BR')}</p>
+                        </div>
+                      </div>
+                    )}
+                    {selectedDelivery.return_failed_reason && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Motivo da falha na devolução</p>
+                        <p className="font-medium text-red-700">{selectedDelivery.return_failed_reason}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-muted-foreground">Local de coleta (destino do retorno)</p>
+                      <p className="font-medium">{selectedDelivery.pickup_address}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Local de entrega</p>
+                      <p className="font-medium">{selectedDelivery.delivery_address}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

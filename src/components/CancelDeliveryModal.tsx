@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -22,6 +23,8 @@ interface CancelDeliveryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCancelled: () => void;
+  /** Chamado quando o pacote já foi coletado e devolução é obrigatória (driver deve ir para tela de retorno) */
+  onReturnRequired?: () => void;
   /** Quem está cancelando. Afeta: motivo padrão, quem é notificado. Default: 'restaurant' */
   cancellerRole?: 'restaurant' | 'driver';
 }
@@ -47,8 +50,10 @@ export function CancelDeliveryModal({
   open,
   onOpenChange,
   onCancelled,
+  onReturnRequired,
   cancellerRole = 'restaurant',
 }: CancelDeliveryModalProps) {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingPenalty, setIsFetchingPenalty] = useState(false);
   const [penaltyInfo, setPenaltyInfo] = useState<PenaltyInfo | null>(null);
@@ -88,10 +93,10 @@ export function CancelDeliveryModal({
         ? 'Cancelado pelo entregador'
         : 'Cancelado pelo solicitante';
 
-      // Busca dados da entrega para notificar a outra parte
+      // Busca dados da entrega — incluindo picked_up_at para decidir se devolução é necessária
       const { data: deliveryData } = await supabase
         .from('deliveries')
-        .select('driver_id, restaurant_id, drivers!left(user_id), restaurants!left(user_id)')
+        .select('driver_id, restaurant_id, picked_up_at, status, drivers!left(user_id), restaurants!left(user_id)')
         .eq('id', deliveryId)
         .maybeSingle();
 
@@ -114,61 +119,155 @@ export function CancelDeliveryModal({
         throw new Error(result?.error || 'Erro ao cancelar entrega');
       }
 
-      // Notifica a parte OPOSTA a quem cancelou
-      if (cancellerRole === 'driver') {
-        // Driver cancelou → notifica o restaurante
-        const restaurantUserId = (deliveryData as any)?.restaurants?.user_id as string | undefined;
-        if (restaurantUserId) {
-          supabase.rpc('create_notification', {
-            p_user_id: restaurantUserId,
-            p_title: 'Entrega cancelada pelo motoboy',
-            p_message: 'O entregador cancelou a coleta. Sua entrega voltou para fila.',
-            p_type: 'delivery_cancelled',
-            p_delivery_id: deliveryId,
-          }).catch(() => {});
-          supabase.functions.invoke('send-push', {
-            body: {
-              user_id: restaurantUserId,
-              title: 'Entrega cancelada pelo motoboy',
-              message: 'O entregador cancelou. Sua entrega será redistribuída.',
-              url: '/restaurant/dashboard',
-            },
-          }).catch(() => {});
+      // ── Regra de devolução: pacote já coletado? ────────────────────────────
+      const wasPickedUp = !!(deliveryData as any)?.picked_up_at;
+      const driverUserId  = (deliveryData as any)?.drivers?.user_id as string | undefined;
+      const restaurantUserId = (deliveryData as any)?.restaurants?.user_id as string | undefined;
+      const fromStatus = (deliveryData as any)?.status ?? 'picked_up';
+
+      if (wasPickedUp) {
+        // Sobrescreve o status 'cancelled' da RPC — devolução obrigatória
+        await supabase
+          .from('deliveries')
+          .update({
+            status: 'cancelled_return_pending',
+            cancelled_by_role: cancellerRole,
+            cancelled_by_user_id: user?.id ?? null,
+          } as any)
+          .eq('id', deliveryId);
+
+        // Registra no histórico de auditoria
+        supabase
+          .from('delivery_status_history' as any)
+          .insert({
+            delivery_id: deliveryId,
+            from_status: fromStatus,
+            to_status: 'cancelled_return_pending',
+            changed_by: user?.id ?? null,
+            changed_by_role: cancellerRole,
+            reason: cancellationReason || defaultReason,
+          })
+          .catch(() => {});
+
+        if (cancellerRole === 'driver') {
+          // Driver cancelou → notifica restaurante + driver vai para tela de devolução
+          if (restaurantUserId) {
+            supabase.rpc('create_notification', {
+              p_user_id: restaurantUserId,
+              p_title: 'Entrega cancelada — pacote em devolução',
+              p_message: 'O entregador cancelou após coletar o pacote. Ele está retornando ao seu local.',
+              p_type: 'delivery_cancelled',
+              p_delivery_id: deliveryId,
+            }).catch(() => {});
+            supabase.functions.invoke('send-push', {
+              body: {
+                user_id: restaurantUserId,
+                title: 'Pacote sendo devolvido',
+                message: 'O entregador cancelou após coletar. Ele está retornando o pacote.',
+                url: '/restaurant/dashboard',
+              },
+            }).catch(() => {});
+          }
+
+          toast({
+            title: 'Entrega cancelada',
+            description: 'Você está com o pacote. Retorne ao local de coleta para devolvê-lo.',
+          });
+
+          if (onReturnRequired) {
+            onReturnRequired();
+          } else {
+            onCancelled();
+          }
+        } else {
+          // Restaurante cancelou → notifica driver que deve devolver
+          if (driverUserId) {
+            supabase.rpc('create_notification', {
+              p_user_id: driverUserId,
+              p_title: '⚠️ Devolva o pacote',
+              p_message: 'O solicitante cancelou a entrega. Você está com o pacote — retorne ao local de coleta imediatamente.',
+              p_type: 'delivery_cancelled',
+              p_delivery_id: deliveryId,
+            }).catch(() => {});
+            supabase.functions.invoke('send-push', {
+              body: {
+                user_id: driverUserId,
+                title: '⚠️ Devolva o pacote',
+                message: 'Entrega cancelada. Retorne o pacote ao local de coleta.',
+                url: `/driver/return-cancel/${deliveryId}`,
+              },
+            }).catch(() => {});
+          }
+
+          toast({
+            title: 'Entrega cancelada',
+            description: 'O entregador está com o pacote e foi notificado para devolvê-lo.',
+          });
+          onCancelled();
         }
       } else {
-        // Restaurante cancelou → notifica o driver
-        const driverUserId = (deliveryData as any)?.drivers?.user_id as string | undefined;
-        if (driverUserId) {
-          supabase.rpc('create_notification', {
-            p_user_id: driverUserId,
-            p_title: 'Entrega cancelada',
-            p_message: 'O restaurante cancelou uma entrega que estava sob sua responsabilidade.',
-            p_type: 'delivery_cancelled',
-            p_delivery_id: deliveryId,
-          }).catch(() => {});
-          supabase.functions.invoke('send-push', {
-            body: {
-              user_id: driverUserId,
-              title: 'Entrega cancelada',
-              message: 'O restaurante cancelou a entrega. Verifique seu painel.',
-              url: '/driver/dashboard',
-            },
-          }).catch(() => {});
+        // ── Cancelamento antes da coleta — fluxo normal ──────────────────────
+        // Registra status explícito cancelled_before_pickup no histórico
+        supabase
+          .from('delivery_status_history' as any)
+          .insert({
+            delivery_id: deliveryId,
+            from_status: fromStatus,
+            to_status: 'cancelled_before_pickup',
+            changed_by: user?.id ?? null,
+            changed_by_role: cancellerRole,
+            reason: cancellationReason || defaultReason,
+          })
+          .catch(() => {});
+
+        if (cancellerRole === 'driver') {
+          if (restaurantUserId) {
+            supabase.rpc('create_notification', {
+              p_user_id: restaurantUserId,
+              p_title: 'Entrega cancelada pelo motoboy',
+              p_message: 'O entregador cancelou a coleta. Sua entrega voltou para fila.',
+              p_type: 'delivery_cancelled',
+              p_delivery_id: deliveryId,
+            }).catch(() => {});
+            supabase.functions.invoke('send-push', {
+              body: {
+                user_id: restaurantUserId,
+                title: 'Entrega cancelada pelo motoboy',
+                message: 'O entregador cancelou. Sua entrega será redistribuída.',
+                url: '/restaurant/dashboard',
+              },
+            }).catch(() => {});
+          }
+        } else {
+          if (driverUserId) {
+            supabase.rpc('create_notification', {
+              p_user_id: driverUserId,
+              p_title: 'Entrega cancelada',
+              p_message: 'O restaurante cancelou uma entrega que estava sob sua responsabilidade.',
+              p_type: 'delivery_cancelled',
+              p_delivery_id: deliveryId,
+            }).catch(() => {});
+            supabase.functions.invoke('send-push', {
+              body: {
+                user_id: driverUserId,
+                title: 'Entrega cancelada',
+                message: 'O restaurante cancelou a entrega. Verifique seu painel.',
+                url: '/driver/dashboard',
+              },
+            }).catch(() => {});
+          }
         }
+
+        const hasPenalty = (result.penalty_amount ?? 0) > 0;
+        toast({
+          title: 'Entrega cancelada',
+          description: hasPenalty
+            ? `Multa de R$ ${result.penalty_amount?.toFixed(2)} aplicada. Estorno de R$ ${result.refunded_amount?.toFixed(2)}.`
+            : `Seu saldo de R$ ${result.refunded_amount?.toFixed(2)} foi estornado integralmente.`,
+        });
+        onCancelled();
       }
-
-      const hasPenalty = (result.penalty_amount ?? 0) > 0;
-
-      toast({
-        title: 'Entrega cancelada',
-        description: hasPenalty
-          ? `Multa de R$ ${result.penalty_amount?.toFixed(2)} aplicada. Estorno de R$ ${result.refunded_amount?.toFixed(2)}.`
-          : `Seu saldo de R$ ${result.refunded_amount?.toFixed(2)} foi estornado integralmente.`,
-      });
-
-      onCancelled();
     } catch (error: any) {
-      console.error('Error cancelling delivery:', error);
       toast({
         variant: 'destructive',
         title: 'Erro ao cancelar',
