@@ -611,7 +611,7 @@ export default function DriverDashboard() {
                   boxShadow: '0 4px 16px rgba(34,197,94,0.35), 0 0 0 1px rgba(34,197,94,0.5) inset',
                 }}
               >
-                Ir online
+                Online
               </button>
             </div>
           </div>
