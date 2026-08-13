@@ -101,6 +101,22 @@ export default function DriverDashboard() {
     return () => { if (watchRef.current) navigator.geolocation.clearWatch(watchRef.current); };
   }, []);
 
+  // ── Queries (declaradas antes dos effects que as referenciam) ─────────────
+  const { data: driverProfile } = useQuery({
+    queryKey: ['driver-profile', user?.id],
+    queryFn: () => fetchDriverProfile(user!.id),
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: driver, isLoading: driverLoading, error: driverError } = useQuery({
+    queryKey: ['driver', user?.id],
+    queryFn: () => fetchDriver(user!.id),
+    enabled: !!user?.id,
+    staleTime: 2 * 60 * 1000,
+    retry: (count, err: any) => err?.message !== 'SETUP_REQUIRED' && count < 2,
+  });
+
   // ── Map initialization (Google Maps SDK → Leaflet fallback) ───────────────
   // driverLoading está nas deps porque o container só entra no DOM quando
   // o loading termina (o return antecipado do skeleton usa uma árvore diferente).
@@ -167,22 +183,6 @@ export default function DriverDashboard() {
       mapInstanceRef.current.setView(position, mapInstanceRef.current.getZoom());
     }
   }, [position]);
-
-  // ── Queries ───────────────────────────────────────────────────────────────
-  const { data: driverProfile } = useQuery({
-    queryKey: ['driver-profile', user?.id],
-    queryFn: () => fetchDriverProfile(user!.id),
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: driver, isLoading: driverLoading, error: driverError } = useQuery({
-    queryKey: ['driver', user?.id],
-    queryFn: () => fetchDriver(user!.id),
-    enabled: !!user?.id,
-    staleTime: 2 * 60 * 1000,
-    retry: (count, err: any) => err?.message !== 'SETUP_REQUIRED' && count < 2,
-  });
 
   // ── Sync online status to marker color ────────────────────────────────────
   useEffect(() => {
