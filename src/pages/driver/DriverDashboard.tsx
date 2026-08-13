@@ -70,6 +70,15 @@ async function fetchTodayEarnings(userId: string) {
 }
 
 
+// ── Online activation sound ────────────────────────────────────────────────
+function playOnlineSound() {
+  try {
+    const audio = new Audio('/sounds/online.mp3');
+    audio.volume = 1.0;
+    audio.play().catch(() => { /* autoplay bloqueado — silencioso */ });
+  } catch { /* silently fail */ }
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 export default function DriverDashboard() {
   const { user } = useAuth();
@@ -279,7 +288,7 @@ export default function DriverDashboard() {
       toast({ variant: 'destructive', title: 'Erro ao atualizar disponibilidade' });
     } else {
       queryClient.setQueryData(['driver', user?.id], { ...driver, is_available: available });
-      // Sem toast — a mudança visual no header + card já comunica o estado
+      if (available) playOnlineSound();
     }
   };
 
