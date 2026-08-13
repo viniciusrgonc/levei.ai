@@ -303,12 +303,6 @@ export default function DriverDashboard() {
         style={{ height: '100%', width: '100%' }}
       />
 
-      {/* ── OVERLAY ── */}
-      <div
-        className="absolute inset-0 z-[1] pointer-events-none"
-        style={{ background: 'rgba(0,0,0,0.12)' }}
-      />
-
       {/* ── GRADIENTE topo ── */}
       <div
         className="absolute top-0 left-0 right-0 z-10 pointer-events-none"
