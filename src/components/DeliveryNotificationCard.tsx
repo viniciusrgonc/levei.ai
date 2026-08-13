@@ -22,8 +22,21 @@ interface Props {
   driverPct?: number;
 }
 
-// ── Web Audio notification sound ───────────────────────────────────────────
+// ── Notification sound ────────────────────────────────────────────────────
 function playNotificationSound() {
+  try {
+    const audio = new Audio('/sounds/notification.mp3');
+    audio.volume = 1.0;
+    audio.play().catch(() => {
+      // Autoplay bloqueado pelo browser — usa som sintético como fallback
+      playSyntheticSound();
+    });
+  } catch {
+    playSyntheticSound();
+  }
+}
+
+function playSyntheticSound() {
   try {
     const ctx = new AudioContext();
     const notes = [880, 1100, 1320];
@@ -41,9 +54,7 @@ function playNotificationSound() {
       osc.start(start);
       osc.stop(start + 0.18);
     });
-  } catch {
-    // silently fail if AudioContext blocked
-  }
+  } catch { /* silently fail */ }
 }
 
 function vibrate() {
