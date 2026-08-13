@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Loader2, Star, Camera, History, Wallet, Settings, LogOut, ChevronRight, UserPen,
-  MapPin, Car, Package, ShieldCheck,
+  MapPin, Car, Package, ShieldCheck, ClipboardList,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
@@ -103,11 +103,12 @@ export default function DriverProfile() {
   };
 
   const menuItems = [
-    { icon: History,  label: 'Minhas entregas',  onClick: () => navigate('/driver/history') },
-    { icon: Wallet,   label: 'Ganhos',            onClick: () => navigate('/driver/wallet') },
-    { icon: Star,     label: 'Avaliações',        onClick: () => navigate('/driver/ratings') },
-    { icon: UserPen,  label: 'Editar perfil',     onClick: () => setIsEditing(!isEditing) },
-    { icon: Settings, label: 'Configurações',     onClick: () => navigate('/driver/settings') },
+    { icon: History,       label: 'Minhas entregas',  onClick: () => navigate('/driver/history') },
+    { icon: Wallet,        label: 'Ganhos',            onClick: () => navigate('/driver/wallet') },
+    { icon: Star,          label: 'Avaliações',        onClick: () => navigate('/driver/ratings') },
+    { icon: ClipboardList, label: 'Meus dados',        onClick: () => navigate('/driver/my-data') },
+    { icon: UserPen,       label: 'Editar perfil',     onClick: () => setIsEditing(!isEditing) },
+    { icon: Settings,      label: 'Configurações',     onClick: () => navigate('/driver/settings') },
   ];
 
   if (isLoading) {

@@ -39,6 +39,7 @@ import PickupInProgress from "./pages/driver/PickupInProgress";
 import DeliveryInProgress from "./pages/driver/DeliveryInProgress";
 import ReturnInProgress from "./pages/driver/ReturnInProgress";
 import CancelledReturnInProgress from "./pages/driver/CancelledReturnInProgress";
+import MyData from "./pages/shared/MyData";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminDrivers from "./pages/admin/AdminDrivers";
 import AdminRestaurants from "./pages/admin/AdminRestaurants";
@@ -329,6 +330,22 @@ const App = () => (
                 <DriverRoute>
                   <DriverPointsStore />
                 </DriverRoute>
+              }
+            />
+            <Route
+              path="/driver/my-data"
+              element={
+                <DriverRoute>
+                  <MyData />
+                </DriverRoute>
+              }
+            />
+            <Route
+              path="/restaurant/my-data"
+              element={
+                <RestaurantRoute>
+                  <MyData />
+                </RestaurantRoute>
               }
             />
             <Route

@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast';
 import {
   Loader2, Star, Package, Settings, Camera, LogOut,
   ChevronRight, Pencil, Check, X, Bell, Info, Lock, User,
-  MapPin, Building2, Phone, Clock,
+  MapPin, Building2, Phone, Clock, ClipboardList,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
@@ -350,6 +350,23 @@ export default function RestaurantProfile() {
                 <div className="text-left">
                   <p className="text-sm font-medium text-gray-900">Histórico de entregas</p>
                   <p className="text-xs text-gray-400">Ver todas as suas solicitações</p>
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-gray-300" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── MEUS DADOS ── */}
+        <div>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1 mb-2">Minha conta</p>
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <button onClick={() => navigate('/restaurant/my-data')} className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors" style={{ minHeight: 56 }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center"><ClipboardList className="h-4 w-4 text-primary" /></div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-gray-900">Meus dados</p>
+                  <p className="text-xs text-gray-400">E-mail, senha e endereço</p>
                 </div>
               </div>
               <ChevronRight className="h-4 w-4 text-gray-300" />
