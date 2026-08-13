@@ -1,6 +1,6 @@
-# Arquitetura do Movvi - Diagrama Completo
+﻿# Arquitetura do Movvi - Diagrama Completo
 
-## 🏗️ Visão Geral da Arquitetura
+## ðŸ—ï¸ VisÃ£o Geral da Arquitetura
 
 <lov-mermaid>
 graph TB
@@ -10,7 +10,7 @@ graph TB
         MOBILE[App Mobile Motoboy<br/>React Native + Capacitor]
     end
 
-    subgraph "Lovable Cloud Backend - Supabase"
+    subgraph "Backend - Supabase"
         subgraph "Authentication"
             AUTH[Supabase Auth<br/>Email/Password/OAuth]
         end
@@ -21,7 +21,7 @@ graph TB
         end
         
         subgraph "Edge Functions"
-            EF1[notify-drivers<br/>Notifica motoboys disponíveis]
+            EF1[notify-drivers<br/>Notifica motoboys disponÃ­veis]
             EF2[calculate-price<br/>Calcula valor sugerido]
             EF3[process-payment<br/>Processa pagamentos]
             EF4[send-notification<br/>Push notifications]
@@ -46,7 +46,7 @@ graph TB
         SMS[Twilio<br/>SMS]
     end
 
-    %% Conexões Frontend -> Backend
+    %% ConexÃµes Frontend -> Backend
     WEB1 -->|REST API| POSTGRES
     WEB1 -->|Auth| AUTH
     WEB1 -->|WebSocket| RT
@@ -66,7 +66,7 @@ graph TB
     POSTGRES -.->|Enforce| RLS
     RLS -.->|Validate| AUTH
 
-    %% Edge Functions conexões
+    %% Edge Functions conexÃµes
     EF1 -->|Query| POSTGRES
     EF1 -->|Send| PUSH
     
@@ -83,7 +83,7 @@ graph TB
     
     EF6 -->|Calculate| MAPS
     
-    %% Triggers automáticos
+    %% Triggers automÃ¡ticos
     POSTGRES -->|Trigger| EF1
     POSTGRES -->|Trigger| EF3
     POSTGRES -->|Trigger| EF4
@@ -105,9 +105,9 @@ graph TB
 
 ---
 
-## 📱 Detalhamento por Camada
+## ðŸ“± Detalhamento por Camada
 
-### **1. Frontend Layer - Camada de Apresentação**
+### **1. Frontend Layer - Camada de ApresentaÃ§Ã£o**
 
 <lov-mermaid>
 graph LR
@@ -115,22 +115,22 @@ graph LR
         R1[Dashboard]
         R2[Nova Entrega]
         R3[Rastreamento]
-        R4[Histórico]
+        R4[HistÃ³rico]
         R5[Financeiro]
     end
     
     subgraph "Painel Admin"
         A1[Monitoramento]
-        A2[Gestão Usuários]
+        A2[GestÃ£o UsuÃ¡rios]
         A3[Disputas]
         A4[Analytics]
-        A5[Configurações]
+        A5[ConfiguraÃ§Ãµes]
     end
     
     subgraph "App Mobile"
         M1[Home]
-        M2[Entregas Disponíveis]
-        M3[Navegação GPS]
+        M2[Entregas DisponÃ­veis]
+        M3[NavegaÃ§Ã£o GPS]
         M4[Carteira]
         M5[Perfil]
     end
@@ -156,7 +156,7 @@ graph LR
 
 ---
 
-## 🗄️ Database Architecture - Estrutura de Dados
+## ðŸ—„ï¸ Database Architecture - Estrutura de Dados
 
 <lov-mermaid>
 erDiagram
@@ -269,7 +269,7 @@ erDiagram
 
 ---
 
-## 🔄 Fluxo de Dados - Delivery Lifecycle
+## ðŸ”„ Fluxo de Dados - Delivery Lifecycle
 
 <lov-mermaid>
 sequenceDiagram
@@ -281,7 +281,7 @@ sequenceDiagram
     participant GPS as GPS/Maps API
     participant PN as Push Notifications
     
-    Note over R,M: 1. CRIAÇÃO DO PEDIDO
+    Note over R,M: 1. CRIAÃ‡ÃƒO DO PEDIDO
     R->>DB: INSERT delivery
     DB->>EF: Trigger notify-drivers
     EF->>DB: Query available drivers (5km radius)
@@ -321,7 +321,7 @@ sequenceDiagram
 
 ---
 
-## 🔐 Security Layer - Camada de Segurança
+## ðŸ” Security Layer - Camada de SeguranÃ§a
 
 <lov-mermaid>
 graph TB
@@ -367,7 +367,7 @@ graph TB
 ### **Exemplos de RLS Policies:**
 
 ```sql
--- Motoboys só veem entregas disponíveis na sua região
+-- Motoboys sÃ³ veem entregas disponÃ­veis na sua regiÃ£o
 CREATE POLICY "drivers_view_nearby"
 ON deliveries FOR SELECT
 TO authenticated
@@ -380,13 +380,13 @@ USING (
   )
 );
 
--- Restaurantes só veem suas próprias entregas
+-- Restaurantes sÃ³ veem suas prÃ³prias entregas
 CREATE POLICY "restaurants_view_own"
 ON deliveries FOR SELECT
 TO authenticated
 USING (restaurant_id = auth.uid());
 
--- Motoboys só editam entregas que aceitaram
+-- Motoboys sÃ³ editam entregas que aceitaram
 CREATE POLICY "drivers_update_own"
 ON deliveries FOR UPDATE
 TO authenticated
@@ -395,7 +395,7 @@ USING (driver_id = auth.uid());
 
 ---
 
-## 🚀 Edge Functions Architecture
+## ðŸš€ Edge Functions Architecture
 
 <lov-mermaid>
 graph TB
@@ -444,7 +444,7 @@ graph TB
 
 ---
 
-## 📡 Real-time Communication
+## ðŸ“¡ Real-time Communication
 
 <lov-mermaid>
 graph LR
@@ -491,7 +491,7 @@ graph LR
 ### **Exemplo de Subscription:**
 
 ```typescript
-// No app do restaurante - rastreia entrega específica
+// No app do restaurante - rastreia entrega especÃ­fica
 const channel = supabase
   .channel(`delivery:${deliveryId}`)
   .on('postgres_changes', {
@@ -515,7 +515,7 @@ const channel = supabase
 
 ---
 
-## 📦 File Storage Architecture
+## ðŸ“¦ File Storage Architecture
 
 <lov-mermaid>
 graph TB
@@ -527,7 +527,7 @@ graph TB
     subgraph "Storage Buckets"
         B1[drivers-documents<br/>CNH, Documentos]
         B2[delivery-photos<br/>Fotos de coleta/entrega]
-        B3[restaurant-docs<br/>CNPJ, Alvará]
+        B3[restaurant-docs<br/>CNPJ, AlvarÃ¡]
         B4[avatars<br/>Fotos de perfil]
     end
     
@@ -560,7 +560,7 @@ graph TB
 
 ---
 
-## 🌐 API Endpoints Structure
+## ðŸŒ API Endpoints Structure
 
 <lov-mermaid>
 graph LR
@@ -612,7 +612,7 @@ graph LR
 
 ---
 
-## 📊 Monitoring & Analytics
+## ðŸ“Š Monitoring & Analytics
 
 <lov-mermaid>
 graph TB
@@ -657,7 +657,7 @@ graph TB
 
 ---
 
-## 🚦 Performance Optimization
+## ðŸš¦ Performance Optimization
 
 <lov-mermaid>
 graph TB
@@ -699,7 +699,7 @@ graph TB
 
 ---
 
-## 🔧 Deployment Architecture
+## ðŸ”§ Deployment Architecture
 
 <lov-mermaid>
 graph TB
@@ -708,12 +708,12 @@ graph TB
     end
     
     subgraph "CI/CD"
-        CI[Lovable CI/CD]
+        CI[GitHub Actions / Vercel]
         BUILD[Build & Test]
     end
     
     subgraph "Production"
-        WEB_PROD[Web Apps<br/>Lovable Hosting]
+        WEB_PROD[Web Apps<br/>Vercel Hosting]
         BACKEND[Supabase Cloud<br/>Backend Services]
         CDN[CDN<br/>Static Assets]
     end
@@ -740,7 +740,7 @@ graph TB
 
 ---
 
-## 🎯 Tecnologias Utilizadas
+## ðŸŽ¯ Tecnologias Utilizadas
 
 ### **Frontend**
 - **Framework:** React 18 + TypeScript
@@ -750,7 +750,7 @@ graph TB
 - **Maps:** Google Maps SDK / Mapbox
 - **Mobile:** Capacitor (React Native bridge)
 
-### **Backend (Lovable Cloud / Supabase)**
+### **Backend (Vercel / Supabase)**
 - **Database:** PostgreSQL 15+
 - **Auth:** Supabase Auth (JWT-based)
 - **Real-time:** Supabase Realtime (WebSocket)
@@ -766,14 +766,14 @@ graph TB
 - **Document Validation:** Serpro API (Brasil)
 
 ### **DevOps & Monitoring**
-- **Hosting:** Lovable Cloud (Frontend + Backend)
-- **CI/CD:** Lovable automated deployment
+- **Hosting:** Vercel (Frontend + Backend)
+- **CI/CD:** Vercel autodeploy
 - **Monitoring:** Supabase Dashboard + Custom metrics
 - **Logs:** Supabase Logs + Edge Function logs
 
 ---
 
-## 🔄 Scalability Considerations
+## ðŸ”„ Scalability Considerations
 
 ### **Database Scaling**
 - Indexes em colunas frequentemente consultadas
@@ -799,26 +799,27 @@ graph TB
 
 ---
 
-## 📈 Future Enhancements
+## ðŸ“ˆ Future Enhancements
 
 1. **Machine Learning**
-   - Previsão de demanda por região/horário
-   - Otimização automática de rotas
-   - Detecção de fraudes
+   - PrevisÃ£o de demanda por regiÃ£o/horÃ¡rio
+   - OtimizaÃ§Ã£o automÃ¡tica de rotas
+   - DetecÃ§Ã£o de fraudes
 
 2. **Advanced Features**
    - Multi-stop deliveries
    - Scheduled deliveries
-   - Delivery pooling (múltiplos pedidos)
+   - Delivery pooling (mÃºltiplos pedidos)
    - White-label para parceiros
 
 3. **Performance**
    - GraphQL para queries complexas
    - Service Workers para PWA
-   - WebAssembly para cálculos pesados
+   - WebAssembly para cÃ¡lculos pesados
 
 4. **Integrations**
    - ERPs de restaurantes
    - Plataformas de e-commerce
    - Sistemas de CRM
-   - Analytics avançado
+   - Analytics avanÃ§ado
+

@@ -5,10 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import {
-  MapPin, Package, Navigation, Clock,
-  ChevronRight, Wifi, WifiOff,
-} from 'lucide-react';
+import { MapPin, Package, Navigation, Clock, WifiOff } from 'lucide-react';
 import { DeliveryNotificationCard } from '@/components/DeliveryNotificationCard';
 import { DriverDrawer } from '@/components/DriverDrawer';
 import L from 'leaflet';

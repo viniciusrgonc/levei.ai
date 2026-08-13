@@ -1,24 +1,24 @@
-# API Endpoints - Movvi MVP
+﻿# API Endpoints - Movvi MVP
 
-## Índice
-- [Autenticação](#autenticação)
+## Ãndice
+- [AutenticaÃ§Ã£o](#autenticaÃ§Ã£o)
 - [Entregas](#entregas)
 - [Motoristas](#motoristas)
 - [Restaurantes](#restaurantes)
-- [Localização](#localização)
-- [Avaliações](#avaliações)
-- [Transações](#transações)
+- [LocalizaÃ§Ã£o](#localizaÃ§Ã£o)
+- [AvaliaÃ§Ãµes](#avaliaÃ§Ãµes)
+- [TransaÃ§Ãµes](#transaÃ§Ãµes)
 - [Admin](#admin)
-- [Notificações](#notificações)
+- [NotificaÃ§Ãµes](#notificaÃ§Ãµes)
 
 ---
 
-## Autenticação
+## AutenticaÃ§Ã£o
 
-### 1. Registro de Usuário
+### 1. Registro de UsuÃ¡rio
 **POST** `/auth/signup`
 
-Registra novo usuário (restaurante ou motorista).
+Registra novo usuÃ¡rio (restaurante ou motorista).
 
 **Body:**
 ```json
@@ -27,9 +27,9 @@ Registra novo usuário (restaurante ou motorista).
   "password": "senha123",
   "user_type": "restaurant | driver",
   "profile_data": {
-    "name": "Nome do Usuário",
+    "name": "Nome do UsuÃ¡rio",
     "phone": "+5511999999999",
-    // Campos específicos por tipo
+    // Campos especÃ­ficos por tipo
   }
 }
 ```
@@ -49,14 +49,14 @@ Registra novo usuário (restaurante ou motorista).
 }
 ```
 
-**Permissões:** Público
+**PermissÃµes:** PÃºblico
 
 ---
 
 ### 2. Login
 **POST** `/auth/login`
 
-Autentica usuário existente.
+Autentica usuÃ¡rio existente.
 
 **Body:**
 ```json
@@ -81,14 +81,14 @@ Autentica usuário existente.
 }
 ```
 
-**Permissões:** Público
+**PermissÃµes:** PÃºblico
 
 ---
 
 ### 3. Logout
 **POST** `/auth/logout`
 
-Encerra sessão do usuário.
+Encerra sessÃ£o do usuÃ¡rio.
 
 **Headers:**
 ```
@@ -102,7 +102,7 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Autenticado
+**PermissÃµes:** Autenticado
 
 ---
 
@@ -126,7 +126,7 @@ Renova token de acesso.
 }
 ```
 
-**Permissões:** Público
+**PermissÃµes:** PÃºblico
 
 ---
 
@@ -135,7 +135,7 @@ Renova token de acesso.
 ### 5. Criar Entrega
 **POST** `/deliveries`
 
-Restaurante cria nova solicitação de entrega.
+Restaurante cria nova solicitaÃ§Ã£o de entrega.
 
 **Headers:**
 ```
@@ -148,7 +148,7 @@ Authorization: Bearer {access_token}
   "pickup_address": {
     "street": "Rua Exemplo, 123",
     "neighborhood": "Bairro",
-    "city": "São Paulo",
+    "city": "SÃ£o Paulo",
     "state": "SP",
     "zip_code": "01234-567",
     "latitude": -23.5505,
@@ -158,16 +158,16 @@ Authorization: Bearer {access_token}
   "delivery_address": {
     "street": "Av. Paulista, 1000",
     "neighborhood": "Bela Vista",
-    "city": "São Paulo",
+    "city": "SÃ£o Paulo",
     "state": "SP",
     "zip_code": "01310-100",
     "latitude": -23.5629,
     "longitude": -46.6544,
     "complement": "Bloco B"
   },
-  "customer_name": "João Silva",
+  "customer_name": "JoÃ£o Silva",
   "customer_phone": "+5511988887777",
-  "notes": "Campainha não funciona, ligar ao chegar",
+  "notes": "Campainha nÃ£o funciona, ligar ao chegar",
   "estimated_value": 1500, // centavos
   "package_size": "small | medium | large"
 }
@@ -185,7 +185,7 @@ Authorization: Bearer {access_token}
     "estimated_time_minutes": 25,
     "pickup_address": {...},
     "delivery_address": {...},
-    "customer_name": "João Silva",
+    "customer_name": "JoÃ£o Silva",
     "customer_phone": "+5511988887777",
     "created_at": "2025-10-21T10:30:00Z"
   }
@@ -194,14 +194,14 @@ Authorization: Bearer {access_token}
 
 **Edge Function:** `calculate-delivery-price`
 
-**Permissões:** Restaurante autenticado
+**PermissÃµes:** Restaurante autenticado
 
 ---
 
-### 6. Listar Entregas Disponíveis
+### 6. Listar Entregas DisponÃ­veis
 **GET** `/deliveries/available`
 
-Motorista visualiza entregas disponíveis próximas.
+Motorista visualiza entregas disponÃ­veis prÃ³ximas.
 
 **Headers:**
 ```
@@ -236,14 +236,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado e disponível
+**PermissÃµes:** Motorista autenticado e disponÃ­vel
 
 ---
 
 ### 7. Aceitar Entrega
 **POST** `/deliveries/{delivery_id}/accept`
 
-Motorista aceita uma entrega disponível.
+Motorista aceita uma entrega disponÃ­vel.
 
 **Headers:**
 ```
@@ -265,7 +265,7 @@ Authorization: Bearer {access_token}
 
 **Edge Function:** `notify-restaurant`
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
@@ -305,14 +305,14 @@ Authorization: Bearer {access_token}
 
 **Edge Function:** `send-notification` (notifica restaurante e cliente)
 
-**Permissões:** Motorista responsável pela entrega
+**PermissÃµes:** Motorista responsÃ¡vel pela entrega
 
 ---
 
 ### 9. Obter Detalhes da Entrega
 **GET** `/deliveries/{delivery_id}`
 
-Obtém detalhes completos de uma entrega específica.
+ObtÃ©m detalhes completos de uma entrega especÃ­fica.
 
 **Headers:**
 ```
@@ -334,13 +334,13 @@ Authorization: Bearer {access_token}
     "status": "on_way_to_delivery",
     "pickup_address": {...},
     "delivery_address": {...},
-    "customer_name": "João Silva",
+    "customer_name": "JoÃ£o Silva",
     "customer_phone": "+5511988887777",
     "delivery_fee": 850,
     "distance_km": 3.5,
     "estimated_time_minutes": 25,
     "package_size": "small",
-    "notes": "Campainha não funciona",
+    "notes": "Campainha nÃ£o funciona",
     "created_at": "2025-10-21T10:30:00Z",
     "accepted_at": "2025-10-21T10:35:00Z",
     "picked_up_at": "2025-10-21T10:55:00Z",
@@ -354,14 +354,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Restaurante (própria entrega) ou Motorista (entrega aceita)
+**PermissÃµes:** Restaurante (prÃ³pria entrega) ou Motorista (entrega aceita)
 
 ---
 
 ### 10. Listar Minhas Entregas (Restaurante)
 **GET** `/restaurants/deliveries`
 
-Restaurante visualiza histórico de suas entregas.
+Restaurante visualiza histÃ³rico de suas entregas.
 
 **Headers:**
 ```
@@ -385,7 +385,7 @@ Authorization: Bearer {access_token}
       "id": "uuid",
       "driver_name": "Carlos Motorista",
       "status": "delivered",
-      "customer_name": "João Silva",
+      "customer_name": "JoÃ£o Silva",
       "delivery_address": {...},
       "delivery_fee": 850,
       "created_at": "2025-10-21T10:30:00Z",
@@ -401,14 +401,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Restaurante autenticado
+**PermissÃµes:** Restaurante autenticado
 
 ---
 
 ### 11. Listar Minhas Entregas (Motorista)
 **GET** `/drivers/deliveries`
 
-Motorista visualiza histórico de entregas.
+Motorista visualiza histÃ³rico de entregas.
 
 **Headers:**
 ```
@@ -445,7 +445,7 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
@@ -462,7 +462,7 @@ Authorization: Bearer {access_token}
 **Body:**
 ```json
 {
-  "reason": "Cliente cancelou pedido" // obrigatório
+  "reason": "Cliente cancelou pedido" // obrigatÃ³rio
 }
 ```
 
@@ -481,9 +481,9 @@ Authorization: Bearer {access_token}
 
 **Edge Function:** `handle-cancellation` (notifica partes envolvidas)
 
-**Permissões:** 
+**PermissÃµes:** 
 - Restaurante: apenas status "pending"
-- Motorista: após aceitar, com justificativa
+- Motorista: apÃ³s aceitar, com justificativa
 
 ---
 
@@ -492,7 +492,7 @@ Authorization: Bearer {access_token}
 ### 13. Atualizar Status de Disponibilidade
 **PATCH** `/drivers/status`
 
-Motorista alterna entre disponível/indisponível.
+Motorista alterna entre disponÃ­vel/indisponÃ­vel.
 
 **Headers:**
 ```
@@ -525,14 +525,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
 ### 14. Atualizar Perfil do Motorista
 **PATCH** `/drivers/profile`
 
-Motorista atualiza informações de perfil.
+Motorista atualiza informaÃ§Ãµes de perfil.
 
 **Headers:**
 ```
@@ -569,14 +569,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
 ### 15. Obter Perfil do Motorista
 **GET** `/drivers/profile`
 
-Obtém dados completos do perfil do motorista.
+ObtÃ©m dados completos do perfil do motorista.
 
 **Headers:**
 ```
@@ -605,7 +605,7 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
@@ -614,7 +614,7 @@ Authorization: Bearer {access_token}
 ### 16. Atualizar Perfil do Restaurante
 **PATCH** `/restaurants/profile`
 
-Restaurante atualiza informações de perfil.
+Restaurante atualiza informaÃ§Ãµes de perfil.
 
 **Headers:**
 ```
@@ -629,7 +629,7 @@ Authorization: Bearer {access_token}
   "address": {
     "street": "Rua Exemplo, 123",
     "neighborhood": "Centro",
-    "city": "São Paulo",
+    "city": "SÃ£o Paulo",
     "state": "SP",
     "zip_code": "01234-567",
     "latitude": -23.5505,
@@ -663,14 +663,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Restaurante autenticado
+**PermissÃµes:** Restaurante autenticado
 
 ---
 
 ### 17. Obter Perfil do Restaurante
 **GET** `/restaurants/profile`
 
-Obtém dados completos do perfil do restaurante.
+ObtÃ©m dados completos do perfil do restaurante.
 
 **Headers:**
 ```
@@ -695,16 +695,16 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Restaurante autenticado
+**PermissÃµes:** Restaurante autenticado
 
 ---
 
-## Localização
+## LocalizaÃ§Ã£o
 
-### 18. Atualizar Localização em Tempo Real
+### 18. Atualizar LocalizaÃ§Ã£o em Tempo Real
 **POST** `/location/update`
 
-Motorista envia atualização de localização durante entrega.
+Motorista envia atualizaÃ§Ã£o de localizaÃ§Ã£o durante entrega.
 
 **Headers:**
 ```
@@ -717,7 +717,7 @@ Authorization: Bearer {access_token}
   "delivery_id": "uuid",
   "latitude": -23.5580,
   "longitude": -46.6400,
-  "heading": 90, // opcional, direção em graus
+  "heading": 90, // opcional, direÃ§Ã£o em graus
   "speed": 30 // opcional, km/h
 }
 ```
@@ -735,16 +735,16 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista em entrega ativa
+**PermissÃµes:** Motorista em entrega ativa
 
-**Real-time:** Publica atualização via Supabase Realtime para o restaurante acompanhar
+**Real-time:** Publica atualizaÃ§Ã£o via Supabase Realtime para o restaurante acompanhar
 
 ---
 
 ### 19. Rastrear Entrega em Tempo Real
 **GET** `/deliveries/{delivery_id}/track`
 
-Restaurante acompanha localização do motorista em tempo real.
+Restaurante acompanha localizaÃ§Ã£o do motorista em tempo real.
 
 **Headers:**
 ```
@@ -769,16 +769,16 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Restaurante (própria entrega)
+**PermissÃµes:** Restaurante (prÃ³pria entrega)
 
 ---
 
-## Avaliações
+## AvaliaÃ§Ãµes
 
 ### 20. Avaliar Motorista (Restaurante)
 **POST** `/deliveries/{delivery_id}/rate-driver`
 
-Restaurante avalia motorista após entrega concluída.
+Restaurante avalia motorista apÃ³s entrega concluÃ­da.
 
 **Headers:**
 ```
@@ -789,7 +789,7 @@ Authorization: Bearer {access_token}
 ```json
 {
   "rating": 5, // 1 a 5
-  "comment": "Entrega rápida e cuidadosa!" // opcional
+  "comment": "Entrega rÃ¡pida e cuidadosa!" // opcional
 }
 ```
 
@@ -802,20 +802,20 @@ Authorization: Bearer {access_token}
     "driver_id": "uuid",
     "rated_by": "restaurant",
     "rating": 5,
-    "comment": "Entrega rápida e cuidadosa!",
+    "comment": "Entrega rÃ¡pida e cuidadosa!",
     "created_at": "2025-10-21T11:20:00Z"
   }
 }
 ```
 
-**Permissões:** Restaurante que criou a entrega
+**PermissÃµes:** Restaurante que criou a entrega
 
 ---
 
 ### 21. Avaliar Restaurante (Motorista)
 **POST** `/deliveries/{delivery_id}/rate-restaurant`
 
-Motorista avalia restaurante após entrega concluída.
+Motorista avalia restaurante apÃ³s entrega concluÃ­da.
 
 **Headers:**
 ```
@@ -845,16 +845,16 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista que realizou a entrega
+**PermissÃµes:** Motorista que realizou a entrega
 
 ---
 
-## Transações
+## TransaÃ§Ãµes
 
-### 22. Listar Transações (Motorista)
+### 22. Listar TransaÃ§Ãµes (Motorista)
 **GET** `/drivers/transactions`
 
-Motorista visualiza histórico financeiro.
+Motorista visualiza histÃ³rico financeiro.
 
 **Headers:**
 ```
@@ -896,14 +896,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Motorista autenticado
+**PermissÃµes:** Motorista autenticado
 
 ---
 
 ### 23. Solicitar Saque
 **POST** `/drivers/withdraw`
 
-Motorista solicita saque do saldo disponível.
+Motorista solicita saque do saldo disponÃ­vel.
 
 **Headers:**
 ```
@@ -913,7 +913,7 @@ Authorization: Bearer {access_token}
 **Body:**
 ```json
 {
-  "amount": 10000, // centavos (mínimo R$ 20,00)
+  "amount": 10000, // centavos (mÃ­nimo R$ 20,00)
   "pix_key": "email@exemplo.com"
 }
 ```
@@ -934,16 +934,16 @@ Authorization: Bearer {access_token}
 
 **Edge Function:** `process-withdrawal`
 
-**Permissões:** Motorista autenticado com saldo suficiente
+**PermissÃµes:** Motorista autenticado com saldo suficiente
 
 ---
 
 ## Admin
 
-### 24. Dashboard de Estatísticas
+### 24. Dashboard de EstatÃ­sticas
 **GET** `/admin/dashboard`
 
-Administrador visualiza estatísticas gerais da plataforma.
+Administrador visualiza estatÃ­sticas gerais da plataforma.
 
 **Headers:**
 ```
@@ -991,14 +991,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Admin autenticado
+**PermissÃµes:** Admin autenticado
 
 ---
 
-### 25. Listar Todos os Usuários
+### 25. Listar Todos os UsuÃ¡rios
 **GET** `/admin/users`
 
-Administrador lista usuários cadastrados.
+Administrador lista usuÃ¡rios cadastrados.
 
 **Headers:**
 ```
@@ -1038,14 +1038,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Admin autenticado
+**PermissÃµes:** Admin autenticado
 
 ---
 
-### 26. Gerenciar Status de Usuário
+### 26. Gerenciar Status de UsuÃ¡rio
 **PATCH** `/admin/users/{user_id}/status`
 
-Administrador ativa/desativa usuário.
+Administrador ativa/desativa usuÃ¡rio.
 
 **Headers:**
 ```
@@ -1056,7 +1056,7 @@ Authorization: Bearer {access_token}
 ```json
 {
   "status": "active | inactive",
-  "reason": "Motivo da ação" // obrigatório para desativar
+  "reason": "Motivo da aÃ§Ã£o" // obrigatÃ³rio para desativar
 }
 ```
 
@@ -1071,7 +1071,7 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Admin autenticado
+**PermissÃµes:** Admin autenticado
 
 ---
 
@@ -1107,7 +1107,7 @@ Authorization: Bearer {access_token}
       "status": "delivered",
       "delivery_fee": 850,
       "platform_fee": 170,
-      "customer_name": "João Silva",
+      "customer_name": "JoÃ£o Silva",
       "created_at": "2025-10-21T10:30:00Z",
       "delivered_at": "2025-10-21T11:15:00Z"
     }
@@ -1120,16 +1120,16 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Admin autenticado
+**PermissÃµes:** Admin autenticado
 
 ---
 
-## Notificações
+## NotificaÃ§Ãµes
 
 ### 28. Registrar Token de Push Notification
 **POST** `/notifications/register-token`
 
-Registra token FCM para receber notificações push.
+Registra token FCM para receber notificaÃ§Ãµes push.
 
 **Headers:**
 ```
@@ -1151,14 +1151,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Autenticado
+**PermissÃµes:** Autenticado
 
 ---
 
-### 29. Listar Notificações
+### 29. Listar NotificaÃ§Ãµes
 **GET** `/notifications`
 
-Usuário visualiza histórico de notificações.
+UsuÃ¡rio visualiza histÃ³rico de notificaÃ§Ãµes.
 
 **Headers:**
 ```
@@ -1197,14 +1197,14 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Autenticado
+**PermissÃµes:** Autenticado
 
 ---
 
-### 30. Marcar Notificação como Lida
+### 30. Marcar NotificaÃ§Ã£o como Lida
 **PATCH** `/notifications/{notification_id}/read`
 
-Marca notificação específica como lida.
+Marca notificaÃ§Ã£o especÃ­fica como lida.
 
 **Headers:**
 ```
@@ -1222,102 +1222,102 @@ Authorization: Bearer {access_token}
 }
 ```
 
-**Permissões:** Proprietário da notificação
+**PermissÃµes:** ProprietÃ¡rio da notificaÃ§Ã£o
 
 ---
 
-## Edge Functions Necessárias
+## Edge Functions NecessÃ¡rias
 
 ### Lista de Edge Functions para o MVP:
 
 1. **`calculate-delivery-price`**
-   - Calcula preço da entrega baseado em distância, horário e demanda
+   - Calcula preÃ§o da entrega baseado em distÃ¢ncia, horÃ¡rio e demanda
    - Chamado ao criar entrega
 
 2. **`notify-drivers`**
-   - Notifica motoristas próximos sobre nova entrega
+   - Notifica motoristas prÃ³ximos sobre nova entrega
    - Envia push notifications via FCM
-   - Chamado quando entrega é criada
+   - Chamado quando entrega Ã© criada
 
 3. **`send-notification`**
-   - Envia notificações push genéricas
+   - Envia notificaÃ§Ãµes push genÃ©ricas
    - Usado em diversos pontos do fluxo
 
 4. **`process-payment`**
    - Processa pagamento da taxa de entrega
-   - Integração com gateway de pagamento
+   - IntegraÃ§Ã£o com gateway de pagamento
    - Chamado ao concluir entrega
 
 5. **`process-withdrawal`**
-   - Processa solicitação de saque do motorista
-   - Integração com sistema de pagamentos (PIX)
+   - Processa solicitaÃ§Ã£o de saque do motorista
+   - IntegraÃ§Ã£o com sistema de pagamentos (PIX)
    - Chamado ao solicitar saque
 
 6. **`handle-cancellation`**
    - Processa cancelamento de entrega
-   - Aplica regras de penalidade se necessário
+   - Aplica regras de penalidade se necessÃ¡rio
    - Notifica partes envolvidas
 
 7. **`update-ratings`**
-   - Recalcula médias de avaliações
+   - Recalcula mÃ©dias de avaliaÃ§Ãµes
    - Atualiza perfis de motoristas e restaurantes
-   - Chamado após nova avaliação
+   - Chamado apÃ³s nova avaliaÃ§Ã£o
 
 8. **`generate-reports`**
-   - Gera relatórios para admin
+   - Gera relatÃ³rios para admin
    - Processa dados agregados
    - Chamado pelo painel admin
 
 ---
 
-## Segurança e Autenticação
+## SeguranÃ§a e AutenticaÃ§Ã£o
 
-### Headers Obrigatórios:
+### Headers ObrigatÃ³rios:
 ```
 Authorization: Bearer {access_token}
 Content-Type: application/json
 ```
 
 ### Row Level Security (RLS):
-Todas as tabelas possuem políticas RLS:
-- Motoristas só veem suas próprias entregas ativas
-- Restaurantes só veem suas próprias entregas
-- Admin tem acesso total via função `has_role()`
+Todas as tabelas possuem polÃ­ticas RLS:
+- Motoristas sÃ³ veem suas prÃ³prias entregas ativas
+- Restaurantes sÃ³ veem suas prÃ³prias entregas
+- Admin tem acesso total via funÃ§Ã£o `has_role()`
 
 ### Rate Limiting:
-- 100 requisições/minuto por usuário
-- 1000 requisições/minuto para admin
-- 10 requisições/minuto para endpoints de criação
+- 100 requisiÃ§Ãµes/minuto por usuÃ¡rio
+- 1000 requisiÃ§Ãµes/minuto para admin
+- 10 requisiÃ§Ãµes/minuto para endpoints de criaÃ§Ã£o
 
 ---
 
-## Códigos de Status HTTP
+## CÃ³digos de Status HTTP
 
-| Código | Descrição |
+| CÃ³digo | DescriÃ§Ã£o |
 |--------|-----------|
 | 200 | Sucesso |
 | 201 | Criado com sucesso |
-| 400 | Requisição inválida |
-| 401 | Não autenticado |
-| 403 | Sem permissão |
-| 404 | Não encontrado |
-| 409 | Conflito (ex: entrega já aceita) |
-| 422 | Validação falhou |
-| 429 | Muitas requisições (rate limit) |
+| 400 | RequisiÃ§Ã£o invÃ¡lida |
+| 401 | NÃ£o autenticado |
+| 403 | Sem permissÃ£o |
+| 404 | NÃ£o encontrado |
+| 409 | Conflito (ex: entrega jÃ¡ aceita) |
+| 422 | ValidaÃ§Ã£o falhou |
+| 429 | Muitas requisiÃ§Ãµes (rate limit) |
 | 500 | Erro interno do servidor |
 
 ---
 
-## Formato de Erro Padrão
+## Formato de Erro PadrÃ£o
 
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Descrição amigável do erro",
+    "message": "DescriÃ§Ã£o amigÃ¡vel do erro",
     "details": {
       "field": "email",
-      "issue": "Email já cadastrado"
+      "issue": "Email jÃ¡ cadastrado"
     }
   }
 }
@@ -1331,36 +1331,37 @@ Todas as tabelas possuem políticas RLS:
 
 1. **`deliveries:delivery_id`**
    - Restaurante se inscreve para acompanhar status
-   - Recebe atualizações de localização do motorista
+   - Recebe atualizaÃ§Ãµes de localizaÃ§Ã£o do motorista
 
 2. **`drivers:available`**
-   - Sistema monitora motoristas disponíveis
-   - Usado para notificação de novas entregas
+   - Sistema monitora motoristas disponÃ­veis
+   - Usado para notificaÃ§Ã£o de novas entregas
 
 3. **`locations:delivery_id`**
-   - Atualização de localização em tempo real
-   - Frequência: a cada 5 segundos durante entrega ativa
+   - AtualizaÃ§Ã£o de localizaÃ§Ã£o em tempo real
+   - FrequÃªncia: a cada 5 segundos durante entrega ativa
 
 ---
 
 ## Versionamento da API
 
-Versão atual: **v1**
+VersÃ£o atual: **v1**
 
 Base URL: `https://{project-ref}.supabase.co/functions/v1/`
 
-Todas as rotas começam com o prefixo de versão quando necessário.
+Todas as rotas comeÃ§am com o prefixo de versÃ£o quando necessÃ¡rio.
 
 ---
 
-## Próximos Passos
+## PrÃ³ximos Passos
 
-Com esta documentação completa, você pode:
+Com esta documentaÃ§Ã£o completa, vocÃª pode:
 
-1. ✅ **Implementar o Backend** - Habilitar Lovable Cloud e criar tabelas
-2. ✅ **Criar Edge Functions** - Implementar as 8 funções listadas
-3. ✅ **Configurar RLS** - Aplicar políticas de segurança
-4. ✅ **Desenvolver Frontend** - Consumir estes endpoints
-5. ✅ **Testar Integração** - Validar todos os fluxos
+1. âœ… **Implementar o Backend** - Configurar Supabase e criar tabelas
+2. âœ… **Criar Edge Functions** - Implementar as 8 funÃ§Ãµes listadas
+3. âœ… **Configurar RLS** - Aplicar polÃ­ticas de seguranÃ§a
+4. âœ… **Desenvolver Frontend** - Consumir estes endpoints
+5. âœ… **Testar IntegraÃ§Ã£o** - Validar todos os fluxos
 
-Pronto para começar a implementação! 🚀
+Pronto para comeÃ§ar a implementaÃ§Ã£o! ðŸš€
+

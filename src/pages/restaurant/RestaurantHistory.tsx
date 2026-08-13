@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { MapPin, Package, Clock, Calendar, Eye, Search, Star, Loader2, ArrowLeft, ChevronRight, PackageX } from 'lucide-react';
+import { MapPin, Package, Eye, Search, Star, Loader2, ArrowLeft, ChevronRight, PackageX } from 'lucide-react';
 import { getStatusConfig } from '@/lib/deliveryStatus';
 import { toast } from '@/hooks/use-toast';
 import { RatingModal } from '@/components/RatingModal';

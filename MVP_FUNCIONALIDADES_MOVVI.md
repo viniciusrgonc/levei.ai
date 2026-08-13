@@ -1,276 +1,276 @@
-# MVP Movvi - Funcionalidades por Perfil
+﻿# MVP Movvi - Funcionalidades por Perfil
 
-## 🎯 Objetivo do MVP
+## ðŸŽ¯ Objetivo do MVP
 
-Validar a hipótese central: **Restaurantes conseguem encontrar motoboys autônomos de forma rápida e eficiente para realizar entregas.**
+Validar a hipÃ³tese central: **Restaurantes conseguem encontrar motoboys autÃ´nomos de forma rÃ¡pida e eficiente para realizar entregas.**
 
-**Critérios de Sucesso:**
-- Tempo médio de aceite < 3 minutos
-- Taxa de conclusão > 85%
+**CritÃ©rios de Sucesso:**
+- Tempo mÃ©dio de aceite < 3 minutos
+- Taxa de conclusÃ£o > 85%
 - Pelo menos 10 entregas completadas/dia
-- Rating médio > 4.0 estrelas
+- Rating mÃ©dio > 4.0 estrelas
 
 ---
 
-## 🏍️ Perfil: MOTOBOY
+## ðŸï¸ Perfil: MOTOBOY
 
-### **Autenticação & Perfil** 🔐
-| Funcionalidade | Prioridade | Descrição |
+### **AutenticaÃ§Ã£o & Perfil** ðŸ”
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Cadastro | 🔴 Crítica | Email, senha, nome completo, telefone |
-| Login | 🔴 Crítica | Email e senha |
-| Perfil básico | 🔴 Crítica | Foto, dados do veículo (tipo, placa) |
-| Upload de CNH | 🟡 Alta | Foto da CNH para verificação |
-| Status online/offline | 🔴 Crítica | Toggle para ficar disponível |
+| Cadastro | ðŸ”´ CrÃ­tica | Email, senha, nome completo, telefone |
+| Login | ðŸ”´ CrÃ­tica | Email e senha |
+| Perfil bÃ¡sico | ðŸ”´ CrÃ­tica | Foto, dados do veÃ­culo (tipo, placa) |
+| Upload de CNH | ðŸŸ¡ Alta | Foto da CNH para verificaÃ§Ã£o |
+| Status online/offline | ðŸ”´ CrÃ­tica | Toggle para ficar disponÃ­vel |
 
-### **Descoberta de Entregas** 📍
-| Funcionalidade | Prioridade | Descrição |
+### **Descoberta de Entregas** ðŸ“
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Lista de entregas disponíveis | 🔴 Crítica | Cards com valor, distância, restaurante |
-| Filtro por distância | 🟡 Alta | Mostrar apenas entregas até X km |
-| Detalhes da entrega | 🔴 Crítica | Endereços, valor, descrição |
-| Aceitar entrega | 🔴 Crítica | Botão para vincular entrega ao motoboy |
-| Recusar entrega | 🟡 Alta | Botão para passar a oportunidade |
-| Notificação de nova entrega | 🟡 Alta | Push notification quando entrega disponível |
+| Lista de entregas disponÃ­veis | ðŸ”´ CrÃ­tica | Cards com valor, distÃ¢ncia, restaurante |
+| Filtro por distÃ¢ncia | ðŸŸ¡ Alta | Mostrar apenas entregas atÃ© X km |
+| Detalhes da entrega | ðŸ”´ CrÃ­tica | EndereÃ§os, valor, descriÃ§Ã£o |
+| Aceitar entrega | ðŸ”´ CrÃ­tica | BotÃ£o para vincular entrega ao motoboy |
+| Recusar entrega | ðŸŸ¡ Alta | BotÃ£o para passar a oportunidade |
+| NotificaÃ§Ã£o de nova entrega | ðŸŸ¡ Alta | Push notification quando entrega disponÃ­vel |
 
-### **Execução da Entrega** 🚚
-| Funcionalidade | Prioridade | Descrição |
+### **ExecuÃ§Ã£o da Entrega** ðŸšš
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Ver entrega ativa | 🔴 Crítica | Tela com detalhes da entrega aceita |
-| Navegação GPS | 🔴 Crítica | Abrir Google Maps com endereço |
-| Botão "Cheguei para coletar" | 🔴 Crítica | Marca início da coleta |
-| Botão "Coletei o pedido" | 🔴 Crítica | Marca fim da coleta e início da entrega |
-| Foto do pedido (opcional) | 🟢 Média | Tirar foto após coleta |
-| Botão "Entrega concluída" | 🔴 Crítica | Marca conclusão da entrega |
-| Código de confirmação | 🟡 Alta | Cliente fornece código para confirmar |
-| Foto de comprovação | 🟢 Média | Foto da entrega concluída |
+| Ver entrega ativa | ðŸ”´ CrÃ­tica | Tela com detalhes da entrega aceita |
+| NavegaÃ§Ã£o GPS | ðŸ”´ CrÃ­tica | Abrir Google Maps com endereÃ§o |
+| BotÃ£o "Cheguei para coletar" | ðŸ”´ CrÃ­tica | Marca inÃ­cio da coleta |
+| BotÃ£o "Coletei o pedido" | ðŸ”´ CrÃ­tica | Marca fim da coleta e inÃ­cio da entrega |
+| Foto do pedido (opcional) | ðŸŸ¢ MÃ©dia | Tirar foto apÃ³s coleta |
+| BotÃ£o "Entrega concluÃ­da" | ðŸ”´ CrÃ­tica | Marca conclusÃ£o da entrega |
+| CÃ³digo de confirmaÃ§Ã£o | ðŸŸ¡ Alta | Cliente fornece cÃ³digo para confirmar |
+| Foto de comprovaÃ§Ã£o | ðŸŸ¢ MÃ©dia | Foto da entrega concluÃ­da |
 
-### **Histórico & Ganhos** 💰
-| Funcionalidade | Prioridade | Descrição |
+### **HistÃ³rico & Ganhos** ðŸ’°
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Lista de entregas realizadas | 🔴 Crítica | Histórico com status e valores |
-| Resumo de ganhos do dia | 🔴 Crítica | Total ganho no dia atual |
-| Resumo semanal | 🟡 Alta | Total da semana |
-| Detalhes de entrega passada | 🟡 Alta | Ver informações completas |
+| Lista de entregas realizadas | ðŸ”´ CrÃ­tica | HistÃ³rico com status e valores |
+| Resumo de ganhos do dia | ðŸ”´ CrÃ­tica | Total ganho no dia atual |
+| Resumo semanal | ðŸŸ¡ Alta | Total da semana |
+| Detalhes de entrega passada | ðŸŸ¡ Alta | Ver informaÃ§Ãµes completas |
 
-### **Avaliação** ⭐
-| Funcionalidade | Prioridade | Descrição |
+### **AvaliaÃ§Ã£o** â­
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Avaliar restaurante | 🟡 Alta | Estrelas (1-5) após entrega |
-| Ver minhas avaliações | 🟢 Média | Feedback recebido |
-| Rating médio no perfil | 🟡 Alta | Mostrar média de avaliações |
+| Avaliar restaurante | ðŸŸ¡ Alta | Estrelas (1-5) apÃ³s entrega |
+| Ver minhas avaliaÃ§Ãµes | ðŸŸ¢ MÃ©dia | Feedback recebido |
+| Rating mÃ©dio no perfil | ðŸŸ¡ Alta | Mostrar mÃ©dia de avaliaÃ§Ãµes |
 
-### **Fora do MVP** ❌
-- ❌ Chat com restaurante
-- ❌ Múltiplas entregas simultâneas
-- ❌ Saque de valores
-- ❌ Agendamento de disponibilidade
-- ❌ Estatísticas avançadas
-- ❌ Programa de fidelidade
+### **Fora do MVP** âŒ
+- âŒ Chat com restaurante
+- âŒ MÃºltiplas entregas simultÃ¢neas
+- âŒ Saque de valores
+- âŒ Agendamento de disponibilidade
+- âŒ EstatÃ­sticas avanÃ§adas
+- âŒ Programa de fidelidade
 
 ---
 
-## 🍽️ Perfil: RESTAURANTE
+## ðŸ½ï¸ Perfil: RESTAURANTE
 
-### **Autenticação & Perfil** 🔐
-| Funcionalidade | Prioridade | Descrição |
+### **AutenticaÃ§Ã£o & Perfil** ðŸ”
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Cadastro | 🔴 Crítica | Email, senha, nome do restaurante, telefone |
-| Login | 🔴 Crítica | Email e senha |
-| Perfil do estabelecimento | 🔴 Crítica | Nome, endereço, foto |
-| Upload CNPJ (opcional MVP) | 🟢 Média | Documento para verificação |
+| Cadastro | ðŸ”´ CrÃ­tica | Email, senha, nome do restaurante, telefone |
+| Login | ðŸ”´ CrÃ­tica | Email e senha |
+| Perfil do estabelecimento | ðŸ”´ CrÃ­tica | Nome, endereÃ§o, foto |
+| Upload CNPJ (opcional MVP) | ðŸŸ¢ MÃ©dia | Documento para verificaÃ§Ã£o |
 
-### **Criar Entrega** 📦
-| Funcionalidade | Prioridade | Descrição |
+### **Criar Entrega** ðŸ“¦
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Formulário de nova entrega | 🔴 Crítica | Endereço coleta, entrega, descrição |
-| Cálculo automático de distância | 🔴 Crítica | Baseado nos endereços |
-| Sugestão de valor | 🔴 Crítica | Sistema sugere preço baseado em distância |
-| Ajustar valor manualmente | 🟡 Alta | Restaurante pode alterar valor sugerido |
-| Instruções especiais | 🟡 Alta | Campo de texto livre |
-| Confirmar criação | 🔴 Crítica | Botão para publicar entrega |
+| FormulÃ¡rio de nova entrega | ðŸ”´ CrÃ­tica | EndereÃ§o coleta, entrega, descriÃ§Ã£o |
+| CÃ¡lculo automÃ¡tico de distÃ¢ncia | ðŸ”´ CrÃ­tica | Baseado nos endereÃ§os |
+| SugestÃ£o de valor | ðŸ”´ CrÃ­tica | Sistema sugere preÃ§o baseado em distÃ¢ncia |
+| Ajustar valor manualmente | ðŸŸ¡ Alta | Restaurante pode alterar valor sugerido |
+| InstruÃ§Ãµes especiais | ðŸŸ¡ Alta | Campo de texto livre |
+| Confirmar criaÃ§Ã£o | ðŸ”´ CrÃ­tica | BotÃ£o para publicar entrega |
 
-### **Gerenciar Entregas** 📊
-| Funcionalidade | Prioridade | Descrição |
+### **Gerenciar Entregas** ðŸ“Š
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Ver entregas aguardando motoboy | 🔴 Crítica | Lista de pendentes |
-| Ver entregas em andamento | 🔴 Crítica | Entregas aceitas/em execução |
-| Rastreamento no mapa | 🔴 Crítica | Ver localização do motoboy em tempo real |
-| Status da entrega | 🔴 Crítica | Aguardando/Aceito/Coletando/Em entrega/Concluído |
-| Cancelar entrega | 🟡 Alta | Antes de ser aceita |
-| Ver histórico completo | 🔴 Crítica | Todas as entregas (filtros por data/status) |
-| Detalhes de entrega | 🔴 Crítica | Informações completas + comprovantes |
+| Ver entregas aguardando motoboy | ðŸ”´ CrÃ­tica | Lista de pendentes |
+| Ver entregas em andamento | ðŸ”´ CrÃ­tica | Entregas aceitas/em execuÃ§Ã£o |
+| Rastreamento no mapa | ðŸ”´ CrÃ­tica | Ver localizaÃ§Ã£o do motoboy em tempo real |
+| Status da entrega | ðŸ”´ CrÃ­tica | Aguardando/Aceito/Coletando/Em entrega/ConcluÃ­do |
+| Cancelar entrega | ðŸŸ¡ Alta | Antes de ser aceita |
+| Ver histÃ³rico completo | ðŸ”´ CrÃ­tica | Todas as entregas (filtros por data/status) |
+| Detalhes de entrega | ðŸ”´ CrÃ­tica | InformaÃ§Ãµes completas + comprovantes |
 
-### **Notificações** 🔔
-| Funcionalidade | Prioridade | Descrição |
+### **NotificaÃ§Ãµes** ðŸ””
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Entrega aceita | 🔴 Crítica | Push quando motoboy aceita |
-| Motoboy chegou | 🟡 Alta | Push quando motoboy marca chegada |
-| Entrega concluída | 🔴 Crítica | Push quando finaliza |
+| Entrega aceita | ðŸ”´ CrÃ­tica | Push quando motoboy aceita |
+| Motoboy chegou | ðŸŸ¡ Alta | Push quando motoboy marca chegada |
+| Entrega concluÃ­da | ðŸ”´ CrÃ­tica | Push quando finaliza |
 
-### **Avaliação** ⭐
-| Funcionalidade | Prioridade | Descrição |
+### **AvaliaÃ§Ã£o** â­
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Avaliar motoboy | 🟡 Alta | Estrelas (1-5) após conclusão |
-| Ver avaliações recebidas | 🟢 Média | Feedback de motoboys |
-| Rating médio no perfil | 🟡 Alta | Mostrar média |
+| Avaliar motoboy | ðŸŸ¡ Alta | Estrelas (1-5) apÃ³s conclusÃ£o |
+| Ver avaliaÃ§Ãµes recebidas | ðŸŸ¢ MÃ©dia | Feedback de motoboys |
+| Rating mÃ©dio no perfil | ðŸŸ¡ Alta | Mostrar mÃ©dia |
 
-### **Financeiro Básico** 💳
-| Funcionalidade | Prioridade | Descrição |
+### **Financeiro BÃ¡sico** ðŸ’³
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Ver custos do dia | 🔴 Crítica | Total gasto em entregas |
-| Ver custos do mês | 🟡 Alta | Total mensal |
-| Histórico de gastos | 🟡 Alta | Lista de todas as cobranças |
+| Ver custos do dia | ðŸ”´ CrÃ­tica | Total gasto em entregas |
+| Ver custos do mÃªs | ðŸŸ¡ Alta | Total mensal |
+| HistÃ³rico de gastos | ðŸŸ¡ Alta | Lista de todas as cobranÃ§as |
 
-### **Fora do MVP** ❌
-- ❌ Chat com motoboy
-- ❌ Múltiplos endereços de coleta salvos
-- ❌ Integração com sistema próprio
-- ❌ API para automação
-- ❌ Relatórios avançados
-- ❌ Agendamento de entregas
-- ❌ Entregas recorrentes
+### **Fora do MVP** âŒ
+- âŒ Chat com motoboy
+- âŒ MÃºltiplos endereÃ§os de coleta salvos
+- âŒ IntegraÃ§Ã£o com sistema prÃ³prio
+- âŒ API para automaÃ§Ã£o
+- âŒ RelatÃ³rios avanÃ§ados
+- âŒ Agendamento de entregas
+- âŒ Entregas recorrentes
 
 ---
 
-## 👨‍💼 Perfil: ADMINISTRADOR
+## ðŸ‘¨â€ðŸ’¼ Perfil: ADMINISTRADOR
 
-### **Autenticação & Acesso** 🔐
-| Funcionalidade | Prioridade | Descrição |
+### **AutenticaÃ§Ã£o & Acesso** ðŸ”
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Login admin | 🔴 Crítica | Email e senha (role-based) |
-| Dashboard home | 🔴 Crítica | Visão geral do sistema |
+| Login admin | ðŸ”´ CrÃ­tica | Email e senha (role-based) |
+| Dashboard home | ðŸ”´ CrÃ­tica | VisÃ£o geral do sistema |
 
-### **Monitoramento em Tempo Real** 📡
-| Funcionalidade | Prioridade | Descrição |
+### **Monitoramento em Tempo Real** ðŸ“¡
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Mapa com entregas ativas | 🔴 Crítica | Ver todas as entregas em andamento |
-| Lista de entregas do dia | 🔴 Crítica | Todas as entregas (filtros) |
-| Status de cada entrega | 🔴 Crítica | Ver detalhes completos |
-| Métricas básicas | 🔴 Crítica | Total entregas, taxa conclusão, tempo médio |
+| Mapa com entregas ativas | ðŸ”´ CrÃ­tica | Ver todas as entregas em andamento |
+| Lista de entregas do dia | ðŸ”´ CrÃ­tica | Todas as entregas (filtros) |
+| Status de cada entrega | ðŸ”´ CrÃ­tica | Ver detalhes completos |
+| MÃ©tricas bÃ¡sicas | ðŸ”´ CrÃ­tica | Total entregas, taxa conclusÃ£o, tempo mÃ©dio |
 
-### **Gestão de Usuários** 👥
-| Funcionalidade | Prioridade | Descrição |
+### **GestÃ£o de UsuÃ¡rios** ðŸ‘¥
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Lista de motoboys | 🔴 Crítica | Todos os motoboys cadastrados |
-| Detalhes do motoboy | 🔴 Crítica | Perfil completo + estatísticas |
-| Aprovar/rejeitar cadastro | 🟡 Alta | Verificação de documentos |
-| Suspender motoboy | 🟡 Alta | Bloquear temporariamente |
-| Lista de restaurantes | 🔴 Crítica | Todos os estabelecimentos |
-| Detalhes do restaurante | 🔴 Crítica | Perfil + estatísticas |
-| Suspender restaurante | 🟡 Alta | Bloquear temporariamente |
+| Lista de motoboys | ðŸ”´ CrÃ­tica | Todos os motoboys cadastrados |
+| Detalhes do motoboy | ðŸ”´ CrÃ­tica | Perfil completo + estatÃ­sticas |
+| Aprovar/rejeitar cadastro | ðŸŸ¡ Alta | VerificaÃ§Ã£o de documentos |
+| Suspender motoboy | ðŸŸ¡ Alta | Bloquear temporariamente |
+| Lista de restaurantes | ðŸ”´ CrÃ­tica | Todos os estabelecimentos |
+| Detalhes do restaurante | ðŸ”´ CrÃ­tica | Perfil + estatÃ­sticas |
+| Suspender restaurante | ðŸŸ¡ Alta | Bloquear temporariamente |
 
-### **Suporte & Disputas** 🎫
-| Funcionalidade | Prioridade | Descrição |
+### **Suporte & Disputas** ðŸŽ«
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Ver entregas problemáticas | 🟡 Alta | Filtro de canceladas/com problemas |
-| Detalhes de problemas | 🟡 Alta | Ver razão de cancelamento |
-| Contato direto (email/telefone) | 🟡 Alta | Dados para entrar em contato |
-| Reembolso manual | 🟢 Média | Processar reembolso excepcional |
+| Ver entregas problemÃ¡ticas | ðŸŸ¡ Alta | Filtro de canceladas/com problemas |
+| Detalhes de problemas | ðŸŸ¡ Alta | Ver razÃ£o de cancelamento |
+| Contato direto (email/telefone) | ðŸŸ¡ Alta | Dados para entrar em contato |
+| Reembolso manual | ðŸŸ¢ MÃ©dia | Processar reembolso excepcional |
 
-### **Relatórios Básicos** 📊
-| Funcionalidade | Prioridade | Descrição |
+### **RelatÃ³rios BÃ¡sicos** ðŸ“Š
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Entregas por dia | 🔴 Crítica | Gráfico simples |
-| Taxa de conclusão | 🔴 Crítica | % de entregas concluídas |
-| Tempo médio de entrega | 🔴 Crítica | Duração média total |
-| Motoboys mais ativos | 🟡 Alta | Top 10 por número de entregas |
-| Restaurantes mais ativos | 🟡 Alta | Top 10 por número de pedidos |
-| Receita total da plataforma | 🔴 Crítica | Soma das taxas cobradas |
+| Entregas por dia | ðŸ”´ CrÃ­tica | GrÃ¡fico simples |
+| Taxa de conclusÃ£o | ðŸ”´ CrÃ­tica | % de entregas concluÃ­das |
+| Tempo mÃ©dio de entrega | ðŸ”´ CrÃ­tica | DuraÃ§Ã£o mÃ©dia total |
+| Motoboys mais ativos | ðŸŸ¡ Alta | Top 10 por nÃºmero de entregas |
+| Restaurantes mais ativos | ðŸŸ¡ Alta | Top 10 por nÃºmero de pedidos |
+| Receita total da plataforma | ðŸ”´ CrÃ­tica | Soma das taxas cobradas |
 
-### **Configurações** ⚙️
-| Funcionalidade | Prioridade | Descrição |
+### **ConfiguraÃ§Ãµes** âš™ï¸
+| Funcionalidade | Prioridade | DescriÃ§Ã£o |
 |----------------|-----------|-----------|
-| Taxa da plataforma | 🔴 Crítica | % ou valor fixo cobrado |
-| Raio de busca de motoboys | 🟡 Alta | Distância padrão (ex: 5km) |
-| Valor mínimo por km | 🟡 Alta | Para cálculo automático de preço |
+| Taxa da plataforma | ðŸ”´ CrÃ­tica | % ou valor fixo cobrado |
+| Raio de busca de motoboys | ðŸŸ¡ Alta | DistÃ¢ncia padrÃ£o (ex: 5km) |
+| Valor mÃ­nimo por km | ðŸŸ¡ Alta | Para cÃ¡lculo automÃ¡tico de preÃ§o |
 
-### **Fora do MVP** ❌
-- ❌ Analytics avançado
-- ❌ Sistema de tickets
-- ❌ Chat interno
-- ❌ Gestão de pagamentos automática
-- ❌ Múltiplos níveis de admin
-- ❌ Auditoria detalhada
-- ❌ Exportação de relatórios
-- ❌ Integrações externas
+### **Fora do MVP** âŒ
+- âŒ Analytics avanÃ§ado
+- âŒ Sistema de tickets
+- âŒ Chat interno
+- âŒ GestÃ£o de pagamentos automÃ¡tica
+- âŒ MÃºltiplos nÃ­veis de admin
+- âŒ Auditoria detalhada
+- âŒ ExportaÃ§Ã£o de relatÃ³rios
+- âŒ IntegraÃ§Ãµes externas
 
 ---
 
-## 🗂️ Funcionalidades Técnicas (Backend)
+## ðŸ—‚ï¸ Funcionalidades TÃ©cnicas (Backend)
 
-### **Essenciais para MVP** 🔴
+### **Essenciais para MVP** ðŸ”´
 
-| Funcionalidade | Descrição |
+| Funcionalidade | DescriÃ§Ã£o |
 |----------------|-----------|
-| Autenticação | Supabase Auth (email/password) |
+| AutenticaÃ§Ã£o | Supabase Auth (email/password) |
 | Banco de dados | PostgreSQL com tabelas principais |
-| RLS Policies | Segurança de acesso aos dados |
-| Real-time subscriptions | Atualização de status em tempo real |
+| RLS Policies | SeguranÃ§a de acesso aos dados |
+| Real-time subscriptions | AtualizaÃ§Ã£o de status em tempo real |
 | Storage | Upload de fotos (CNH, entregas) |
-| Geolocation | Cálculo de distâncias e rastreamento |
-| Notificações push | Firebase Cloud Messaging básico |
+| Geolocation | CÃ¡lculo de distÃ¢ncias e rastreamento |
+| NotificaÃ§Ãµes push | Firebase Cloud Messaging bÃ¡sico |
 
 ### **Edge Functions MVP**
 
-| Função | Prioridade | Descrição |
+| FunÃ§Ã£o | Prioridade | DescriÃ§Ã£o |
 |--------|-----------|-----------|
-| notify-drivers | 🔴 Crítica | Notifica motoboys sobre nova entrega |
-| calculate-price | 🔴 Crítica | Calcula valor baseado em distância |
-| send-notification | 🟡 Alta | Envia push notifications |
+| notify-drivers | ðŸ”´ CrÃ­tica | Notifica motoboys sobre nova entrega |
+| calculate-price | ðŸ”´ CrÃ­tica | Calcula valor baseado em distÃ¢ncia |
+| send-notification | ðŸŸ¡ Alta | Envia push notifications |
 
-### **Fora do MVP** ❌
-- ❌ Sistema de pagamentos integrado
-- ❌ Verificação automática de documentos
-- ❌ IA/ML para otimização
-- ❌ Webhooks
-- ❌ API pública
+### **Fora do MVP** âŒ
+- âŒ Sistema de pagamentos integrado
+- âŒ VerificaÃ§Ã£o automÃ¡tica de documentos
+- âŒ IA/ML para otimizaÃ§Ã£o
+- âŒ Webhooks
+- âŒ API pÃºblica
 
 ---
 
-## 📱 Interfaces MVP
+## ðŸ“± Interfaces MVP
 
 ### **App Mobile Motoboy**
 **Telas Essenciais:**
-1. ✅ Login/Cadastro
-2. ✅ Home (Status + Resumo do dia)
-3. ✅ Lista de Entregas Disponíveis
-4. ✅ Detalhes da Entrega
-5. ✅ Entrega Ativa (Navegação)
-6. ✅ Histórico
-7. ✅ Perfil
+1. âœ… Login/Cadastro
+2. âœ… Home (Status + Resumo do dia)
+3. âœ… Lista de Entregas DisponÃ­veis
+4. âœ… Detalhes da Entrega
+5. âœ… Entrega Ativa (NavegaÃ§Ã£o)
+6. âœ… HistÃ³rico
+7. âœ… Perfil
 
 ### **Web App Restaurante**
 **Telas Essenciais:**
-1. ✅ Login/Cadastro
-2. ✅ Dashboard (Resumo)
-3. ✅ Nova Entrega (Formulário)
-4. ✅ Entregas Ativas (Lista + Mapa)
-5. ✅ Histórico
-6. ✅ Perfil
+1. âœ… Login/Cadastro
+2. âœ… Dashboard (Resumo)
+3. âœ… Nova Entrega (FormulÃ¡rio)
+4. âœ… Entregas Ativas (Lista + Mapa)
+5. âœ… HistÃ³rico
+6. âœ… Perfil
 
 ### **Painel Admin**
 **Telas Essenciais:**
-1. ✅ Login
-2. ✅ Dashboard (Métricas + Mapa)
-3. ✅ Lista de Entregas
-4. ✅ Detalhes de Entrega
-5. ✅ Lista de Motoboys
-6. ✅ Detalhes do Motoboy
-7. ✅ Lista de Restaurantes
-8. ✅ Detalhes do Restaurante
-9. ✅ Configurações
+1. âœ… Login
+2. âœ… Dashboard (MÃ©tricas + Mapa)
+3. âœ… Lista de Entregas
+4. âœ… Detalhes de Entrega
+5. âœ… Lista de Motoboys
+6. âœ… Detalhes do Motoboy
+7. âœ… Lista de Restaurantes
+8. âœ… Detalhes do Restaurante
+9. âœ… ConfiguraÃ§Ãµes
 
 ---
 
-## 🎯 Matriz de Priorização
+## ðŸŽ¯ Matriz de PriorizaÃ§Ã£o
 
-### **Prioridade 🔴 CRÍTICA (Fase 1 - Semana 1-2)**
-Sem essas funcionalidades, o produto não funciona.
+### **Prioridade ðŸ”´ CRÃTICA (Fase 1 - Semana 1-2)**
+Sem essas funcionalidades, o produto nÃ£o funciona.
 
 **Motoboy:**
 - Login/Cadastro
-- Ver entregas disponíveis
+- Ver entregas disponÃ­veis
 - Aceitar entrega
 - Marcar status (coletei, entreguei)
 - Ver entrega ativa
@@ -279,149 +279,150 @@ Sem essas funcionalidades, o produto não funciona.
 - Login/Cadastro
 - Criar entrega
 - Ver entregas em andamento
-- Rastreamento básico no mapa
-- Ver histórico
+- Rastreamento bÃ¡sico no mapa
+- Ver histÃ³rico
 
 **Admin:**
 - Login
 - Ver todas as entregas
-- Gerenciar usuários básico
-- Dashboard com métricas
+- Gerenciar usuÃ¡rios bÃ¡sico
+- Dashboard com mÃ©tricas
 
 **Backend:**
-- Autenticação
+- AutenticaÃ§Ã£o
 - CRUD entregas
 - Real-time status
-- Geolocation básica
+- Geolocation bÃ¡sica
 
 ---
 
-### **Prioridade 🟡 ALTA (Fase 2 - Semana 3-4)**
-Importantes para uma boa experiência, mas não bloqueiam o funcionamento.
+### **Prioridade ðŸŸ¡ ALTA (Fase 2 - Semana 3-4)**
+Importantes para uma boa experiÃªncia, mas nÃ£o bloqueiam o funcionamento.
 
 **Geral:**
-- Notificações push
-- Sistema de avaliações
+- NotificaÃ§Ãµes push
+- Sistema de avaliaÃ§Ãµes
 - Upload de fotos
 - Filtros e buscas
 - Cancelamento de entregas
 
 ---
 
-### **Prioridade 🟢 MÉDIA (Fase 3 - Pós-MVP)**
-Melhoram a experiência mas podem esperar validação inicial.
+### **Prioridade ðŸŸ¢ MÃ‰DIA (Fase 3 - PÃ³s-MVP)**
+Melhoram a experiÃªncia mas podem esperar validaÃ§Ã£o inicial.
 
 **Geral:**
-- Fotos de comprovação
-- Relatórios detalhados
-- Verificação de documentos
-- Múltiplos endereços salvos
+- Fotos de comprovaÃ§Ã£o
+- RelatÃ³rios detalhados
+- VerificaÃ§Ã£o de documentos
+- MÃºltiplos endereÃ§os salvos
 
 ---
 
-## 📊 Métricas de Sucesso do MVP
+## ðŸ“Š MÃ©tricas de Sucesso do MVP
 
-### **Métricas de Produto**
-- ✅ Tempo médio de aceite < 3 minutos
-- ✅ Taxa de conclusão > 85%
-- ✅ Pelo menos 10 entregas/dia
-- ✅ Rating médio > 4.0
-- ✅ Taxa de cancelamento < 10%
+### **MÃ©tricas de Produto**
+- âœ… Tempo mÃ©dio de aceite < 3 minutos
+- âœ… Taxa de conclusÃ£o > 85%
+- âœ… Pelo menos 10 entregas/dia
+- âœ… Rating mÃ©dio > 4.0
+- âœ… Taxa de cancelamento < 10%
 
-### **Métricas de Engajamento**
-- ✅ Motoboys ativos/dia: mínimo 5
-- ✅ Restaurantes ativos/semana: mínimo 3
-- ✅ Retenção motoboys (semana 2): > 60%
-- ✅ Retenção restaurantes (semana 2): > 70%
+### **MÃ©tricas de Engajamento**
+- âœ… Motoboys ativos/dia: mÃ­nimo 5
+- âœ… Restaurantes ativos/semana: mÃ­nimo 3
+- âœ… RetenÃ§Ã£o motoboys (semana 2): > 60%
+- âœ… RetenÃ§Ã£o restaurantes (semana 2): > 70%
 
-### **Métricas Técnicas**
-- ✅ Uptime > 99%
-- ✅ Latência API < 500ms (p95)
-- ✅ Real-time delay < 2s
-- ✅ Zero erros críticos
+### **MÃ©tricas TÃ©cnicas**
+- âœ… Uptime > 99%
+- âœ… LatÃªncia API < 500ms (p95)
+- âœ… Real-time delay < 2s
+- âœ… Zero erros crÃ­ticos
 
 ---
 
-## 🚀 Timeline Estimado do MVP
+## ðŸš€ Timeline Estimado do MVP
 
-### **Semana 1-2: Core Features (Crítico)**
-- [ ] Setup backend completo (Lovable Cloud)
-- [ ] Autenticação e perfis
+### **Semana 1-2: Core Features (CrÃ­tico)**
+- [ ] Setup backend completo (Supabase)
+- [ ] AutenticaÃ§Ã£o e perfis
 - [ ] CRUD de entregas
 - [ ] Sistema de aceite/recusa
-- [ ] Atualização de status
-- [ ] Real-time básico
+- [ ] AtualizaÃ§Ã£o de status
+- [ ] Real-time bÃ¡sico
 
 ### **Semana 3-4: Polish & High Priority**
 - [ ] App mobile nativo (Capacitor)
 - [ ] Rastreamento com mapa
-- [ ] Notificações push
-- [ ] Sistema de avaliações
+- [ ] NotificaÃ§Ãµes push
+- [ ] Sistema de avaliaÃ§Ãµes
 - [ ] Painel admin completo
 - [ ] Upload de fotos
 
 ### **Semana 5-6: Testes & Launch**
-- [ ] Testes com usuários reais
-- [ ] Correções de bugs
+- [ ] Testes com usuÃ¡rios reais
+- [ ] CorreÃ§Ãµes de bugs
 - [ ] Ajustes de UX
-- [ ] Deploy em produção
-- [ ] Onboarding dos primeiros usuários
+- [ ] Deploy em produÃ§Ã£o
+- [ ] Onboarding dos primeiros usuÃ¡rios
 
 ---
 
-## ✅ Checklist de Pronto para Lançar
+## âœ… Checklist de Pronto para LanÃ§ar
 
 ### **Funcional**
 - [ ] Motoboy consegue se cadastrar e fazer login
 - [ ] Restaurante consegue criar entregas
-- [ ] Motoboy recebe notificação de nova entrega
+- [ ] Motoboy recebe notificaÃ§Ã£o de nova entrega
 - [ ] Motoboy consegue aceitar e executar entrega
-- [ ] Restaurante vê status em tempo real
+- [ ] Restaurante vÃª status em tempo real
 - [ ] Admin consegue monitorar tudo
-- [ ] Sistema de avaliações funciona
+- [ ] Sistema de avaliaÃ§Ãµes funciona
 
 ### **Performance**
 - [ ] App mobile carrega em < 3s
 - [ ] Mapa atualiza em tempo real
-- [ ] Notificações chegam em < 10s
-- [ ] Nenhum erro crítico nos últimos 7 dias
+- [ ] NotificaÃ§Ãµes chegam em < 10s
+- [ ] Nenhum erro crÃ­tico nos Ãºltimos 7 dias
 
-### **Segurança**
+### **SeguranÃ§a**
 - [ ] RLS policies ativas em todas as tabelas
-- [ ] Dados sensíveis não expostos
+- [ ] Dados sensÃ­veis nÃ£o expostos
 - [ ] Uploads validados
 - [ ] Rate limiting em edge functions
 
 ### **UX**
 - [ ] Onboarding claro para ambos perfis
-- [ ] Feedback visual em todas as ações
+- [ ] Feedback visual em todas as aÃ§Ãµes
 - [ ] Estados de loading
-- [ ] Mensagens de erro amigáveis
+- [ ] Mensagens de erro amigÃ¡veis
 - [ ] Design responsivo
 
 ---
 
-## 🎓 Aprendizados Esperados do MVP
+## ðŸŽ“ Aprendizados Esperados do MVP
 
 **Perguntas a Responder:**
 1. Motoboys aceitam as entregas rapidamente?
 2. Restaurantes conseguem encontrar motoboys consistentemente?
-3. O preço sugerido é aceito ou sempre ajustado?
+3. O preÃ§o sugerido Ã© aceito ou sempre ajustado?
 4. Qual o raio ideal de busca de motoboys?
-5. Qual horário tem mais demanda?
-6. Quais funcionalidades são mais solicitadas?
-7. Onde estão os principais pontos de fricção?
+5. Qual horÃ¡rio tem mais demanda?
+6. Quais funcionalidades sÃ£o mais solicitadas?
+7. Onde estÃ£o os principais pontos de fricÃ§Ã£o?
 
 ---
 
-## 🔄 Evolução Pós-MVP
+## ðŸ”„ EvoluÃ§Ã£o PÃ³s-MVP
 
-**Próximas Features (após validação):**
+**PrÃ³ximas Features (apÃ³s validaÃ§Ã£o):**
 1. Sistema de pagamentos integrado
 2. Chat em tempo real
-3. Múltiplas entregas simultâneas para motoboy
+3. MÃºltiplas entregas simultÃ¢neas para motoboy
 4. Agendamento de entregas
 5. Programa de fidelidade
-6. API para integrações
+6. API para integraÃ§Ãµes
 7. White-label para parceiros
-8. IA para otimização de rotas
+8. IA para otimizaÃ§Ã£o de rotas
+
