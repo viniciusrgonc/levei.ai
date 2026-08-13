@@ -102,8 +102,12 @@ export default function DriverDashboard() {
   }, []);
 
   // ── Map initialization (Google Maps SDK → Leaflet fallback) ───────────────
+  // driverLoading está nas deps porque o container só entra no DOM quando
+  // o loading termina (o return antecipado do skeleton usa uma árvore diferente).
+  // Quando driverLoading muda de true→false o container está no DOM e o
+  // efeito re-executa corretamente.
   useEffect(() => {
-    if (!mapContainerRef.current || mapInstanceRef.current) return;
+    if (driverLoading || !mapContainerRef.current || mapInstanceRef.current) return;
     const defaultCenter: [number, number] = [-19.9167, -43.9345];
 
     loadGoogleMapsScript().then((ok) => {
@@ -120,6 +124,11 @@ export default function DriverDashboard() {
         const marker = new gm.Marker({ map });
         mapInstanceRef.current = map;
         markerInstanceRef.current = marker;
+        // Força recálculo de dimensões após render
+        requestAnimationFrame(() => {
+          gm.event.trigger(map, 'resize');
+          map.setCenter({ lat: defaultCenter[0], lng: defaultCenter[1] });
+        });
       } else {
         isGoogleRef.current = false;
         const map = L.map(mapContainerRef.current, {
@@ -133,6 +142,8 @@ export default function DriverDashboard() {
         }).addTo(map);
         mapInstanceRef.current = map;
         markerInstanceRef.current = marker;
+        // Força Leaflet a recalcular o tamanho real do container
+        setTimeout(() => map.invalidateSize(), 100);
       }
     });
 
@@ -141,7 +152,7 @@ export default function DriverDashboard() {
       mapInstanceRef.current = null;
       markerInstanceRef.current = null;
     };
-  }, []); // eslint-disable-line
+  }, [driverLoading]); // eslint-disable-line
 
   // ── Sync GPS position to map ──────────────────────────────────────────────
   useEffect(() => {
