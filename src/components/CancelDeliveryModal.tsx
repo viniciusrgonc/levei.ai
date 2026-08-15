@@ -93,12 +93,28 @@ export function CancelDeliveryModal({
         ? 'Cancelado pelo entregador'
         : 'Cancelado pelo solicitante';
 
-      // Busca dados da entrega — incluindo picked_up_at para decidir se devolução é necessária
+      // Busca dados da entrega SEM joins embarcados para evitar falha silenciosa de RLS
       const { data: deliveryData } = await supabase
         .from('deliveries')
-        .select('driver_id, restaurant_id, picked_up_at, status, drivers!left(user_id), restaurants!left(user_id)')
+        .select('driver_id, restaurant_id, picked_up_at, status')
         .eq('id', deliveryId)
         .maybeSingle();
+
+      const fromStatus = (deliveryData as any)?.status ?? 'unknown';
+
+      // Busca user_id do driver e restaurante separadamente (evita bloqueio de RLS via join)
+      let driverUserId: string | undefined;
+      if (deliveryData?.driver_id) {
+        const { data: dr } = await supabase
+          .from('drivers').select('user_id').eq('id', deliveryData.driver_id).maybeSingle();
+        driverUserId = dr?.user_id as string | undefined;
+      }
+      let restaurantUserId: string | undefined;
+      if (deliveryData?.restaurant_id) {
+        const { data: re } = await supabase
+          .from('restaurants').select('user_id').eq('id', deliveryData.restaurant_id).maybeSingle();
+        restaurantUserId = re?.user_id as string | undefined;
+      }
 
       const { data: rawResult, error } = await supabase
         .rpc('refund_delivery_funds', {
@@ -120,10 +136,9 @@ export function CancelDeliveryModal({
       }
 
       // ── Regra de devolução: pacote já coletado? ────────────────────────────
-      const wasPickedUp = !!(deliveryData as any)?.picked_up_at;
-      const driverUserId  = (deliveryData as any)?.drivers?.user_id as string | undefined;
-      const restaurantUserId = (deliveryData as any)?.restaurants?.user_id as string | undefined;
-      const fromStatus = (deliveryData as any)?.status ?? 'picked_up';
+      // Usa picked_up_at E status como fallback (caso picked_up_at seja null por inconsistência)
+      const wasPickedUp = !!(deliveryData as any)?.picked_up_at ||
+        ['picked_up', 'delivering', 'returning'].includes(fromStatus);
 
       if (wasPickedUp) {
         // Sobrescreve o status 'cancelled' da RPC — devolução obrigatória

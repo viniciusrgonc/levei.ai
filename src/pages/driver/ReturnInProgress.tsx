@@ -485,9 +485,11 @@ export default function ReturnInProgress() {
       {deliveryId && (
         <CancelDeliveryModal
           deliveryId={deliveryId}
+          cancellerRole="driver"
           open={showCancelModal}
           onOpenChange={setShowCancelModal}
           onCancelled={() => { setShowCancelModal(false); navigate('/driver/dashboard', { replace: true }); }}
+          onReturnRequired={() => { setShowCancelModal(false); navigate(`/driver/return-cancel/${deliveryId}`, { replace: true }); }}
         />
       )}
 
