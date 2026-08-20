@@ -82,7 +82,7 @@ export default function ReturnInProgress() {
   });
   const driverId = driverData?.id ?? null;
 
-  const { data: delivery, isLoading } = useQuery<Delivery>({
+  const { data: delivery, isLoading, error: deliveryError } = useQuery<Delivery>({
     queryKey: ['return-in-progress', deliveryId, driverId],
     queryFn: async () => {
       const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId!).single();
@@ -108,8 +108,18 @@ export default function ReturnInProgress() {
 
   // ── Redireciona quando status incompatível ────────────────────────────────
   useEffect(() => {
-    // handled via react-query error
-  }, []);
+    if (!deliveryError) return;
+    const msg = (deliveryError as Error).message ?? '';
+    if (!msg.startsWith('wrong-status:')) return;
+    const status = msg.replace('wrong-status:', '');
+    if (['cancelled_return_pending', 'returning_package'].includes(status)) {
+      navigate(`/driver/return-cancel/${deliveryId}`, { replace: true });
+    } else if (['picked_up', 'delivering'].includes(status)) {
+      navigate(`/driver/delivery/${deliveryId}`, { replace: true });
+    } else {
+      navigate('/driver/dashboard', { replace: true });
+    }
+  }, [deliveryError, deliveryId, navigate]);
 
   // ── Hooks de entrega ──────────────────────────────────────────────────────
   const destination: [number, number] | null = delivery

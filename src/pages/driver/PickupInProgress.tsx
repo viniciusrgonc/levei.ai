@@ -91,7 +91,7 @@ export default function PickupInProgress() {
       const { data, error } = await supabase.from('deliveries').select('*').eq('id', deliveryId!).single();
       if (error || !data) throw new Error('Entrega não encontrada');
       if (!data.driver_id || data.driver_id !== driverId) throw new Error('Acesso negado');
-      if (data.status !== 'accepted') throw new Error(`wrong-status:${data.status}`);
+      if (data.status !== 'accepted' && data.status !== 'picking_up') throw new Error(`wrong-status:${data.status}`);
       return data as Delivery;
     },
     enabled: !!deliveryId && !!driverId,

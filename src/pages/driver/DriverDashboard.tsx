@@ -50,7 +50,7 @@ async function fetchActiveDelivery(userId: string) {
   const { data } = await supabase
     .from('deliveries').select('*')
     .eq('driver_id', driverData.id)
-    .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering', 'returning'])
+    .in('status', ['accepted', 'picking_up', 'picked_up', 'delivering', 'returning', 'cancelled_return_pending', 'returning_package'])
     .order('delivery_sequence', { ascending: true, nullsFirst: true })
     .limit(1).maybeSingle();
   return data ?? null;
