@@ -1,0 +1,22 @@
+-- SEC-001 (hardening): Remove GRANT de accept_delivery_atomic para authenticated
+--
+-- CONTEXTO:
+--   A migration anterior (20260826_fix_accept_delivery_atomic_ownership.sql)
+--   adicionou ownership check interno como primeira camada de defesa.
+--   Esta migration adiciona a segunda camada: revoga o acesso direto ao RPC.
+--
+-- APÓS ESTE REVOKE:
+--   - anon: bloqueado por GRANT (nunca teve acesso)
+--   - authenticated: bloqueado por GRANT (permission denied ANTES de entrar na função)
+--   - service_role: superusuário PostgreSQL — ignora GRANTs, continua funcionando
+--
+-- POR QUÊ O REVOKE NÃO QUEBRA A EDGE FUNCTION:
+--   A Edge Function accept-delivery usa SUPABASE_SERVICE_ROLE_KEY para construir
+--   o supabaseClient. Service role é superusuário no PostgreSQL e bypassa qualquer
+--   GRANT ou RLS. O GRANT TO authenticated nunca foi necessário para a Edge Function.
+--
+-- RESULTADO: Duas camadas de defesa independentes:
+--   1. GRANT: apenas service_role pode chamar (barreira de permissão PostgreSQL)
+--   2. Ownership check dentro da função (segunda barreira, mantida como defense-in-depth)
+
+REVOKE EXECUTE ON FUNCTION public.accept_delivery_atomic(UUID, UUID) FROM authenticated;

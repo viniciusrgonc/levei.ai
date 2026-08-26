@@ -1,0 +1,30 @@
+-- SEC-003 (hardening): Remove GRANT padrão de add_restaurant_funds para PUBLIC
+--
+-- CONTEXTO:
+--   Por padrão do PostgreSQL, quando nenhum GRANT/REVOKE explícito existe,
+--   PUBLIC tem EXECUTE em funções criadas por superusuários. Isso permite que
+--   qualquer role (anon, authenticated) chame add_restaurant_funds diretamente,
+--   creditando saldo fictício em qualquer restaurante sem autenticação.
+--
+-- ESTADO ATUAL DO SISTEMA:
+--   - Saldo é FICTÍCIO: nenhum gateway de pagamento integrado
+--   - Frontend não chama esta função (botão "Em breve" em RestaurantWallet.tsx)
+--   - Nenhuma Edge Function chama esta função
+--   - Uso exclusivo: contexto administrativo/testes via Supabase SQL Editor
+--
+-- APÓS ESTE REVOKE:
+--   - anon:          bloqueado (permission denied 42501)
+--   - authenticated: bloqueado (permission denied 42501)
+--   - service_role:  continua funcionando (superusuário PostgreSQL, ignora GRANTs)
+--   - postgres:      continua funcionando (superusuário PostgreSQL, ignora GRANTs)
+--
+-- IMPACTO NO SISTEMA:
+--   Nenhum. A função não é usada por frontend ou Edge Functions.
+--   Uso administrativo via SQL Editor usa contexto superusuário (service_role/postgres).
+--
+-- ARQUITETURA FUTURA:
+--   Quando o gateway de pagamento for integrado, a Edge Function correspondente
+--   deverá usar SUPABASE_SERVICE_ROLE_KEY — o mesmo padrão já adotado em
+--   accept-delivery. O REVOKE já estará em vigor, sem necessidade de migration adicional.
+
+REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC) FROM PUBLIC;
