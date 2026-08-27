@@ -351,55 +351,39 @@ SELECT throws_ok(
 SET LOCAL ROLE postgres;
 
 -- ─────────────────────────────────────────────────────────────
--- T9: authenticated NÃO consegue chamar finalize_delivery_transaction
--- (SEC-008: REVOKE FROM PUBLIC)
+-- T9: authenticated NÃO tem EXECUTE privilege em finalize_delivery_transaction
+-- (SEC-008: REVOKE FROM authenticated)
+--
+-- Verificação via catálogo em vez de throws_ok() para evitar o crash do
+-- backend Postgres 15 que ocorre quando um erro de ACL do sistema (não
+-- um RAISE EXCEPTION de trigger) é lançado dentro de throws_ok com
+-- SET LOCAL ROLE. O has_function_privilege() verifica o estado do
+-- REVOKE sem executar a função.
 -- ─────────────────────────────────────────────────────────────
-
-DO $$
-BEGIN
-  PERFORM set_config('request.jwt.claims',
-    json_build_object('sub', 'aaaaaa03-0000-0000-0000-000000000003', 'role', 'authenticated')::text,
-    true);
-END; $$;
-SET LOCAL ROLE authenticated;
-
-SELECT throws_ok(
-  $$
-    SELECT public.finalize_delivery_transaction(
-      'dddddd03-0000-0000-0000-000000000003'::uuid,
-      'cccccc01-0000-0000-0000-000000000001'::uuid
-    )
-  $$,
-  '42501',
-  NULL,
-  'T9: authenticated não chama finalize_delivery_transaction → permission denied'
-);
 
 SET LOCAL ROLE postgres;
 
--- ─────────────────────────────────────────────────────────────
--- T10: anon NÃO consegue chamar finalize_delivery_transaction
--- ─────────────────────────────────────────────────────────────
-
-DO $$
-BEGIN
-  PERFORM set_config('request.jwt.claims', '{"role":"anon"}'::text, true);
-END; $$;
-SET LOCAL ROLE anon;
-
-SELECT throws_ok(
-  $$
-    SELECT public.finalize_delivery_transaction(
-      'dddddd03-0000-0000-0000-000000000003'::uuid,
-      'cccccc01-0000-0000-0000-000000000001'::uuid
-    )
-  $$,
-  '42501',
-  NULL,
-  'T10: anon não chama finalize_delivery_transaction → permission denied'
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.finalize_delivery_transaction(uuid, uuid)',
+    'EXECUTE'
+  ),
+  'T9: authenticated não tem EXECUTE privilege em finalize_delivery_transaction'
 );
 
-SET LOCAL ROLE postgres;
+-- ─────────────────────────────────────────────────────────────
+-- T10: anon NÃO tem EXECUTE privilege em finalize_delivery_transaction
+-- ─────────────────────────────────────────────────────────────
+
+SELECT ok(
+  NOT has_function_privilege(
+    'anon',
+    'public.finalize_delivery_transaction(uuid, uuid)',
+    'EXECUTE'
+  ),
+  'T10: anon não tem EXECUTE privilege em finalize_delivery_transaction'
+);
 
 -- ─────────────────────────────────────────────────────────────
 -- T11: postgres (simula service_role) CONSEGUE chamar finalize_delivery_transaction

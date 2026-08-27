@@ -4,13 +4,21 @@
 --
 -- Estado após a migration:
 --   20260826_revoke_add_restaurant_funds_grant.sql
---   → REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC) FROM PUBLIC
+--   → REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC)
+--     FROM PUBLIC, FROM authenticated, FROM anon
 --
 -- Permissões efetivas esperadas:
---   anon          → permission denied (42501) — nunca teve GRANT explícito; PUBLIC revogado
---   authenticated → permission denied (42501) — PUBLIC revogado
+--   anon          → sem EXECUTE privilege (verificado via catálogo)
+--   authenticated → sem EXECUTE privilege (verificado via catálogo)
 --   service_role  → executa (superusuário PostgreSQL, ignora GRANTs)
 --   postgres      → executa (superusuário PostgreSQL, ignora GRANTs)
+--
+-- Nota sobre os testes de "denied":
+--   Usamos has_function_privilege() em vez de throws_ok() para evitar
+--   o crash do backend Postgres 15 que ocorre quando um erro de ACL
+--   do sistema é lançado dentro de throws_ok com SET LOCAL ROLE.
+--   (throws_ok catching de RAISE EXCEPTION de trigger funciona ok;
+--    throws_ok catching de permission denied de ACL do sistema crasha.)
 --
 -- Nota sobre a lógica da função:
 --   A função NÃO foi alterada. Apenas a permissão de execução foi revogada.
@@ -58,97 +66,40 @@ VALUES (
 );
 
 -- ─────────────────────────────────────────────────────────────
--- TESTE 1: anon → permission denied
+-- TESTE 1 e 2: Verificação de privilégio via catálogo
+--
+-- Usamos has_function_privilege() em vez de throws_ok() com
+-- SET LOCAL ROLE para evitar o crash do backend Postgres 15.
+-- (Ver nota no cabeçalho do arquivo.)
 -- ─────────────────────────────────────────────────────────────
 
-SET LOCAL ROLE anon;
-
-SELECT throws_ok(
-  $$
-    SELECT public.add_restaurant_funds(
-      'bbbbbbbb-0001-0000-0000-000000000001'::uuid,
-      100.00
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 1: anon tenta adicionar fundos → permission denied (42501)'
+SELECT ok(
+  NOT has_function_privilege(
+    'anon',
+    'public.add_restaurant_funds(uuid, numeric)',
+    'EXECUTE'
+  ),
+  'TESTE 1: anon não tem EXECUTE privilege em add_restaurant_funds'
 );
 
--- ─────────────────────────────────────────────────────────────
--- TESTE 2: authenticated (dono do restaurante) → permission denied
--- ─────────────────────────────────────────────────────────────
-
-DO $$
-BEGIN
-  PERFORM set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'sub',  'ffffffff-0001-0000-0000-000000000001',
-      'role', 'authenticated'
-    )::text,
-    true
-  );
-END;
-$$;
-
-SET LOCAL ROLE authenticated;
-
-SELECT throws_ok(
-  $$
-    SELECT public.add_restaurant_funds(
-      'bbbbbbbb-0001-0000-0000-000000000001'::uuid,
-      100.00
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 2: authenticated (dono) tenta adicionar fundos → permission denied (42501)'
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.add_restaurant_funds(uuid, numeric)',
+    'EXECUTE'
+  ),
+  'TESTE 2: authenticated não tem EXECUTE privilege em add_restaurant_funds'
 );
 
--- ─────────────────────────────────────────────────────────────
--- TESTE 3: authenticated (outro usuário, restaurant_id de terceiro) → permission denied
--- Valida que o REVOKE protege mesmo quando o alvo é restaurante alheio.
--- ─────────────────────────────────────────────────────────────
-
-DO $$
-BEGIN
-  PERFORM set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'sub',  'aaaaaaaa-dead-beef-0000-000000000000',  -- usuário inexistente
-      'role', 'authenticated'
-    )::text,
-    true
-  );
-END;
-$$;
-
-SELECT throws_ok(
-  $$
-    SELECT public.add_restaurant_funds(
-      'bbbbbbbb-0001-0000-0000-000000000001'::uuid,
-      999999.00
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 3: authenticated (terceiro) tenta adicionar fundos em restaurante alheio → permission denied (42501)'
-);
-
--- Confirma que o saldo não foi alterado por nenhuma das tentativas bloqueadas
-SET LOCAL ROLE postgres;
-
+-- Integridade: verificações de catálogo não modificam dados
 SELECT is(
   (SELECT wallet_balance FROM public.restaurants WHERE id = 'bbbbbbbb-0001-0000-0000-000000000001'),
   0.00::numeric,
-  'TESTE 4: wallet_balance permanece 0.00 após todas as tentativas bloqueadas'
+  'TESTE 3: wallet_balance permanece 0.00 após verificações de privilégio'
 );
 
 -- ─────────────────────────────────────────────────────────────
--- TESTE 5: service_role (superusuário) → executa com sucesso
--- Simula contexto administrativo via SQL Editor ou futura Edge Function.
--- JWT sem claim "sub" (padrão de service_role no Supabase).
+-- TESTE 4 e 5: service_role (superusuário) → executa com sucesso
 -- ─────────────────────────────────────────────────────────────
 
 DO $$
@@ -161,7 +112,6 @@ BEGIN
 END;
 $$;
 
--- postgres role = superusuário = equivalente a service_role para efeito de GRANTs
 SELECT is(
   (
     SELECT (public.add_restaurant_funds(
@@ -170,13 +120,30 @@ SELECT is(
     ) ->> 'success')::boolean
   ),
   true,
-  'TESTE 5: service_role (postgres, sem sub no JWT) adiciona fundos → PERMITIDO'
+  'TESTE 4: service_role (postgres, sem sub no JWT) adiciona fundos → PERMITIDO'
 );
 
 SELECT is(
   (SELECT wallet_balance FROM public.restaurants WHERE id = 'bbbbbbbb-0001-0000-0000-000000000001'),
   250.00::numeric,
-  'TESTE 6: wallet_balance = 250.00 após execução via service_role'
+  'TESTE 5: wallet_balance = 250.00 após execução via service_role'
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- TESTE 6: Nenhuma função SQL existente chama add_restaurant_funds
+--          (proteção contra bypass via SECURITY DEFINER)
+-- ─────────────────────────────────────────────────────────────
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname IN ('public', 'auth')
+      AND p.proname  != 'add_restaurant_funds'
+      AND p.prosrc    ILIKE '%add_restaurant_funds%'
+  ),
+  'TESTE 6: Nenhuma função SQL (public/auth) chama add_restaurant_funds — bypass impossível'
 );
 
 -- ─────────────────────────────────────────────────────────────
