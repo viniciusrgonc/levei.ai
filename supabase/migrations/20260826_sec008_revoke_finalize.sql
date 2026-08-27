@@ -1,0 +1,47 @@
+-- SEC-008: REVOKE PUBLIC EXECUTE em finalize_delivery_transaction
+--
+-- ══════════════════════════════════════════════════════════════════════════════
+-- VULNERABILIDADE CORRIGIDA
+-- ══════════════════════════════════════════════════════════════════════════════
+--
+-- [HIGH] finalize_delivery_transaction estava acessível por qualquer authenticated.
+-- Qualquer driver (ou qualquer usuário autenticado) podia chamar diretamente:
+--
+--   supabase.rpc('finalize_delivery_transaction', {
+--     p_delivery_id: 'uuid_qualquer',
+--     p_driver_id: 'uuid_qualquer'
+--   })
+--
+-- Isso bypassa:
+--   • Validação de JWT na Edge Function
+--   • Verificação se driver possui driver_id
+--   • Idempotency check (retry protection)
+--   • Incremento de pontos
+--   • Notificações ao restaurante e push notification
+--
+-- ══════════════════════════════════════════════════════════════════════════════
+-- SOLUÇÃO
+-- ══════════════════════════════════════════════════════════════════════════════
+--
+-- REVOKE PUBLIC → apenas service_role pode chamar via PostgREST.
+-- A Edge Function complete-delivery usa SUPABASE_SERVICE_ROLE_KEY e autentica
+-- como service_role → GRANT explícito garante acesso contínuo.
+--
+-- Chamada legítima após esta migration:
+--   Edge Function (service_role JWT)
+--     → supabase.rpc('finalize_delivery_transaction', ...)
+--     → PostgREST autentica como service_role
+--     → GRANT TO service_role → acesso concedido ✓
+--
+-- Chamada direta por authenticated após esta migration:
+--   supabase.rpc('finalize_delivery_transaction', ...)  [com JWT de usuário]
+--     → PostgREST autentica como authenticated
+--     → sem EXECUTE grant → permission denied ✗
+--
+-- ══════════════════════════════════════════════════════════════════════════════
+-- NOTA: a lógica da função NÃO foi alterada
+-- ══════════════════════════════════════════════════════════════════════════════
+
+REVOKE EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) TO service_role;
