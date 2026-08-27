@@ -43,5 +43,7 @@
 -- ══════════════════════════════════════════════════════════════════════════════
 
 REVOKE EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) FROM anon;
 
 GRANT EXECUTE ON FUNCTION public.finalize_delivery_transaction(uuid, uuid) TO service_role;

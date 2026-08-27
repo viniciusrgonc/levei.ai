@@ -28,3 +28,5 @@
 --   accept-delivery. O REVOKE já estará em vigor, sem necessidade de migration adicional.
 
 REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.add_restaurant_funds(UUID, NUMERIC) FROM anon;

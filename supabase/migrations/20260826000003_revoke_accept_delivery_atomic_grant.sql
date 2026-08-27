@@ -19,4 +19,6 @@
 --   1. GRANT: apenas service_role pode chamar (barreira de permissão PostgreSQL)
 --   2. Ownership check dentro da função (segunda barreira, mantida como defense-in-depth)
 
+REVOKE EXECUTE ON FUNCTION public.accept_delivery_atomic(UUID, UUID) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.accept_delivery_atomic(UUID, UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.accept_delivery_atomic(UUID, UUID) FROM anon;

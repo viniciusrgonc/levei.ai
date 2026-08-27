@@ -72,24 +72,22 @@ VALUES (
 );
 
 INSERT INTO public.drivers (
-  id, user_id, full_name, cpf, birth_date, phone,
+  id, user_id, cpf, birth_date, phone,
   vehicle_type, license_plate, vehicle_model, vehicle_color,
-  cnh_number, cnh_expiry, is_approved, is_available, driver_status
+  is_approved, is_available, driver_status
 ) VALUES
 (
   'dddddddd-0000-0000-0000-000000000001',
   '11111111-0000-0000-0000-000000000001',
-  'Driver A Teste', '000.000.000-01', '1990-01-01', '11000000001',
+  '000.000.000-01', '1990-01-01', '11000000001',
   'motorcycle', 'AAA-0001', 'Modelo A', 'Preto',
-  '00000000001', now() + interval '2 years',
   true, true, 'approved'
 ),
 (
   'dddddddd-0000-0000-0000-000000000002',
   '22222222-0000-0000-0000-000000000002',
-  'Driver B Teste', '000.000.000-02', '1990-01-01', '11000000002',
+  '000.000.000-02', '1990-01-01', '11000000002',
   'motorcycle', 'BBB-0002', 'Modelo B', 'Branco',
-  '00000000002', now() + interval '2 years',
   true, true, 'approved'
 );
 
