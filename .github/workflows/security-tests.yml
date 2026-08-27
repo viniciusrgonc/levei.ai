@@ -37,50 +37,42 @@ jobs:
         with:
           version: latest
 
+      # Remove qualquer estado residual de runs anteriores no mesmo runner
+      # (volumes Docker sujos podem fazer o Postgres iniciar em recovery mode).
+      - name: Clean up any leftover Supabase state
+        run: supabase stop --no-backup 2>/dev/null || true
+
       # Sobe o stack local: Postgres + pgTAP + PostgREST + Auth.
       # Migrations de supabase/migrations/ são aplicadas automaticamente em ordem cronológica.
-      # Exclui serviços desnecessários para testes de banco:
-      #   edge-runtime  — Deno runtime para Edge Functions
-      #   imgproxy      — redimensionamento de imagens
-      #   inbucket      — servidor de email local (SMTP fake)
+      # Exclui serviços desnecessários para testes de banco.
       - name: Start Supabase local stack
-        run: supabase start --exclude edge-runtime,imgproxy,inbucket
+        run: supabase start --exclude edge-runtime,imgproxy,inbucket,storage,realtime,vector
 
-      # Executa todos os .sql em supabase/tests/ usando pgTAP.
-      # Arquivos executados nesta ordem (alfabética):
-      #   accept_delivery_atomic_test.sql
-      #   add_restaurant_funds_permissions_test.sql
-      #   delivery_security_test.sql         ← 18 assertions SEC-004/005/006/008/009
-      #   protect_wallet_balance_test.sql
-      #
-      # Cada arquivo roda dentro de uma transação revertida ao final (ROLLBACK),
-      # deixando o banco limpo para o próximo arquivo.
-      #
-      # Saída: formato TAP (Test Anything Protocol).
-      # Exit code 0 = todos PASS; exit code não-zero = ao menos um FAIL.
-      # Aguarda o Postgres aceitar conexões (recovery mode pode persistir alguns
-      # segundos após supabase start retornar em runners mais lentos).
-      - name: Wait for Postgres to be ready
+      # Aguarda o Postgres sair do recovery mode antes de rodar os testes.
+      # pg_is_in_recovery() = 'f' confirma que o banco está como primary
+      # (aceita escritas). SELECT 1 passaria mesmo em recovery mode (read-only),
+      # por isso usamos essa query específica.
+      - name: Wait for Postgres to leave recovery mode
         run: |
-          echo "Waiting for Postgres on localhost:54322..."
-          for i in $(seq 1 30); do
-            if PGPASSWORD=postgres psql -h localhost -p 54322 -U postgres -d postgres \
-                 -c "SELECT 1" -q 2>/dev/null; then
-              echo "Postgres ready after ${i} attempts"
+          echo "Waiting for Postgres to become primary (not in recovery)..."
+          for i in $(seq 1 60); do
+            result=$(PGPASSWORD=postgres psql -h localhost -p 54322 -U postgres -d postgres \
+              -t -c "SELECT pg_is_in_recovery()" 2>/dev/null | tr -d ' \n')
+            if [ "$result" = "f" ]; then
+              echo "Postgres is primary and ready after ${i} attempts"
               exit 0
             fi
-            echo "Attempt ${i}/30: not ready yet, retrying in 3s..."
-            sleep 3
+            echo "Attempt ${i}/60: pg_is_in_recovery=${result:-unavailable}, waiting 2s..."
+            sleep 2
           done
-          echo "ERROR: Postgres did not become ready after 90 seconds"
+          echo "ERROR: Postgres did not become primary after 120 seconds"
           exit 1
 
+      # Executa todos os .sql em supabase/tests/ usando pgTAP.
       - name: Run pgTAP tests
         run: supabase test db
 
       # Para o stack local para liberar recursos do runner.
-      # --no-backup pula o dump de dados de desenvolvimento (não necessário em CI).
-      # Roda sempre, mesmo que os testes falhem, para não vazar containers.
       - name: Stop Supabase local stack
         if: always()
         run: supabase stop --no-backup
