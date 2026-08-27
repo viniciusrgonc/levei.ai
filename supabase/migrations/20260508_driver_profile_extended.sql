@@ -32,8 +32,18 @@ ALTER TABLE public.drivers
 UPDATE public.drivers SET driver_status = 'approved'
   WHERE is_approved = true AND driver_status = 'pending';
 
-UPDATE public.drivers SET driver_status = 'rejected'
-  WHERE is_approved = false AND rejection_reason IS NOT NULL AND driver_status = 'pending';
+-- rejection_reason é adicionada em migração posterior; só executa se já existir
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'drivers' AND column_name = 'rejection_reason'
+  ) THEN
+    UPDATE public.drivers SET driver_status = 'rejected'
+      WHERE is_approved = false AND rejection_reason IS NOT NULL AND driver_status = 'pending';
+  END IF;
+END;
+$$;
 
 -- ── Unique indexes (parciais — permitem NULL) ────────────────
 CREATE UNIQUE INDEX IF NOT EXISTS drivers_cpf_unique
