@@ -95,16 +95,16 @@ INSERT INTO public.drivers (
 
 INSERT INTO public.deliveries (
   id, restaurant_id, status,
-  pickup_address, delivery_address,
-  recipient_name, recipient_phone,
-  total_amount
+  pickup_address, pickup_latitude, pickup_longitude,
+  delivery_address, delivery_latitude, delivery_longitude,
+  distance_km, price, price_adjusted
 ) VALUES (
   'eeeeeeee-0000-0000-0000-000000000001',
   'aaaaaaaa-0000-0000-0000-000000000001',
   'pending',
-  'Rua de Coleta, 1', 'Rua de Entrega, 1',
-  'Destinatário Teste', '11999999999',
-  50.00
+  'Rua de Coleta, 1', -19.9, -43.9,
+  'Rua de Entrega, 1', -19.91, -43.91,
+  3.0, 50.00, 50.00
 );
 
 -- ─────────────────────────────────────────────────────────────
