@@ -9,9 +9,15 @@
 --      → REVOKE EXECUTE FROM authenticated
 --
 -- Permissões efetivas esperadas:
---   anon          → permission denied (42501) — nunca teve GRANT
---   authenticated → permission denied (42501) — GRANT revogado
+--   anon          → sem EXECUTE privilege (verificado via catálogo)
+--   authenticated → sem EXECUTE privilege (verificado via catálogo)
 --   service_role  → executa (superusuário PostgreSQL, ignora GRANTs)
+--
+-- Nota sobre os testes de "denied":
+--   Usamos has_function_privilege() em vez de throws_ok() para evitar
+--   o crash do backend Postgres que ocorre com SET LOCAL ROLE authenticated
+--   + throws_ok (subtransação interna) + SECURITY DEFINER + FOR UPDATE
+--   na mesma linha bloqueada pela transação externa.
 --
 -- Como executar:
 --   supabase start
@@ -106,119 +112,50 @@ INSERT INTO public.deliveries (
 );
 
 -- ─────────────────────────────────────────────────────────────
--- TESTE 1: Usuário autenticado chamando diretamente → permission denied
+-- TESTE 1: Verificação de privilégio via catálogo do PostgreSQL
 --
--- Após o REVOKE EXECUTE FROM authenticated, qualquer usuário com
--- role 'authenticated' recebe 42501 antes de entrar na função.
--- Isso cobre TODOS os casos: Driver A usando driver_id próprio,
--- Driver A usando driver_id de B, restaurante, admin — qualquer
--- authenticated é bloqueado pelo GRANT antes mesmo do ownership check.
+-- Usamos has_function_privilege() em vez de throws_ok() para verificar
+-- que as roles não têm EXECUTE privilege, sem chamar a função diretamente.
+-- Isso evita a interação problemática entre throws_ok (subtransação interna),
+-- SET LOCAL ROLE authenticated, SECURITY DEFINER e FOR UPDATE na linha
+-- já bloqueada pela transação externa (INSERT do setup).
 -- ─────────────────────────────────────────────────────────────
 
--- 1a: Driver A tenta chamar com SEU PRÓPRIO driver_id → permission denied
-DO $$
-BEGIN
-  PERFORM set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'sub',  '11111111-0000-0000-0000-000000000001',
-      'role', 'authenticated'
-    )::text,
-    true
-  );
-END;
-$$;
-
-SET LOCAL ROLE authenticated;
-
-SELECT throws_ok(
-  $$
-    SELECT public.accept_delivery_atomic(
-      'eeeeeeee-0000-0000-0000-000000000001',
-      'dddddddd-0000-0000-0000-000000000001'
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 1a: Driver A (authenticated) chama com próprio driver_id → permission denied'
+SELECT ok(
+  NOT has_function_privilege(
+    'authenticated',
+    'public.accept_delivery_atomic(uuid, uuid)',
+    'EXECUTE'
+  ),
+  'TESTE 1a: authenticated não tem EXECUTE privilege em accept_delivery_atomic'
 );
 
--- 1b: Driver A tenta com driver_id de B → também permission denied (GRANT bloqueia antes)
-SELECT throws_ok(
-  $$
-    SELECT public.accept_delivery_atomic(
-      'eeeeeeee-0000-0000-0000-000000000001',
-      'dddddddd-0000-0000-0000-000000000002'
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 1b: Driver A (authenticated) tenta usar driver_id de B → permission denied'
+SELECT ok(
+  NOT has_function_privilege(
+    'anon',
+    'public.accept_delivery_atomic(uuid, uuid)',
+    'EXECUTE'
+  ),
+  'TESTE 1b: anon não tem EXECUTE privilege em accept_delivery_atomic'
 );
 
--- 1c: Restaurante (authenticated, sem driver) tenta chamar → permission denied
-DO $$
-BEGIN
-  PERFORM set_config(
-    'request.jwt.claims',
-    json_build_object(
-      'sub',  '33333333-0000-0000-0000-000000000003',
-      'role', 'authenticated'
-    )::text,
-    true
-  );
-END;
-$$;
-
-SELECT throws_ok(
-  $$
-    SELECT public.accept_delivery_atomic(
-      'eeeeeeee-0000-0000-0000-000000000001',
-      'dddddddd-0000-0000-0000-000000000001'
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 1c: Restaurante (authenticated) tenta chamar → permission denied'
-);
-
--- 1d: anon (sem sessão) também é bloqueado
-SET LOCAL ROLE anon;
-
-SELECT throws_ok(
-  $$
-    SELECT public.accept_delivery_atomic(
-      'eeeeeeee-0000-0000-0000-000000000001',
-      'dddddddd-0000-0000-0000-000000000001'
-    )
-  $$,
-  '42501',
-  NULL,
-  'TESTE 1d: anon (não autenticado) → permission denied'
-);
-
--- Confirma que a entrega não foi tocada por nenhuma das tentativas bloqueadas
-SET LOCAL ROLE postgres;
-
+-- Integridade: verificações de catálogo não modificam dados
 SELECT is(
   (SELECT status FROM public.deliveries WHERE id = 'eeeeeeee-0000-0000-0000-000000000001'),
   'pending',
-  'TESTE 1e: status permanece pending após todas as tentativas bloqueadas'
+  'TESTE 1c: status permanece pending após verificações de privilégio'
 );
 
 -- ─────────────────────────────────────────────────────────────
--- TESTE 2: service_role (Edge Function) → continua funcionando
+-- TESTE 2: service_role (postgres, JWT sem 'sub') → executa com sucesso
 --
 -- Simula o contexto da Edge Function:
 --   - Role: postgres (superusuário — equivale ao service_role para GRANTs)
---   - JWT claims: sem claim "sub" (como no JWT de service_role do Supabase)
---   - auth.uid() retorna NULL → ownership check ignorado (trusted caller)
---   - Lógica atômica executa normalmente
+--   - JWT sem claim "sub" → auth.uid() = NULL → ownership check ignorado
 -- ─────────────────────────────────────────────────────────────
 
 SET LOCAL ROLE postgres;
 
--- Simula JWT de service_role: sem claim "sub"
 DO $$
 BEGIN
   PERFORM set_config(
@@ -237,7 +174,7 @@ SELECT is(
     ) ->> 'success')::boolean
   ),
   true,
-  'TESTE 2a: service_role (sem sub no JWT) aceita entrega com driver_id de Driver A → PERMITIDO'
+  'TESTE 2a: service_role (postgres, sem sub no JWT) aceita entrega → PERMITIDO'
 );
 
 SELECT is(
@@ -253,16 +190,16 @@ SELECT is(
 );
 
 -- ─────────────────────────────────────────────────────────────
--- TESTE 3: Dois motoristas tentam aceitar a mesma entrega
---          via service_role (concorrência) → apenas um consegue
+-- TESTE 3: Dois drivers tentam aceitar a mesma entrega (concorrência)
+--          → apenas o primeiro consegue
 -- ─────────────────────────────────────────────────────────────
 
--- Reverte para pending para o teste de concorrência
+-- Reverte para pending para testar concorrência
 UPDATE public.deliveries
 SET status = 'pending', driver_id = NULL, accepted_at = NULL
 WHERE id = 'eeeeeeee-0000-0000-0000-000000000001';
 
--- Primeira tentativa: Driver A (via service_role)
+-- Primeira tentativa: Driver A
 SELECT is(
   (
     SELECT (public.accept_delivery_atomic(
@@ -283,7 +220,7 @@ SELECT is(
     ) ->> 'success')::boolean
   ),
   false,
-  'TESTE 3b: Driver B (service_role) tenta aceitar entrega já aceita → BLOQUEADO'
+  'TESTE 3b: Driver B tenta aceitar entrega já aceita → BLOQUEADO'
 );
 
 SELECT is(
@@ -295,11 +232,6 @@ SELECT is(
 -- ─────────────────────────────────────────────────────────────
 -- TESTE 4: Verificação via catálogo — nenhuma função SQL existente
 --          pode ser usada como bypass para accept_delivery_atomic
---
--- Consulta pg_proc para confirmar que nenhuma outra função no schema
--- public ou auth referencia 'accept_delivery_atomic' em seu corpo.
--- Se alguma SECURITY DEFINER chamasse accept_delivery_atomic, um
--- usuário autenticado poderia usá-la como bridge.
 -- ─────────────────────────────────────────────────────────────
 
 SELECT ok(
@@ -311,7 +243,7 @@ SELECT ok(
       AND p.proname     != 'accept_delivery_atomic'
       AND p.prosrc       ILIKE '%accept_delivery_atomic%'
   ),
-  'TESTE 4: Nenhuma função SQL existente (public/auth) chama accept_delivery_atomic — bypass via SECURITY DEFINER impossível'
+  'TESTE 4: Nenhuma função SQL (public/auth) chama accept_delivery_atomic — bypass impossível'
 );
 
 -- ─────────────────────────────────────────────────────────────
