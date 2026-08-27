@@ -49,11 +49,12 @@ ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name;
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('ffffffff-0001-0000-0000-000000000001', 'restaurant');
 
-INSERT INTO public.restaurants (id, user_id, name, cnpj, wallet_balance)
+INSERT INTO public.restaurants (id, user_id, business_name, cnpj, wallet_balance, address, latitude, longitude)
 VALUES (
   'bbbbbbbb-0001-0000-0000-000000000001',
   'ffffffff-0001-0000-0000-000000000001',
-  'Restaurante Funds Test', '11.111.111/0001-11', 0.00
+  'Restaurante Funds Test', '11.111.111/0001-11', 0.00,
+  'Rua Teste, 1', -19.9, -43.9
 );
 
 -- ─────────────────────────────────────────────────────────────

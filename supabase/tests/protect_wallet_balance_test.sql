@@ -73,19 +73,19 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('cccccccc-0001-0000-0000-000000000001', 'restaurant'),
   ('cccccccc-0002-0000-0000-000000000002', 'restaurant');
 
-INSERT INTO public.restaurants (id, user_id, name, cnpj, wallet_balance, blocked_balance)
+INSERT INTO public.restaurants (id, user_id, business_name, cnpj, wallet_balance, blocked_balance, address, latitude, longitude)
 VALUES
   (
     'eeeee001-0000-0000-0000-000000000001',
     'cccccccc-0001-0000-0000-000000000001',
     'Restaurante Sec A', '22.222.222/0001-22',
-    500.00, 0.00
+    500.00, 0.00, 'Rua Teste, 1', -19.9, -43.9
   ),
   (
     'eeeee002-0000-0000-0000-000000000002',
     'cccccccc-0002-0000-0000-000000000002',
     'Restaurante Sec B', '33.333.333/0001-33',
-    200.00, 0.00
+    200.00, 0.00, 'Rua Teste, 2', -19.9, -43.9
   );
 
 -- ─────────────────────────────────────────────────────────────

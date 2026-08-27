@@ -63,11 +63,12 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('22222222-0000-0000-0000-000000000002', 'driver'),
   ('33333333-0000-0000-0000-000000000003', 'restaurant');
 
-INSERT INTO public.restaurants (id, user_id, name, cnpj, wallet_balance)
+INSERT INTO public.restaurants (id, user_id, business_name, cnpj, wallet_balance, address, latitude, longitude)
 VALUES (
   'aaaaaaaa-0000-0000-0000-000000000001',
   '33333333-0000-0000-0000-000000000003',
-  'Restaurante Teste', '00.000.000/0001-00', 500.00
+  'Restaurante Teste', '00.000.000/0001-00', 500.00,
+  'Rua Teste, 1', -19.9, -43.9
 );
 
 INSERT INTO public.drivers (

@@ -68,7 +68,7 @@ INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaa03-0000-0000-0000-000000000003', 'driver');
 
 -- Restaurantes com saldo
-INSERT INTO public.restaurants (id, user_id, name, cnpj, wallet_balance, blocked_balance, address, latitude, longitude)
+INSERT INTO public.restaurants (id, user_id, business_name, cnpj, wallet_balance, blocked_balance, address, latitude, longitude)
 VALUES
   ('bbbbbb01-0000-0000-0000-000000000001',
    'aaaaaa01-0000-0000-0000-000000000001',
