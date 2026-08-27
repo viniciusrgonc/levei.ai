@@ -1,25 +1,15 @@
--- Cria tabelas referenciadas por 20260507_store_and_points_functions.sql.
+-- Cria tabelas referenciadas por 20260507000002_store_and_points_functions.sql.
 -- Essas tabelas foram criadas via Supabase Dashboard e nunca tiveram
 -- migration correspondente. Esta migration as recria de forma idempotente
 -- para que o histórico de migrations funcione em ambientes zerados (CI/local).
---
--- Ordem de aplicação (mesma data, ordem alfabética):
---   20260507_points_system.sql                ← point_adjustments, reward_campaigns
---   20260507_referrals_and_store_tables.sql   ← este arquivo (r < s)
---   20260507_store_and_points_functions.sql   ← funções que referenciam estas tabelas
 
 -- ── Colunas faltantes em drivers ───────────────────────────────────────────
--- points: usado por increment_driver_points e redeem_store_item
--- referral_code: código único do motoboy para indicação
--- referred_by: código de quem indicou este motoboy
 ALTER TABLE public.drivers
   ADD COLUMN IF NOT EXISTS points         INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS referral_code  TEXT    UNIQUE,
   ADD COLUMN IF NOT EXISTS referred_by    TEXT;
 
 -- ── Tabela referrals ────────────────────────────────────────────────────────
--- Rastreia indicações entre motoboys.
--- referred_driver_id é UNIQUE: cada motoboy só pode ser indicado uma vez.
 CREATE TABLE IF NOT EXISTS public.referrals (
   id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   referrer_driver_id   UUID        NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
@@ -35,21 +25,29 @@ CREATE TABLE IF NOT EXISTS public.referrals (
 
 ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "drivers_read_own_referrals"
-  ON public.referrals FOR SELECT
-  USING (
-    referrer_driver_id IN (SELECT id FROM public.drivers WHERE user_id = auth.uid())
-    OR
-    referred_driver_id IN (SELECT id FROM public.drivers WHERE user_id = auth.uid())
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'referrals'
+      AND policyname = 'drivers_read_own_referrals'
+  ) THEN
+    CREATE POLICY "drivers_read_own_referrals"
+      ON public.referrals FOR SELECT
+      USING (
+        referrer_driver_id IN (SELECT id FROM public.drivers WHERE user_id = auth.uid())
+        OR
+        referred_driver_id IN (SELECT id FROM public.drivers WHERE user_id = auth.uid())
+      );
+  END IF;
+END;
+$$;
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer  ON public.referrals(referrer_driver_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred  ON public.referrals(referred_driver_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_status    ON public.referrals(status);
 
 -- ── Tabela store_items ──────────────────────────────────────────────────────
--- Itens disponíveis para resgate na loja de pontos.
--- stock = -1: ilimitado; stock = 0: esgotado.
 CREATE TABLE IF NOT EXISTS public.store_items (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT        NOT NULL,
@@ -65,7 +63,6 @@ CREATE TABLE IF NOT EXISTS public.store_items (
 ALTER TABLE public.store_items ENABLE ROW LEVEL SECURITY;
 
 -- ── Tabela store_redemptions ────────────────────────────────────────────────
--- Registros de resgates de itens da loja.
 CREATE TABLE IF NOT EXISTS public.store_redemptions (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   driver_id   UUID        NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
