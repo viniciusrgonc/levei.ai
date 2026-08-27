@@ -58,6 +58,23 @@ jobs:
       #
       # Saída: formato TAP (Test Anything Protocol).
       # Exit code 0 = todos PASS; exit code não-zero = ao menos um FAIL.
+      # Aguarda o Postgres aceitar conexões (recovery mode pode persistir alguns
+      # segundos após supabase start retornar em runners mais lentos).
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres on localhost:54322..."
+          for i in $(seq 1 30); do
+            if PGPASSWORD=postgres psql -h localhost -p 54322 -U postgres -d postgres \
+                 -c "SELECT 1" -q 2>/dev/null; then
+              echo "Postgres ready after ${i} attempts"
+              exit 0
+            fi
+            echo "Attempt ${i}/30: not ready yet, retrying in 3s..."
+            sleep 3
+          done
+          echo "ERROR: Postgres did not become ready after 90 seconds"
+          exit 1
+
       - name: Run pgTAP tests
         run: supabase test db
 
