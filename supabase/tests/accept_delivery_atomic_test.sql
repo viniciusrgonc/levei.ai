@@ -50,11 +50,13 @@ INSERT INTO auth.users (
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
   );
 
+-- on_auth_user_created auto-cria profiles; ON CONFLICT garante o full_name correto
 INSERT INTO public.profiles (id, full_name)
 VALUES
   ('11111111-0000-0000-0000-000000000001', 'Driver A Teste'),
   ('22222222-0000-0000-0000-000000000002', 'Driver B Teste'),
-  ('33333333-0000-0000-0000-000000000003', 'Restaurante Teste');
+  ('33333333-0000-0000-0000-000000000003', 'Restaurante Teste')
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name;
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('11111111-0000-0000-0000-000000000001', 'driver'),

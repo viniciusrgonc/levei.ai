@@ -55,10 +55,12 @@ INSERT INTO auth.users (
    'driver_sec@test.levei', crypt('pass', gen_salt('bf')),
    now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated');
 
+-- on_auth_user_created auto-cria profiles; ON CONFLICT garante o full_name correto
 INSERT INTO public.profiles (id, full_name) VALUES
   ('aaaaaa01-0000-0000-0000-000000000001', 'Rest A'),
   ('aaaaaa02-0000-0000-0000-000000000002', 'Rest B'),
-  ('aaaaaa03-0000-0000-0000-000000000003', 'Driver Sec');
+  ('aaaaaa03-0000-0000-0000-000000000003', 'Driver Sec')
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name;
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaa01-0000-0000-0000-000000000001', 'restaurant'),
