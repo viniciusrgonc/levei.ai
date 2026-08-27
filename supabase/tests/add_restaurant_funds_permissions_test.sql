@@ -41,8 +41,8 @@ INSERT INTO auth.users (
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
   );
 
-INSERT INTO public.profiles (id, full_name, email)
-VALUES ('ffffffff-0001-0000-0000-000000000001', 'Restaurante Funds Test', 'rest_funds_test@test.levei');
+INSERT INTO public.profiles (id, full_name)
+VALUES ('ffffffff-0001-0000-0000-000000000001', 'Restaurante Funds Test');
 
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('ffffffff-0001-0000-0000-000000000001', 'restaurant');

@@ -55,10 +55,10 @@ INSERT INTO auth.users (
    'driver_sec@test.levei', crypt('pass', gen_salt('bf')),
    now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated');
 
-INSERT INTO public.profiles (id, full_name, email) VALUES
-  ('aaaaaa01-0000-0000-0000-000000000001', 'Rest A', 'rest_a_sec@test.levei'),
-  ('aaaaaa02-0000-0000-0000-000000000002', 'Rest B', 'rest_b_sec@test.levei'),
-  ('aaaaaa03-0000-0000-0000-000000000003', 'Driver Sec', 'driver_sec@test.levei');
+INSERT INTO public.profiles (id, full_name) VALUES
+  ('aaaaaa01-0000-0000-0000-000000000001', 'Rest A'),
+  ('aaaaaa02-0000-0000-0000-000000000002', 'Rest B'),
+  ('aaaaaa03-0000-0000-0000-000000000003', 'Driver Sec');
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('aaaaaa01-0000-0000-0000-000000000001', 'restaurant'),

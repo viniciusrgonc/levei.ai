@@ -50,11 +50,11 @@ INSERT INTO auth.users (
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
   );
 
-INSERT INTO public.profiles (id, full_name, email)
+INSERT INTO public.profiles (id, full_name)
 VALUES
-  ('11111111-0000-0000-0000-000000000001', 'Driver A Teste', 'driver_a@test.levei'),
-  ('22222222-0000-0000-0000-000000000002', 'Driver B Teste', 'driver_b@test.levei'),
-  ('33333333-0000-0000-0000-000000000003', 'Restaurante Teste', 'restaurant@test.levei');
+  ('11111111-0000-0000-0000-000000000001', 'Driver A Teste'),
+  ('22222222-0000-0000-0000-000000000002', 'Driver B Teste'),
+  ('33333333-0000-0000-0000-000000000003', 'Restaurante Teste');
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('11111111-0000-0000-0000-000000000001', 'driver'),

@@ -63,9 +63,9 @@ INSERT INTO auth.users (
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
   );
 
-INSERT INTO public.profiles (id, full_name, email) VALUES
-  ('cccccccc-0001-0000-0000-000000000001', 'Restaurante Sec A', 'rest_wallet_sec@test.levei'),
-  ('cccccccc-0002-0000-0000-000000000002', 'Restaurante Sec B', 'rest_wallet_sec2@test.levei');
+INSERT INTO public.profiles (id, full_name) VALUES
+  ('cccccccc-0001-0000-0000-000000000001', 'Restaurante Sec A'),
+  ('cccccccc-0002-0000-0000-000000000002', 'Restaurante Sec B');
 
 INSERT INTO public.user_roles (user_id, role) VALUES
   ('cccccccc-0001-0000-0000-000000000001', 'restaurant'),
