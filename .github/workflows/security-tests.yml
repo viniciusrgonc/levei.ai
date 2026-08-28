@@ -30,12 +30,14 @@ jobs:
         uses: actions/checkout@v4
 
       # Instala a Supabase CLI oficial.
-      # A versão "latest" rastreia a CLI estável mais recente.
-      # Para fixar: with: version: 2.116.0
+      # GITHUB_TOKEN fornece acesso autenticado à GitHub API para resolver
+      # a versão "latest" sem atingir o rate limit de 60 req/h de runners anônimos.
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Remove qualquer estado residual de runs anteriores no mesmo runner
       # (volumes Docker sujos podem fazer o Postgres iniciar em recovery mode).
