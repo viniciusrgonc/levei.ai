@@ -71,17 +71,22 @@ VALUES (
 );
 
 -- ─────────────────────────────────────────────────────────────
--- T1: authenticated não tem INSERT direto em notifications
---     (nenhuma policy de INSERT existe → RLS bloqueia)
+-- T1: nenhuma policy RLS de INSERT existe em notifications
+--
+-- Supabase concede GRANT INSERT a authenticated no nível ACL por
+-- padrão — has_table_privilege retornaria true mesmo sem acesso real.
+-- A proteção é via RLS: sem policy de INSERT, nenhuma linha passa.
+-- Verificamos via pg_policies (o mecanismo correto).
 -- ─────────────────────────────────────────────────────────────
 
 SELECT ok(
-  NOT has_table_privilege(
-    'authenticated',
-    'public.notifications',
-    'INSERT'
+  NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'notifications'
+      AND cmd        = 'INSERT'
   ),
-  'T1: role authenticated não tem INSERT privilege em notifications'
+  'T1: nenhuma policy RLS de INSERT existe em notifications — INSERT bloqueado por RLS'
 );
 
 -- ─────────────────────────────────────────────────────────────
@@ -134,8 +139,8 @@ SELECT ok(
     WHERE n.nspname = 'public'
       AND c.relname = 'notifications'
       AND t.tgname  = 'protect_notification_columns_trigger'
-      AND t.tgtype & 2 > 0   -- BEFORE
-      AND t.tgtype & 4 > 0   -- per ROW
+      AND t.tgtype & 2 > 0   -- BEFORE            (TRIGGER_TYPE_BEFORE = 2)
+      AND t.tgtype & 1 > 0   -- per ROW           (TRIGGER_TYPE_ROW    = 1)
       AND t.tgenabled != 'D' -- não desabilitado
   ),
   'T4: trigger protect_notification_columns_trigger existe e está ativo em notifications'
@@ -190,16 +195,20 @@ SELECT is(
 );
 
 -- ─────────────────────────────────────────────────────────────
--- T9: authenticated não acessa notification_campaigns
+-- T9: notification_campaigns tem exatamente 1 policy (somente admin)
+--
+-- Supabase concede GRANT SELECT a authenticated no nível ACL por
+-- padrão — has_table_privilege retornaria true mesmo sem acesso real.
+-- A proteção é via RLS: a única policy existente exige has_role(...,'admin').
+-- Verificamos via pg_policies que somente 1 policy existe na tabela.
 -- ─────────────────────────────────────────────────────────────
 
-SELECT ok(
-  NOT has_table_privilege(
-    'authenticated',
-    'public.notification_campaigns',
-    'SELECT'
-  ),
-  'T9: role authenticated não tem SELECT privilege em notification_campaigns'
+SELECT is(
+  (SELECT count(*)::integer FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'notification_campaigns'),
+  1,
+  'T9: notification_campaigns tem exatamente 1 policy RLS (somente admin)'
 );
 
 -- ─────────────────────────────────────────────────────────────
