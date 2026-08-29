@@ -17,7 +17,7 @@
 --   T6 : trigger bloqueia alteração de user_id
 --        quando chamado como authenticated (SQLSTATE 42501)
 --
--- UUIDs com prefixo gggggg — distintos de todos os outros testes.
+-- UUIDs com prefixos cafe/decade (hex válido) — distintos de todos os outros testes.
 -- =============================================================
 
 BEGIN;
@@ -34,13 +34,13 @@ INSERT INTO auth.users (
   created_at, updated_at, aud, role
 ) VALUES
   (
-    'gggggg01-0000-0000-0000-000000000001',
+    'cafe0001-0000-0000-0000-000000000001',
     'harden_user_a@test.levei',
     crypt('senha123', gen_salt('bf')),
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
   ),
   (
-    'gggggg02-0000-0000-0000-000000000002',
+    'cafe0002-0000-0000-0000-000000000002',
     'harden_user_b@test.levei',
     crypt('senha123', gen_salt('bf')),
     now(), '{}', '{}', now(), now(), 'authenticated', 'authenticated'
@@ -48,15 +48,15 @@ INSERT INTO auth.users (
 
 INSERT INTO public.profiles (id, full_name)
 VALUES
-  ('gggggg01-0000-0000-0000-000000000001', 'Harden User A'),
-  ('gggggg02-0000-0000-0000-000000000002', 'Harden User B')
+  ('cafe0001-0000-0000-0000-000000000001', 'Harden User A'),
+  ('cafe0002-0000-0000-0000-000000000002', 'Harden User B')
 ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name;
 
 -- Notificação pertencente ao User A (inserida como postgres/service_role)
 INSERT INTO public.notifications (id, user_id, title, message, type, is_read)
 VALUES (
-  'hhhhhh01-0000-0000-0000-000000000001',
-  'gggggg01-0000-0000-0000-000000000001',
+  'decade01-0000-0000-0000-000000000001',
+  'cafe0001-0000-0000-0000-000000000001',
   'Notificação de User A',
   'Mensagem de teste.',
   'info',
@@ -108,7 +108,7 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
-      'sub',  'gggggg02-0000-0000-0000-000000000002',
+      'sub',  'cafe0002-0000-0000-0000-000000000002',
       'role', 'authenticated'
     )::text,
     true
@@ -118,13 +118,13 @@ SET LOCAL ROLE authenticated;
 
 UPDATE public.notifications
   SET is_read = true
-  WHERE id = 'hhhhhh01-0000-0000-0000-000000000001';
+  WHERE id = 'decade01-0000-0000-0000-000000000001';
 
 SET LOCAL ROLE postgres;
 
 SELECT is(
   (SELECT is_read FROM public.notifications
-    WHERE id = 'hhhhhh01-0000-0000-0000-000000000001'),
+    WHERE id = 'decade01-0000-0000-0000-000000000001'),
   false,
   'T3: User B não consegue UPDATE na notificação de User A (RLS USING bloqueia, 0 rows)'
 );
@@ -139,7 +139,7 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
-      'sub',  'gggggg01-0000-0000-0000-000000000001',
+      'sub',  'cafe0001-0000-0000-0000-000000000001',
       'role', 'authenticated'
     )::text,
     true
@@ -149,13 +149,13 @@ SET LOCAL ROLE authenticated;
 
 UPDATE public.notifications
   SET is_read = true
-  WHERE id = 'hhhhhh01-0000-0000-0000-000000000001';
+  WHERE id = 'decade01-0000-0000-0000-000000000001';
 
 SET LOCAL ROLE postgres;
 
 SELECT is(
   (SELECT is_read FROM public.notifications
-    WHERE id = 'hhhhhh01-0000-0000-0000-000000000001'),
+    WHERE id = 'decade01-0000-0000-0000-000000000001'),
   true,
   'T4: User A consegue UPDATE is_read = true na própria notificação'
 );
@@ -170,7 +170,7 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
-      'sub',  'gggggg01-0000-0000-0000-000000000001',
+      'sub',  'cafe0001-0000-0000-0000-000000000001',
       'role', 'authenticated'
     )::text,
     true
@@ -180,13 +180,13 @@ SET LOCAL ROLE authenticated;
 
 UPDATE public.notifications
   SET read_at = now()
-  WHERE id = 'hhhhhh01-0000-0000-0000-000000000001';
+  WHERE id = 'decade01-0000-0000-0000-000000000001';
 
 SET LOCAL ROLE postgres;
 
 SELECT ok(
   (SELECT read_at IS NOT NULL FROM public.notifications
-    WHERE id = 'hhhhhh01-0000-0000-0000-000000000001'),
+    WHERE id = 'decade01-0000-0000-0000-000000000001'),
   'T5: User A consegue UPDATE read_at na própria notificação'
 );
 
@@ -205,7 +205,7 @@ BEGIN
   PERFORM set_config(
     'request.jwt.claims',
     json_build_object(
-      'sub',  'gggggg01-0000-0000-0000-000000000001',
+      'sub',  'cafe0001-0000-0000-0000-000000000001',
       'role', 'authenticated'
     )::text,
     true
@@ -216,8 +216,8 @@ SET LOCAL ROLE authenticated;
 SELECT throws_ok(
   $$
     UPDATE public.notifications
-      SET user_id = 'gggggg02-0000-0000-0000-000000000002'
-      WHERE id = 'hhhhhh01-0000-0000-0000-000000000001'
+      SET user_id = 'cafe0002-0000-0000-0000-000000000002'
+      WHERE id = 'decade01-0000-0000-0000-000000000001'
   $$,
   '42501',
   NULL,
