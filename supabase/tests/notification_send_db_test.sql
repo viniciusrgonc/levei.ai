@@ -1,7 +1,10 @@
 -- =============================================================
 -- Testes de banco: operações do send-notification (Etapa 2)
 --
--- Verifica as queries SQL que a Edge Function executa:
+-- Cobre as queries SQL que a Edge Function executa e os
+-- constraints que ela depende.
+--
+-- ── Testável em pgTAP (sem edge-runtime) ──────────────────────
 --   T1  : admin check query retorna 1 para admin real
 --   T2  : admin check query retorna 0 para não-admin
 --   T3  : batch INSERT de 3 notificações com sent_by funciona
@@ -10,15 +13,35 @@
 --   T6  : query de recipients all_restaurants retorna só restaurantes
 --   T7  : notification_campaigns armazena recipients_count correto
 --   T8  : query de idempotência detecta campanha recente (< 60s)
+--   T9  : notification_campaigns rejeita recipient_type inválido
+--   T10 : notification_campaigns rejeita title > 100 chars
+--   T11 : notification_campaigns rejeita message > 1000 chars
+--   T12 : notification_campaigns rejeita recipients_count negativo
+--
+-- ── Não testável em pgTAP (requer edge-runtime + HTTP) ────────
+--   [edge] T1  : request sem autenticação → rejeitado
+--   [edge] T2  : não-admin → rejeitado
+--   [edge] T3  : admin → aceito, notificações criadas
+--   [edge] T4  : título ausente → rejeitado
+--   [edge] T5  : mensagem ausente → rejeitado
+--   [edge] T7  : expires_at inválido → rejeitado
+--   [edge] T9  : target_ids inválidos → rejeitado
+--   [edge] T10 : UUID inválido em target_ids → rejeitado
+--   [edge] T11 : sent_by do body ignorado em favor do admin autenticado
+--   [edge] T14 : payload > 50 KB → rejeitado
+--   [edge] T15 : target_type inválido → rejeitado
+--
+-- Para testar os casos [edge], habilite edge-runtime no supabase start
+-- e use Deno Test com fetch() chamando o endpoint local.
 -- =============================================================
 
 BEGIN;
 
-SELECT plan(8);
+SELECT plan(12);
 
 -- ─────────────────────────────────────────────────────────────
 -- SETUP: 1 admin, 2 drivers, 1 restaurante
--- (UUIDs no prefixo bbbbbb para não colidir com outros testes)
+-- (UUIDs com prefixo bbbbbb — distintos dos outros arquivos de teste)
 -- ─────────────────────────────────────────────────────────────
 
 INSERT INTO auth.users (
@@ -67,7 +90,7 @@ INSERT INTO public.user_roles (user_id, role) VALUES
 
 -- ─────────────────────────────────────────────────────────────
 -- T1: admin check query retorna 1 para usuário admin
---     (mesma query usada pela Edge Function para verificar admin)
+--     (mesma query que a Edge Function executa antes de autorizar)
 -- ─────────────────────────────────────────────────────────────
 
 SELECT is(
@@ -94,7 +117,7 @@ SELECT is(
 
 -- ─────────────────────────────────────────────────────────────
 -- T3: batch INSERT de 3 notificações com sent_by funciona
---     (simula broadcast para driver1, driver2, restaurant)
+--     (simula broadcast target_type='all' para driver1/driver2/restaurant)
 -- ─────────────────────────────────────────────────────────────
 
 INSERT INTO public.notifications (user_id, title, message, type, priority, sent_by)
@@ -147,7 +170,7 @@ SELECT ok(
 
 -- ─────────────────────────────────────────────────────────────
 -- T5: query de recipients all_drivers retorna só drivers
---     (filtro por user_id IN para isolar o setup deste teste)
+--     (IN para isolar ao conjunto do setup deste teste)
 -- ─────────────────────────────────────────────────────────────
 
 SELECT is(
@@ -205,8 +228,7 @@ SELECT is(
 
 -- ─────────────────────────────────────────────────────────────
 -- T8: query de idempotência detecta campanha criada há < 60s
---     (a campanha do T7 tem created_at = now(); a query usa
---     gte(now()-60s) — deve encontrar exatamente 1 registro)
+--     (a campanha do T7 tem created_at ≈ now(); gte(now()-60s) acha)
 -- ─────────────────────────────────────────────────────────────
 
 SELECT is(
@@ -221,6 +243,91 @@ SELECT is(
       AND created_at    >= now() - interval '60 seconds'),
   1,
   'T8: query de idempotência detecta campanha enviada há menos de 60 segundos'
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- T9: notification_campaigns rejeita recipient_type inválido
+--     (valida o CHECK constraint que a Edge Function depende)
+-- ─────────────────────────────────────────────────────────────
+
+SELECT throws_ok(
+  $$
+    INSERT INTO public.notification_campaigns
+      (sent_by, recipient_type, title, message, type, priority, recipients_count)
+    VALUES (
+      'bbbbbb01-0000-0000-0000-000000000001',
+      'invalid_type',
+      'Teste', 'Mensagem.', 'info', 'normal', 0
+    )
+  $$,
+  '23514',
+  NULL,
+  'T9: notification_campaigns rejeita recipient_type inválido (SQLSTATE 23514)'
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- T10: notification_campaigns rejeita title > 100 caracteres
+--      (o limite 1–100 é validado também na Edge Function,
+--       mas o banco é a última linha de defesa)
+-- ─────────────────────────────────────────────────────────────
+
+SELECT throws_ok(
+  $$
+    INSERT INTO public.notification_campaigns
+      (sent_by, recipient_type, title, message, type, priority, recipients_count)
+    VALUES (
+      'bbbbbb01-0000-0000-0000-000000000001',
+      'all',
+      repeat('a', 101),
+      'Mensagem.', 'info', 'normal', 0
+    )
+  $$,
+  '23514',
+  NULL,
+  'T10: notification_campaigns rejeita title com mais de 100 caracteres (SQLSTATE 23514)'
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- T11: notification_campaigns rejeita message > 1000 caracteres
+-- ─────────────────────────────────────────────────────────────
+
+SELECT throws_ok(
+  $$
+    INSERT INTO public.notification_campaigns
+      (sent_by, recipient_type, title, message, type, priority, recipients_count)
+    VALUES (
+      'bbbbbb01-0000-0000-0000-000000000001',
+      'all',
+      'Titulo',
+      repeat('m', 1001),
+      'info', 'normal', 0
+    )
+  $$,
+  '23514',
+  NULL,
+  'T11: notification_campaigns rejeita message com mais de 1000 caracteres (SQLSTATE 23514)'
+);
+
+-- ─────────────────────────────────────────────────────────────
+-- T12: notification_campaigns rejeita recipients_count negativo
+--      (recipients_count CHECK >= 0)
+-- ─────────────────────────────────────────────────────────────
+
+SELECT throws_ok(
+  $$
+    INSERT INTO public.notification_campaigns
+      (sent_by, recipient_type, title, message, type, priority, recipients_count)
+    VALUES (
+      'bbbbbb01-0000-0000-0000-000000000001',
+      'all',
+      'Titulo',
+      'Mensagem.',
+      'info', 'normal', -1
+    )
+  $$,
+  '23514',
+  NULL,
+  'T12: notification_campaigns rejeita recipients_count negativo (SQLSTATE 23514)'
 );
 
 -- ─────────────────────────────────────────────────────────────
