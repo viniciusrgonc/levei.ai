@@ -127,11 +127,9 @@ export async function safeHandler(
     return await handler()
   } catch (error) {
     console.error('[EdgeFunction] Unhandled error:', error)
-    const message = error instanceof Error ? error.message : 'Erro interno'
     return errorResponse(
       ErrorCodes.INTERNAL_ERROR,
-      'Ocorreu um erro inesperado. Tente novamente.',
-      { internal_message: message }
+      'Ocorreu um erro inesperado. Tente novamente.'
     )
   }
 }

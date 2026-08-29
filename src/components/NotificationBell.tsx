@@ -9,6 +9,10 @@ import { ptBR } from 'date-fns/locale';
 
 // ── Notification type → icon + color ─────────────────────────────────────────
 function notifMeta(type: string) {
+  if (type === 'system' || type === 'security')
+    return { icon: Bell,          bg: 'bg-primary/10', color: 'text-primary'    };
+  if (type === 'warning')
+    return { icon: AlertCircle,   bg: 'bg-amber-100',  color: 'text-amber-600'  };
   if (type.includes('new_delivery') || type.includes('delivery_request'))
     return { icon: Package,       bg: 'bg-blue-100',   color: 'text-blue-600'   };
   if (type.includes('accepted'))
@@ -70,8 +74,10 @@ export default function NotificationBell() {
 
   const handleClick = (n: AppNotification) => {
     markAsRead(n.id);
-    setOpen(false);
-    navigateToDelivery(n);
+    if (n.delivery_id) {
+      setOpen(false);
+      navigateToDelivery(n);
+    }
   };
 
   return (
@@ -183,9 +189,18 @@ export default function NotificationBell() {
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}
-                      </p>
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <p className="text-[10px] text-gray-400">
+                          {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}
+                        </p>
+                        {(n.priority === 'important' || n.priority === 'urgent') && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide flex-shrink-0 ${
+                            n.priority === 'urgent' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {n.priority === 'urgent' ? 'Urgente' : 'Importante'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 );

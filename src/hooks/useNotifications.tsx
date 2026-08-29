@@ -8,8 +8,12 @@ export interface AppNotification {
   message: string;
   type: string;
   is_read: boolean;
+  read_at: string | null;
   delivery_id: string | null;
   created_at: string;
+  priority: string;           // 'normal' | 'important' | 'urgent'
+  expires_at: string | null;
+  sent_by: string | null;
 }
 
 export function useNotifications() {
@@ -25,11 +29,14 @@ export function useNotifications() {
   const fetchNotifications = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     setLoading(true);
+    const now = new Date().toISOString();
     const { data } = await supabase
       .from('notifications')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('is_read', { ascending: true })      // não lidas primeiro
+      .order('created_at', { ascending: false })  // mais recentes primeiro
       .limit(50);
     if (data) {
       setNotifications(data as AppNotification[]);
@@ -39,11 +46,14 @@ export function useNotifications() {
   }, [user]);
 
   const markAsRead = useCallback(async (id: string) => {
+    const readAt = new Date().toISOString();
     const { error } = await supabase
-      .from('notifications').update({ is_read: true }).eq('id', id);
+      .from('notifications')
+      .update({ is_read: true, read_at: readAt })
+      .eq('id', id);
     if (!error) {
       setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+        prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: readAt } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
@@ -51,13 +61,14 @@ export function useNotifications() {
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
+    const readAt = new Date().toISOString();
     const { error } = await supabase
       .from('notifications')
-      .update({ is_read: true })
+      .update({ is_read: true, read_at: readAt })
       .eq('user_id', user.id)
       .eq('is_read', false);
     if (!error) {
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true, read_at: n.read_at ?? readAt })));
       setUnreadCount(0);
     }
   }, [user]);
@@ -72,6 +83,8 @@ export function useNotifications() {
         filter: `user_id=eq.${user.id}`,
       }, (payload) => {
         const n = payload.new as AppNotification;
+        // Ignorar notificações já expiradas ao chegar via Realtime
+        if (n.expires_at && new Date(n.expires_at) <= new Date()) return;
         setNotifications((prev) =>
           prev.some((x) => x.id === n.id) ? prev : [n, ...prev]
         );
