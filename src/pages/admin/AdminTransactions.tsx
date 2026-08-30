@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AdminSidebar } from '@/components/AdminSidebar';
 import { AdminPageHeader } from '@/components/AdminPageHeader';
-import NotificationBell from '@/components/NotificationBell';
 import { useAuth } from '@/lib/auth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -72,6 +71,7 @@ export default function AdminTransactions() {
       }
     });
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate, filter]);
 
   const fetchTransactions = async () => {
@@ -160,9 +160,7 @@ export default function AdminTransactions() {
         <AdminSidebar />
         
         <div className="flex-1 flex flex-col">
-          <AdminPageHeader title="Transações" showBack showLogout>
-            <NotificationBell />
-          </AdminPageHeader>
+          <AdminPageHeader title="Transações" showBack showLogout />
 
           <main className="flex-1 p-6 bg-background overflow-auto">
             <div className="max-w-6xl mx-auto space-y-6">

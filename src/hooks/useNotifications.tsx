@@ -29,35 +29,42 @@ export function useNotifications() {
   const fetchNotifications = useCallback(async () => {
     if (!user) { setLoading(false); return; }
     setLoading(true);
-    const now = new Date().toISOString();
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .or(`expires_at.is.null,expires_at.gt.${now}`)
-      .order('is_read', { ascending: true })      // não lidas primeiro
-      .order('created_at', { ascending: false })  // mais recentes primeiro
-      .limit(50);
-    if (data) {
-      setNotifications(data as AppNotification[]);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
+    try {
+      const now = new Date().toISOString();
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .or(`expires_at.is.null,expires_at.gt.${now}`)
+        .order('is_read', { ascending: true })      // não lidas primeiro
+        .order('created_at', { ascending: false })  // mais recentes primeiro
+        .limit(50);
+      if (data) {
+        setNotifications(data as AppNotification[]);
+        setUnreadCount(data.filter((n) => !n.is_read).length);
+      }
+    } catch (err) {
+      console.error('[useNotifications] Erro ao buscar notificações:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [user]);
 
   const markAsRead = useCallback(async (id: string) => {
+    if (!user) return;
     const readAt = new Date().toISOString();
     const { error } = await supabase
       .from('notifications')
       .update({ is_read: true, read_at: readAt })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
     if (!error) {
       setNotifications((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: readAt } : n))
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-  }, []);
+  }, [user]);
 
   const markAllAsRead = useCallback(async () => {
     if (!user) return;
@@ -94,6 +101,7 @@ export function useNotifications() {
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try {
             new Notification(n.title, { body: n.message, icon: '/favicon.ico', tag: n.id });
+            // eslint-disable-next-line no-empty
           } catch {}
         }
       })
