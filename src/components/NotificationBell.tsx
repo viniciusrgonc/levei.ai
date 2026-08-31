@@ -74,8 +74,9 @@ export default function NotificationBell() {
 
   const handleClick = (n: AppNotification) => {
     markAsRead(n.id);
+    setOpen(false);
+
     if (n.delivery_id) {
-      setOpen(false);
       navigateToDelivery(n);
     }
   };
