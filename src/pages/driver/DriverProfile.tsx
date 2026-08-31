@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
+import NotificationBell from '@/components/NotificationBell';
 
 const maskCpf = (cpf: string) => {
   const d = cpf.replace(/\D/g, '');
@@ -148,7 +149,9 @@ export default function DriverProfile() {
         <div
           className="flex items-center justify-end px-4 pb-2"
           style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}
-        />
+        >
+          <NotificationBell />
+        </div>
 
         {/* Avatar + name */}
         <div className="flex flex-col items-center pb-6 pt-2">

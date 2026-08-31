@@ -9,6 +9,7 @@ import { getStatusConfig } from '@/lib/deliveryStatus';
 import { toast } from '@/hooks/use-toast';
 import { RatingModal } from '@/components/RatingModal';
 import { BottomNav } from '@/components/BottomNav';
+import NotificationBell from '@/components/NotificationBell';
 
 const PAGE_SIZE = 20;
 
@@ -197,7 +198,8 @@ export default function RestaurantHistory() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <h1 className="text-white font-bold text-lg">Histórico</h1>
+          <h1 className="text-white font-bold text-lg flex-1">Histórico</h1>
+          <NotificationBell />
         </div>
 
         {/* KPIs */}

@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { BottomNav } from '@/components/BottomNav';
 import { Skeleton } from '@/components/ui/skeleton';
+import NotificationBell from '@/components/NotificationBell';
 
 const DAYS: Record<string, string> = {
   seg: 'Seg', ter: 'Ter', qua: 'Qua', qui: 'Qui',
@@ -151,7 +152,9 @@ export default function RestaurantProfile() {
 
       {/* ── HERO ── */}
       <div className="bg-primary">
-        <div style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }} />
+        <div className="flex items-center justify-end px-4" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 12px)' }}>
+          <NotificationBell />
+        </div>
         <div className="flex flex-col items-center pb-6 pt-2">
           <div className="relative mb-3">
             <Avatar className="h-24 w-24 border-4 border-white/20">

@@ -6,6 +6,7 @@ import { ArrowLeft, Star, MessageSquare, TrendingUp, Award } from 'lucide-react'
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Query ────────────────────────────────────────────────────────────────────
 async function fetchDriverRatings(userId: string) {
@@ -88,7 +89,8 @@ export default function DriverRatings() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <h1 className="text-white font-bold text-xl">Minhas Avaliações</h1>
+          <h1 className="text-white font-bold text-xl flex-1">Minhas Avaliações</h1>
+          <NotificationBell />
         </div>
 
         {/* Score card */}

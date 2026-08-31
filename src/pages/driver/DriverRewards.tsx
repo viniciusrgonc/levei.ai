@@ -9,6 +9,7 @@ import {
   Plus, Minus, SlidersHorizontal, Calendar,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Reward tiers ─────────────────────────────────────────────────────────────
 const REWARDS = [
@@ -89,7 +90,8 @@ export default function DriverRewards() {
           <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center active:scale-90 transition-transform">
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <h1 className="text-white font-bold text-xl">Recompensas</h1>
+          <h1 className="text-white font-bold text-xl flex-1">Recompensas</h1>
+          <NotificationBell />
         </div>
 
         {isLoading ? (

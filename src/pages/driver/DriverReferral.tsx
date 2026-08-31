@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Copy, Share2, Users, Trophy, CheckCircle, Clock, Gift, ChevronRight } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { toast } from '@/hooks/use-toast';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Referral {
@@ -118,7 +119,8 @@ export default function DriverReferral() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <h1 className="text-white font-bold text-xl">Indique um amigo</h1>
+          <h1 className="text-white font-bold text-xl flex-1">Indique um amigo</h1>
+          <NotificationBell />
         </div>
 
         {/* Stats row */}

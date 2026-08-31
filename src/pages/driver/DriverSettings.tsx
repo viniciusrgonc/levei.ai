@@ -13,6 +13,7 @@ import {
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { PRODUCT_TYPES } from '@/lib/productTypes';
 import { useState, useEffect } from 'react';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Vehicle options ───────────────────────────────────────────────────────────
 const VEHICLE_OPTIONS = [
@@ -188,6 +189,7 @@ export default function DriverSettings() {
           <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
             <Settings2 className="h-4.5 w-4.5 text-white/70" style={{ width: 18, height: 18 }} />
           </div>
+          <NotificationBell />
         </div>
 
         {/* Status strip */}

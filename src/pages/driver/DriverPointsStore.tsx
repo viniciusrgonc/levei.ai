@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { toast } from '@/hooks/use-toast';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface StoreItem {
@@ -173,7 +174,8 @@ export default function DriverPointsStore() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <h1 className="text-white font-bold text-xl">Loja de Pontos</h1>
+          <h1 className="text-white font-bold text-xl flex-1">Loja de Pontos</h1>
+          <NotificationBell />
         </div>
 
         {/* Balance card */}

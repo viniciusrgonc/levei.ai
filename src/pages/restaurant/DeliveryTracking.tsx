@@ -14,6 +14,7 @@ import { CancelDeliveryModal } from '@/components/CancelDeliveryModal';
 import { OpenDisputeModal } from '@/components/OpenDisputeModal';
 import { BottomNav } from '@/components/BottomNav';
 import leveiLogo from '@/assets/levei-logo.png';
+import NotificationBell from '@/components/NotificationBell';
 
 type Delivery = {
   id: string;
@@ -194,6 +195,8 @@ export default function DeliveryTracking() {
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
           <img src={leveiLogo} alt="Levei.ai" className="h-8 w-8 rounded-xl object-cover" />
+          <span className="flex-1" />
+          <NotificationBell />
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6">
@@ -274,7 +277,8 @@ export default function DeliveryTracking() {
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <span className="font-semibold text-gray-900">Entrega cancelada</span>
+          <span className="font-semibold text-gray-900 flex-1">Entrega cancelada</span>
+          <div className="bg-primary rounded-full"><NotificationBell /></div>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
           <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
@@ -301,7 +305,8 @@ export default function DeliveryTracking() {
             className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center">
             <ArrowLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <span className="font-semibold text-gray-900">Entrega concluída</span>
+          <span className="font-semibold text-gray-900 flex-1">Entrega concluída</span>
+          <div className="bg-primary rounded-full"><NotificationBell /></div>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
@@ -385,12 +390,20 @@ export default function DeliveryTracking() {
         >
           <ArrowLeft className="h-5 w-5 text-gray-700" />
         </button>
-        {currentLocation && (
-          <div className="absolute top-4 right-4 bg-white rounded-full px-3 py-1.5 shadow-md flex items-center gap-1.5 z-10">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-semibold text-gray-700">Ao vivo</span>
+        <div
+          className="absolute right-4 z-10 flex items-center gap-2"
+          style={{ top: 'calc(env(safe-area-inset-top) + 12px)' }}
+        >
+          {currentLocation && (
+            <div className="bg-white rounded-full px-3 py-1.5 shadow-md flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs font-semibold text-gray-700">Ao vivo</span>
+            </div>
+          )}
+          <div className="bg-primary rounded-full shadow-md">
+            <NotificationBell />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Bottom sheet */}

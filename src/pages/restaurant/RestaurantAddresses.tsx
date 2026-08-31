@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { BottomNav } from '@/components/BottomNav';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '@/components/NotificationBell';
 import {
   MapPin, Star, Trash2, Pencil, Plus, Check,
   Loader2, ArrowLeft, Home, Building2, Heart,
@@ -286,6 +287,7 @@ export default function RestaurantAddresses() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-lg font-bold flex-1">Endereços Salvos</h1>
+          <NotificationBell />
         </div>
       </div>
 

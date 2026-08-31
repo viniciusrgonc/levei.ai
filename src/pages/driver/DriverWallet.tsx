@@ -7,6 +7,7 @@ import { Wallet, TrendingUp, Clock, ArrowUpCircle, ArrowLeft, PackageCheck, Gift
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { subDays, startOfDay, isAfter } from 'date-fns';
 import { useDriverCommission } from '@/lib/driverEarnings';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface WalletData {
@@ -132,6 +133,7 @@ export default function DriverWallet() {
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
           <h1 className="text-white font-bold text-xl flex-1">Ganhos</h1>
+          <NotificationBell />
         </div>
 
         {/* Balance */}

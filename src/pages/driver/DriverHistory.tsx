@@ -8,6 +8,7 @@ import { MapPin, Package, Search, Loader2, ArrowLeft } from 'lucide-react';
 import { getStatusConfig } from '@/lib/deliveryStatus';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
 import { useDriverCommission, calcDriverAmount } from '@/lib/driverEarnings';
+import NotificationBell from '@/components/NotificationBell';
 
 const PAGE_SIZE = 15;
 
@@ -160,6 +161,7 @@ export default function DriverHistory() {
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
           <h1 className="text-white font-bold text-xl flex-1">Histórico</h1>
+          <NotificationBell />
         </div>
 
         <div className="px-4 pt-2 pb-5">

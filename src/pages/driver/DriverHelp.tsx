@@ -5,6 +5,7 @@ import {
   Mail, Wifi, Package, Trophy, Wallet, AlertCircle, Users,
 } from 'lucide-react';
 import { DriverBottomNav } from '@/components/DriverBottomNav';
+import NotificationBell from '@/components/NotificationBell';
 
 // ── FAQ data ─────────────────────────────────────────────────────────────────
 const FAQ_SECTIONS = [
@@ -129,10 +130,11 @@ export default function DriverHelp() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-white font-bold text-xl">Central de Ajuda</h1>
             <p className="text-indigo-200 text-xs">Dúvidas frequentes e suporte</p>
           </div>
+          <NotificationBell />
         </div>
       </div>
 
