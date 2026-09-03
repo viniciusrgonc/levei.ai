@@ -171,7 +171,7 @@ export function AdminSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="border-r border-sidebar-border flex flex-col">
-        <SidebarGroup className="flex-1">
+        <SidebarGroup className="flex-1 min-h-0 overflow-y-auto">
           {!isCollapsed && (
             <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-4 py-3">
               Administração
@@ -205,7 +205,7 @@ export function AdminSidebar() {
         </SidebarGroup>
 
         {/* Sair — fixo no rodapé do sidebar */}
-        <SidebarGroup className="border-t border-sidebar-border mt-auto">
+        <SidebarGroup className="border-t border-sidebar-border shrink-0">
           <SidebarGroupContent>
             <SidebarMenu className="px-2 py-1">
               <SidebarMenuItem>
