@@ -76,7 +76,7 @@ const App = () => (
     <TooltipProvider>
       <PwaUpdateHandler />
       <Toaster />
-      <Sonner />
+      <Sonner position="top-right" />
       <BrowserRouter>
         <AuthProvider>
           <Routes>

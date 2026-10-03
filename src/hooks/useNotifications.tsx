@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { toast } from '@/components/ui/sonner';
 
 export interface AppNotification {
   id: string;
@@ -96,6 +97,19 @@ export function useNotifications() {
           prev.some((x) => x.id === n.id) ? prev : [n, ...prev]
         );
         setUnreadCount((prev) => prev + 1);
+
+        // Balão de notificação na tela
+        const duration = n.priority === 'urgent' ? 8000 : 5000;
+        const opts = { description: n.message, duration };
+        if (n.type === 'security' || n.type === 'error') {
+          toast.error(n.title, opts);
+        } else if (n.priority === 'urgent' || n.type === 'cancelled' || n.type === 'warning') {
+          toast.warning(n.title, opts);
+        } else if (n.type === 'completed' || n.type === 'accepted') {
+          toast.success(n.title, opts);
+        } else {
+          toast(n.title, opts);
+        }
 
         // Browser notification (if permission granted)
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
